@@ -3,13 +3,11 @@
   <!-- ===== SIDEBAR ===== -->
   <aside
     class="fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200 bg-white
-           transition-all duration-200"
+           transition-transform duration-200 lg:translate-x-0"
     [class.w-64]="!collapsed()"
     [class.w-16]="collapsed()"
     [class.-translate-x-full]="!mobileOpen()"
-    [class.translate-x-0]="mobileOpen()"
-    style="--tw-translate-x: 0"
-    [class.lg:translate-x-0]="true">
+    [class.translate-x-0]="mobileOpen()">
 
     <!-- Brand -->
     <div class="flex h-16 items-center gap-2 px-4">
