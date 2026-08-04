@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ObjectsService } from './objects.service';
 import { BusinessObject } from './object.model';
+import { AssignmentsService } from './assignments.service';
 import { BadgeComponent } from '../../shared/ui/badge.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
 import { DrawerComponent } from '../../shared/ui/drawer.component';
@@ -15,13 +16,21 @@ import { DrawerComponent } from '../../shared/ui/drawer.component';
 })
 export class ObjectsComponent implements OnInit {
   readonly svc = inject(ObjectsService);
+  readonly assign = inject(AssignmentsService);
   private fb = inject(FormBuilder);
 
+  // --- List / edit state ---
   readonly search = signal('');
   readonly drawerOpen = signal(false);
   readonly editingId = signal<string | null>(null);
   readonly saving = signal(false);
   readonly formError = signal<string | null>(null);
+
+  // --- Assignment state ---
+  readonly assignOpen = signal(false);
+  readonly assignObjectId = signal<string | null>(null);
+  readonly assignObjectName = signal<string>('');
+  readonly productSearch = signal('');
 
   readonly drawerTitle = computed(() =>
     this.editingId() ? 'Edit object' : 'New object'
@@ -46,10 +55,22 @@ export class ObjectsComponent implements OnInit {
     );
   });
 
+  readonly filteredProducts = computed(() => {
+    const q = this.productSearch().trim().toLowerCase();
+    const list = this.assign.allProducts();
+    if (!q) return list;
+    return list.filter(
+      (p) => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
+    );
+  });
+
+  readonly assignedCount = computed(() => this.assign.assignedIds().size);
+
   ngOnInit(): void {
     this.svc.load();
   }
 
+  // --- Create / edit ---
   openCreate(): void {
     this.editingId.set(null);
     this.formError.set(null);
@@ -108,5 +129,27 @@ export class ObjectsComponent implements OnInit {
     } else {
       await this.svc.activate(obj.id);
     }
+  }
+
+  // --- Product assignment ---
+  openAssign(obj: BusinessObject): void {
+    this.assignObjectId.set(obj.id);
+    this.assignObjectName.set(obj.name);
+    this.productSearch.set('');
+    this.assignOpen.set(true);
+    this.assign.loadFor(obj.id);
+  }
+
+  closeAssign(): void {
+    this.assignOpen.set(false);
+  }
+
+  isAssigned(productId: string): boolean {
+    return this.assign.assignedIds().has(productId);
+  }
+
+  toggleAssign(productId: string): void {
+    const id = this.assignObjectId();
+    if (id) this.assign.toggle(id, productId);
   }
 }

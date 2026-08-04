@@ -26,11 +26,10 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/objects/objects.component').then((m) => m.ObjectsComponent),
       },
-      // Placeholder routes — we build these in upcoming phases
       {
         path: 'products',
         loadComponent: () =>
-          import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+        import('./features/products/products.component').then((m) => m.ProductsComponent),
       },
       {
         path: 'orders',

@@ -1,0 +1,151 @@
+<!-- Header -->
+<div class="mb-6 flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Products</h1>
+    <p class="mt-1 text-sm text-slate-500">Manage your product catalogue.</p>
+  </div>
+  <button (click)="openCreate()"
+    class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">
+    + New product
+  </button>
+</div>
+
+<!-- Filters -->
+<div class="mb-4 flex flex-wrap items-center gap-3">
+  <input type="text" [value]="search()"
+    (input)="search.set($any($event.target).value)"
+    placeholder="Search products…"
+    class="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+           transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+
+  @if (categories().length) {
+    <select [value]="categoryFilter()"
+      (change)="categoryFilter.set($any($event.target).value)"
+      class="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none
+             transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+      <option value="">All categories</option>
+      @for (c of categories(); track c) {
+        <option [value]="c">{{ c }}</option>
+      }
+    </select>
+  }
+</div>
+
+@if (svc.loading()) {
+  <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
+    Loading products…
+  </div>
+} @else if (svc.error()) {
+  <div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">
+    {{ svc.error() }}
+  </div>
+} @else if (filtered().length === 0) {
+  <app-empty-state title="No products yet"
+    subtitle="Add your first product to build your catalogue.">
+    <button (click)="openCreate()"
+      class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">
+      + New product
+    </button>
+  </app-empty-state>
+} @else {
+  <div class="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
+        <tr>
+          <th class="px-5 py-3 font-medium">SKU</th>
+          <th class="px-5 py-3 font-medium">Name</th>
+          <th class="px-5 py-3 font-medium">Category</th>
+          <th class="px-5 py-3 font-medium">Status</th>
+          <th class="px-5 py-3 font-medium">Created</th>
+          <th class="px-5 py-3 text-right font-medium">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        @for (p of filtered(); track p.id) {
+          <tr class="group transition hover:bg-slate-50/60">
+            <td class="px-5 py-3 font-mono text-xs text-slate-500">{{ p.sku }}</td>
+            <td class="px-5 py-3 font-medium text-slate-900">{{ p.name }}</td>
+            <td class="px-5 py-3 text-slate-600">{{ p.category || '—' }}</td>
+            <td class="px-5 py-3">
+              @if (p.active) {
+                <app-badge tone="success">Active</app-badge>
+              } @else {
+                <app-badge tone="neutral">Inactive</app-badge>
+              }
+            </td>
+            <td class="px-5 py-3 text-slate-500">{{ p.created_at | date: 'mediumDate' }}</td>
+            <td class="px-5 py-3">
+              <div class="flex items-center justify-end gap-2 opacity-0 transition group-hover:opacity-100">
+                <button (click)="openEdit(p)"
+                  class="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100">
+                  Edit
+                </button>
+                <button (click)="toggleActive(p)"
+                  class="rounded-md px-2 py-1 text-xs font-medium hover:bg-slate-100"
+                  [class.text-red-600]="p.active"
+                  [class.text-green-600]="!p.active">
+                  {{ p.active ? 'Deactivate' : 'Activate' }}
+                </button>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+<!-- ===== DRAWER ===== -->
+<app-drawer [open]="drawerOpen()" [title]="drawerTitle()" (close)="closeDrawer()">
+  <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4">
+    <div>
+      <label class="mb-1.5 block text-sm font-medium text-slate-700">SKU <span class="text-red-500">*</span></label>
+      <input type="text" formControlName="sku" placeholder="e.g. IQOS-ILUMA-001"
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none
+               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+      @if (form.controls.sku.touched && form.controls.sku.invalid) {
+        <p class="mt-1 text-xs text-red-500">SKU is required.</p>
+      }
+    </div>
+
+    <div>
+      <label class="mb-1.5 block text-sm font-medium text-slate-700">Name <span class="text-red-500">*</span></label>
+      <input type="text" formControlName="name" placeholder="e.g. IQOS Iluma Prime"
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+      @if (form.controls.name.touched && form.controls.name.invalid) {
+        <p class="mt-1 text-xs text-red-500">Name is required.</p>
+      }
+    </div>
+
+    <div>
+      <label class="mb-1.5 block text-sm font-medium text-slate-700">Category</label>
+      <input type="text" formControlName="category" placeholder="e.g. Devices"
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+    </div>
+
+    <label class="flex items-center gap-2 text-sm text-slate-700">
+      <input type="checkbox" formControlName="active"
+        class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/20" />
+      Active
+    </label>
+
+    @if (formError()) {
+      <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
+        {{ formError() }}
+      </div>
+    }
+  </form>
+
+  <div drawer-footer class="flex justify-end gap-2">
+    <button type="button" (click)="closeDrawer()"
+      class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+      Cancel
+    </button>
+    <button type="button" (click)="save()" [disabled]="saving()"
+      class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60">
+      {{ saving() ? 'Saving…' : 'Save' }}
+    </button>
+  </div>
+</app-drawer>

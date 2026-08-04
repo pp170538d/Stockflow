@@ -66,6 +66,10 @@
             <td class="px-5 py-3 text-slate-500">{{ obj.created_at | date: 'mediumDate' }}</td>
             <td class="px-5 py-3">
               <div class="flex items-center justify-end gap-2 opacity-0 transition group-hover:opacity-100">
+                <button (click)="openAssign(obj)"
+                  class="rounded-md px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50">
+                  Products
+                </button>
                 <button (click)="openEdit(obj)"
                   class="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100">
                   Edit
@@ -85,7 +89,7 @@
   </div>
 }
 
-<!-- ===== DRAWER ===== -->
+<!-- ===== CREATE / EDIT DRAWER ===== -->
 <app-drawer [open]="drawerOpen()" [title]="drawerTitle()" (close)="closeDrawer()">
   <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4">
     <div>
@@ -125,7 +129,6 @@
     }
   </form>
 
-  <!-- Footer buttons -->
   <div drawer-footer class="flex justify-end gap-2">
     <button type="button" (click)="closeDrawer()"
       class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium
@@ -136,6 +139,66 @@
       class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
              transition hover:bg-brand-700 disabled:opacity-60">
       {{ saving() ? 'Saving…' : 'Save' }}
+    </button>
+  </div>
+</app-drawer>
+
+<!-- ===== PRODUCT ASSIGNMENT DRAWER ===== -->
+<app-drawer [open]="assignOpen()"
+  [title]="'Products · ' + assignObjectName()"
+  (close)="closeAssign()">
+
+  <div class="mb-3">
+    <p class="text-xs text-slate-500">
+      <span class="font-medium text-slate-900">{{ assignedCount() }}</span> assigned
+    </p>
+  </div>
+
+  <input type="text" [value]="productSearch()"
+    (input)="productSearch.set($any($event.target).value)"
+    placeholder="Search products…"
+    class="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+           transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+
+  @if (assign.loading()) {
+    <p class="py-8 text-center text-sm text-slate-400">Loading products…</p>
+  } @else if (filteredProducts().length === 0) {
+    <p class="py-8 text-center text-sm text-slate-400">No active products found.</p>
+  } @else {
+    <ul class="space-y-1">
+      @for (p of filteredProducts(); track p.id) {
+        <li>
+          <label class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5
+                        transition hover:bg-slate-50"
+                 [class.bg-brand-50]="isAssigned(p.id)">
+            <input type="checkbox"
+              [checked]="isAssigned(p.id)"
+              (change)="toggleAssign(p.id)"
+              class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/20" />
+            <span class="flex-1">
+              <span class="block text-sm font-medium text-slate-900">{{ p.name }}</span>
+              <span class="block font-mono text-xs text-slate-400">{{ p.sku }}</span>
+            </span>
+            @if (isAssigned(p.id)) {
+              <app-badge tone="success">Assigned</app-badge>
+            }
+          </label>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (assign.error()) {
+    <div class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
+      {{ assign.error() }}
+    </div>
+  }
+
+  <div drawer-footer class="flex justify-end">
+    <button type="button" (click)="closeAssign()"
+      class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
+             transition hover:bg-brand-700">
+      Done
     </button>
   </div>
 </app-drawer>
