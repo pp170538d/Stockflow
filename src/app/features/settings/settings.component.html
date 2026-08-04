@@ -1,0 +1,106 @@
+<!-- Header -->
+<div class="mb-6">
+  <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Settings</h1>
+  <p class="mt-1 text-sm text-slate-500">Manage your account.</p>
+</div>
+
+<div class="max-w-xl space-y-6">
+
+  <!-- ===== PROFILE ===== -->
+  <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
+    <h2 class="text-sm font-semibold text-slate-900">My profile</h2>
+    <p class="mt-0.5 text-xs text-slate-400">Your account information.</p>
+
+    <div class="mt-4 space-y-4">
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">Email</label>
+        <input type="email" [value]="auth.profile()?.email" disabled
+          class="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50
+                 px-3 py-2 text-sm text-slate-500" />
+        <p class="mt-1 text-xs text-slate-400">Email can't be changed here.</p>
+      </div>
+
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">Role</label>
+        <input type="text" [value]="auth.profile()?.role" disabled
+          class="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50
+                 px-3 py-2 text-sm text-slate-500" />
+      </div>
+
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">Full name</label>
+        <input type="text" [value]="fullName()"
+          (input)="fullName.set($any($event.target).value)"
+          placeholder="e.g. Petar Petrović"
+          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+      </div>
+
+      @if (profileMsg()) {
+        <div class="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 ring-1 ring-green-100">
+          {{ profileMsg() }}
+        </div>
+      }
+
+      <button (click)="saveProfile()" [disabled]="savingProfile()"
+        class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
+               transition hover:bg-brand-700 disabled:opacity-60">
+        {{ savingProfile() ? 'Saving…' : 'Save profile' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== PASSWORD ===== -->
+  <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
+    <h2 class="text-sm font-semibold text-slate-900">Change password</h2>
+    <p class="mt-0.5 text-xs text-slate-400">Update your login password.</p>
+
+    <div class="mt-4 space-y-4">
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">New password</label>
+        <input type="password" [value]="newPassword()"
+          (input)="newPassword.set($any($event.target).value)"
+          placeholder="••••••••"
+          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+      </div>
+
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">Confirm password</label>
+        <input type="password" [value]="confirmPassword()"
+          (input)="confirmPassword.set($any($event.target).value)"
+          placeholder="••••••••"
+          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+      </div>
+
+      @if (passwordErr()) {
+        <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
+          {{ passwordErr() }}
+        </div>
+      }
+      @if (passwordMsg()) {
+        <div class="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 ring-1 ring-green-100">
+          {{ passwordMsg() }}
+        </div>
+      }
+
+      <button (click)="changePassword()" [disabled]="savingPassword()"
+        class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
+               transition hover:bg-brand-700 disabled:opacity-60">
+        {{ savingPassword() ? 'Updating…' : 'Change password' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== SIGN OUT ===== -->
+  <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
+    <h2 class="text-sm font-semibold text-slate-900">Session</h2>
+    <p class="mt-0.5 text-xs text-slate-400">Sign out of Stockflow on this device.</p>
+    <button (click)="signOut()"
+      class="mt-4 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium
+             text-slate-700 transition hover:bg-slate-50">
+      Sign out
+    </button>
+  </div>
+</div>
