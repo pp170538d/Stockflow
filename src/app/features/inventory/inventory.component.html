@@ -172,6 +172,28 @@
   [title]="'History · ' + historyProductName()"
   (close)="closeHistory()">
 
+  <!-- Running-balance chart -->
+  @if (svc.movements().length > 0) {
+    <div class="mb-5 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-100">
+      <div class="mb-2 flex items-baseline justify-between">
+        <span class="text-xs font-medium text-slate-500">Stock level over time</span>
+        <span class="text-lg font-semibold text-slate-900">{{ historyChart().current }}</span>
+      </div>
+      <svg viewBox="0 0 100 40" preserveAspectRatio="none" class="h-24 w-full overflow-visible">
+        <polygon [attr.points]="historyChart().area" fill="rgb(99 102 241 / 0.12)" />
+        <polyline [attr.points]="historyChart().line"
+                  fill="none" stroke="rgb(79 70 229)" stroke-width="1.2"
+                  stroke-linejoin="round" stroke-linecap="round"
+                  vector-effect="non-scaling-stroke" />
+        @for (c of historyChart().coords; track c.at) {
+          <circle [attr.cx]="c.x" [attr.cy]="c.y" r="1.4"
+                  fill="white" stroke="rgb(79 70 229)" stroke-width="1"
+                  vector-effect="non-scaling-stroke" />
+        }
+      </svg>
+    </div>
+  }
+
   @if (svc.movements().length === 0) {
     <p class="py-10 text-center text-sm text-slate-400">
       No movements recorded yet.

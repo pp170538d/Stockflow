@@ -58,6 +58,37 @@ export class InventoryComponent implements OnInit {
     );
   });
 
+    /** Running-balance chart points, built from movement history (oldest→newest). */
+  readonly historyChart = computed(() => {
+    const moves = [...this.svc.movements()].reverse(); // service returns newest-first
+    let running = 0;
+    const points = moves.map((m) => {
+      running += m.quantity;
+      return { qty: m.quantity, balance: running, at: m.created_at };
+    });
+
+    const balances = points.map((p) => p.balance);
+    const max = Math.max(1, ...balances);
+    const min = Math.min(0, ...balances);
+    const range = max - min || 1;
+
+    // Map each point into an SVG coordinate (viewBox 0..100 x, 0..40 y)
+    const n = points.length;
+    const coords = points.map((p, i) => {
+      const x = n === 1 ? 50 : (i / (n - 1)) * 100;
+      const y = 40 - ((p.balance - min) / range) * 40; // invert: higher balance = higher up
+      return { ...p, x, y };
+    });
+
+    // Build the SVG polyline + area-fill path strings
+    const line = coords.map((c) => `${c.x},${c.y}`).join(' ');
+    const area = coords.length
+      ? `0,40 ${line} ${coords[coords.length - 1].x},40`
+      : '';
+
+    return { coords, line, area, max, current: running };
+  });
+
   async ngOnInit(): Promise<void> {
     const profile = this.auth.profile();
     if (this.isAdmin()) {
