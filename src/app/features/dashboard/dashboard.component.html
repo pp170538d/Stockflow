@@ -1,0 +1,124 @@
+<!-- Header -->
+<div class="mb-6">
+  <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Dashboard</h1>
+  <p class="mt-1 text-sm text-slate-500">
+    Welcome back, <span class="font-medium text-slate-700">{{ auth.profile()?.email }}</span>
+  </p>
+</div>
+
+<!-- ===== KPI CARDS ===== -->
+<div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+  <!-- Objects -->
+  <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+    <div class="flex items-center gap-3">
+      <div class="grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-brand-600">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+      </div>
+      <div>
+        <div class="text-2xl font-semibold text-slate-900">{{ svc.stats().objects }}</div>
+        <div class="text-xs text-slate-500">Objects</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Products -->
+  <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+    <div class="flex items-center gap-3">
+      <div class="grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-brand-600">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+      </div>
+      <div>
+        <div class="text-2xl font-semibold text-slate-900">{{ svc.stats().products }}</div>
+        <div class="text-xs text-slate-500">Products</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pending -->
+  <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+    <div class="flex items-center gap-3">
+      <div class="grid h-10 w-10 place-items-center rounded-xl bg-amber-50 text-amber-600">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      </div>
+      <div>
+        <div class="text-2xl font-semibold text-slate-900">{{ svc.stats().pending }}</div>
+        <div class="text-xs text-slate-500">Pending orders</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delivered -->
+  <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+    <div class="flex items-center gap-3">
+      <div class="grid h-10 w-10 place-items-center rounded-xl bg-green-50 text-green-600">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div>
+        <div class="text-2xl font-semibold text-slate-900">{{ svc.stats().delivered }}</div>
+        <div class="text-xs text-slate-500">Delivered</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CHART + RECENT ===== -->
+<div class="mt-6 grid gap-6 lg:grid-cols-3">
+
+  <!-- Status overview (bar chart) -->
+  <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200 lg:col-span-1">
+    <h2 class="text-sm font-semibold text-slate-900">Order status overview</h2>
+    <p class="mt-0.5 text-xs text-slate-400">{{ svc.stats().totalOrders }} total orders</p>
+
+    <div class="mt-5 space-y-4">
+      @for (seg of chart(); track seg.label) {
+        <div>
+          <div class="mb-1 flex items-center justify-between text-xs">
+            <span class="font-medium text-slate-600">{{ seg.label }}</span>
+            <span [class]="seg.text" class="font-semibold">{{ seg.value }}</span>
+          </div>
+          <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div class="h-full rounded-full transition-all duration-500"
+                 [class]="seg.color" [style.width.%]="seg.pct"></div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Recent orders -->
+  <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200 lg:col-span-2">
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-slate-900">Recent orders</h2>
+      <a routerLink="/orders" class="text-xs font-medium text-brand-600 hover:text-brand-700">
+        View all →
+      </a>
+    </div>
+
+    @if (svc.loading()) {
+      <p class="py-8 text-center text-sm text-slate-400">Loading…</p>
+    } @else if (svc.recentOrders().length === 0) {
+      <app-empty-state title="No orders yet"
+        subtitle="New orders will show up here.">
+      </app-empty-state>
+    } @else {
+      <div class="divide-y divide-slate-100">
+        @for (o of svc.recentOrders(); track o.id) {
+          <div class="flex items-center justify-between py-3">
+            <div>
+              <div class="text-sm font-medium text-slate-900">{{ o.object?.name || '—' }}</div>
+              <div class="text-xs text-slate-400">
+                {{ itemCount(o) }} items · {{ o.created_at | date: 'MMM d, y' }}
+              </div>
+            </div>
+            <app-badge [tone]="tone(o.status)">{{ o.status }}</app-badge>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>
