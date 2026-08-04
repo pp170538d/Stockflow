@@ -42,6 +42,11 @@ export const routes: Routes = [
                     import('./features/orders/order-create.component').then((m) => m.OrderCreateComponent),
             },
             {
+                path: 'inventory',
+                loadComponent: () =>
+                    import('./features/inventory/inventory.component').then((m) => m.InventoryComponent),
+            },
+            {
                 path: 'users', canActivate: [adminGuard],
                 loadComponent: () =>
                     import('./features/users/users.component').then((m) => m.UsersComponent),
