@@ -44,7 +44,7 @@ export const routes: Routes = [
             {
                 path: 'users', canActivate: [adminGuard],
                 loadComponent: () =>
-                    import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+                    import('./features/users/users.component').then((m) => m.UsersComponent),
             },
             {
                 path: 'settings',
