@@ -1,0 +1,5 @@
+{
+  "buildCommand": "ng build",
+  "outputDirectory": "dist/stockflow/browser",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
