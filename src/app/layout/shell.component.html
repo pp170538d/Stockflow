@@ -1,0 +1,125 @@
+<div class="min-h-screen bg-slate-50">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside
+    class="fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200 bg-white
+           transition-all duration-200"
+    [class.w-64]="!collapsed()"
+    [class.w-16]="collapsed()"
+    [class.-translate-x-full]="!mobileOpen()"
+    [class.translate-x-0]="mobileOpen()"
+    style="--tw-translate-x: 0"
+    [class.lg:translate-x-0]="true">
+
+    <!-- Brand -->
+    <div class="flex h-16 items-center gap-2 px-4">
+      <div class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-600">
+        <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <path d="M4 8h11M4 16h7" /><path d="m16 5 4 3-4 3" />
+        </svg>
+      </div>
+      @if (!collapsed()) {
+        <span class="text-lg font-semibold tracking-tight text-slate-900">
+          Stock<span class="text-brand-600">flow</span>
+        </span>
+      }
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 space-y-1 px-3 py-2">
+      @for (item of navItems(); track item.path) {
+        <a [routerLink]="item.path" (click)="closeMobile()"
+           routerLinkActive="bg-brand-50 text-brand-700"
+           [routerLinkActiveOptions]="{ exact: false }"
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium
+                  text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">
+          <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path [attr.d]="item.icon" />
+          </svg>
+          @if (!collapsed()) { <span>{{ item.label }}</span> }
+        </a>
+      }
+    </nav>
+
+    <!-- Collapse toggle (desktop only) -->
+    <button (click)="toggleCollapse()"
+            class="m-3 hidden items-center justify-center rounded-lg border border-slate-200
+                   py-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-600 lg:flex">
+      <svg class="h-5 w-5 transition-transform" [class.rotate-180]="collapsed()"
+           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+    </button>
+  </aside>
+
+  <!-- Mobile overlay backdrop -->
+  @if (mobileOpen()) {
+    <div (click)="closeMobile()" class="fixed inset-0 z-30 bg-slate-900/40 lg:hidden"></div>
+  }
+
+  <!-- ===== MAIN COLUMN ===== -->
+  <div class="transition-all duration-200"
+       [class.lg:pl-64]="!collapsed()"
+       [class.lg:pl-16]="collapsed()">
+
+    <!-- Topbar -->
+    <header class="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200
+                   bg-white/80 px-4 backdrop-blur">
+      <!-- Hamburger (mobile) -->
+      <button (click)="toggleMobile()"
+              class="grid h-9 w-9 place-items-center rounded-lg text-slate-500
+                     hover:bg-slate-100 lg:hidden">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+
+      <!-- Search -->
+      <div class="relative hidden max-w-md flex-1 sm:block">
+        <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" placeholder="Search…  ⌘K"
+               class="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3
+                      text-sm outline-none transition focus:border-brand-500 focus:bg-white
+                      focus:ring-2 focus:ring-brand-500/20" />
+      </div>
+
+      <div class="ml-auto flex items-center gap-2">
+        <!-- Notifications -->
+        <button class="relative grid h-9 w-9 place-items-center rounded-lg text-slate-500 hover:bg-slate-100">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/>
+          </svg>
+          <span class="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-brand-600"></span>
+        </button>
+
+        <!-- Profile -->
+        <div class="flex items-center gap-2 rounded-lg px-2 py-1">
+          <div class="grid h-8 w-8 place-items-center rounded-full bg-brand-600 text-xs font-semibold text-white">
+            {{ initials() }}
+          </div>
+          <div class="hidden text-left sm:block">
+            <div class="text-sm font-medium leading-tight text-slate-900">{{ auth.profile()?.email }}</div>
+            <div class="text-xs leading-tight text-slate-400">{{ auth.profile()?.role }}</div>
+          </div>
+          <button (click)="signOut()" title="Sign out"
+                  class="ml-1 grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <main class="p-4 sm:p-6 lg:p-8">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
