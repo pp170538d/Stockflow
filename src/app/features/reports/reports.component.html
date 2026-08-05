@@ -1,0 +1,142 @@
+<!-- Header + filters -->
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Reports</h1>
+    <p class="mt-1 text-sm text-slate-500">
+      Insights for <span class="font-medium text-slate-700">{{ scopeLabel() }}</span>
+      · <span class="font-medium text-slate-700">{{ rangeLabel() }}</span>.
+    </p>
+  </div>
+
+  <div class="flex flex-wrap items-end gap-3">
+    <!-- Range segmented control -->
+    <div>
+      <label class="mb-1.5 block text-xs font-medium text-slate-500">Range</label>
+      <div class="inline-flex rounded-lg border border-slate-300 bg-white p-0.5">
+        @for (r of ranges; track r.days) {
+          <button (click)="onRangeChange(r.days)"
+            class="rounded-md px-3 py-1.5 text-sm font-medium transition"
+            [class.bg-brand-600]="rangeDays() === r.days"
+            [class.text-white]="rangeDays() === r.days"
+            [class.text-slate-600]="rangeDays() !== r.days"
+            [class.hover:bg-slate-50]="rangeDays() !== r.days">
+            {{ r.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Object filter -->
+    <div class="w-full max-w-xs">
+      <label class="mb-1.5 block text-xs font-medium text-slate-500">Filter by object</label>
+      <select [value]="selectedObjectId()"
+        (change)="onObjectChange($any($event.target).value)"
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+        <option value="">All objects</option>
+        @for (o of objects(); track o.id) {
+          <option [value]="o.id">{{ o.name }}</option>
+        }
+      </select>
+    </div>
+  </div>
+</div>
+
+@if (svc.loading()) {
+  <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
+    Crunching numbers…
+  </div>
+} @else if (svc.error()) {
+  <div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">
+    {{ svc.error() }}
+  </div>
+} @else {
+
+  <!-- ===== KPI STRIP ===== -->
+  <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+      <div class="text-2xl font-semibold text-slate-900">{{ svc.stats().totalUnits }}</div>
+      <div class="mt-0.5 text-xs text-slate-500">Total units in stock</div>
+    </div>
+    <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+      <div class="text-2xl font-semibold text-slate-900">{{ svc.stats().movementsMonth }}</div>
+      <div class="mt-0.5 text-xs text-slate-500">Movements · {{ rangeDays() }}d</div>
+    </div>
+    <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+      <div class="text-2xl font-semibold text-slate-900">{{ svc.stats().ordersMonth }}</div>
+      <div class="mt-0.5 text-xs text-slate-500">Orders · {{ rangeDays() }}d</div>
+    </div>
+    <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+      <div class="text-2xl font-semibold"
+        [class.text-amber-600]="svc.stats().lowStock > 0"
+        [class.text-slate-900]="svc.stats().lowStock === 0">{{ svc.stats().lowStock }}</div>
+      <div class="mt-0.5 text-xs text-slate-500">Low-stock items</div>
+    </div>
+  </div>
+
+  <!-- ===== CHARTS ROW ===== -->
+  <div class="mt-6 grid gap-6 lg:grid-cols-5">
+
+    <!-- Order throughput — BAR chart (adaptive: daily or weekly) -->
+    <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200 lg:col-span-3">
+      <div class="mb-4 flex items-baseline justify-between">
+        <h2 class="text-sm font-semibold text-slate-900">Order throughput</h2>
+        <span class="text-xs text-slate-400">
+          {{ totalThroughput() }} orders · {{ rangeLabel() }}
+          @if (svc.granularity() === 'week') { <span class="text-slate-300">· weekly</span> }
+        </span>
+      </div>
+
+      @if (totalThroughput() === 0) {
+        <p class="py-12 text-center text-sm text-slate-400">No orders in this range.</p>
+      } @else {
+        <div class="flex h-40 items-end gap-1">
+          @for (b of bars(); track b.date) {
+            <div class="group relative flex flex-1 flex-col items-center justify-end">
+              <!-- Tooltip -->
+              <div class="pointer-events-none absolute -top-7 z-10 rounded-md bg-slate-900 px-2 py-1
+                          text-[10px] font-medium text-white opacity-0 transition group-hover:opacity-100">
+                {{ b.count }}
+              </div>
+              <!-- Bar -->
+              <div class="w-full rounded-t-md transition-all duration-500"
+                   [class.bg-brand-500]="!b.isLast && b.count > 0"
+                   [class.bg-brand-600]="b.isLast && b.count > 0"
+                   [class.bg-slate-100]="b.count === 0"
+                   [style.height.px]="b.px"></div>
+              <!-- Axis label -->
+              <span class="mt-1.5 h-3 text-[10px]"
+                    [class.font-semibold]="b.isLast"
+                    [class.text-brand-600]="b.isLast"
+                    [class.text-slate-400]="!b.isLast">{{ b.label }}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Top-moving products -->
+    <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200 lg:col-span-2">
+      <h2 class="text-sm font-semibold text-slate-900">Top-moving products</h2>
+      <p class="mt-0.5 text-xs text-slate-400">By units shipped out (OUTBOUND)</p>
+      @if (svc.topProducts().length === 0) {
+        <p class="py-10 text-center text-sm text-slate-400">No outbound movements yet.</p>
+      } @else {
+        <div class="mt-4 space-y-3">
+          @for (p of svc.topProducts(); track p.productId) {
+            <div>
+              <div class="mb-1 flex items-center justify-between text-xs">
+                <span class="truncate pr-2 font-medium text-slate-700">{{ p.name }}</span>
+                <span class="shrink-0 font-semibold text-slate-900">{{ p.unitsOut }}</span>
+              </div>
+              <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+                <div class="h-full rounded-full bg-brand-500 transition-all duration-500"
+                     [style.width.%]="(p.unitsOut / maxUnits()) * 100"></div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+}

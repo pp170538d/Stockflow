@@ -21,6 +21,11 @@ export const routes: Routes = [
                     import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
             },
             {
+                path: 'reports', canActivate: [adminGuard],
+                loadComponent: () =>
+                    import('./features/reports/reports.component').then((m) => m.ReportsComponent),
+            },
+            {
                 // ✅ REAL Objects feature (admin only)
                 path: 'objects', canActivate: [adminGuard],
                 loadComponent: () =>

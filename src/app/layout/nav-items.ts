@@ -7,6 +7,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
     { label: 'Dashboard', path: '/dashboard', icon: 'M3 12l9-9 9 9M4 10v10h16V10' },
+    { label: 'Reports', path: '/reports', icon: 'M3 3v18h18M8 15l3-4 3 2 4-6', adminOnly: true },
     { label: 'Objects', path: '/objects', icon: 'M3 7h18M3 12h18M3 17h18', adminOnly: true },
     { label: 'Products', path: '/products', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
     { label: 'Inventory', path: '/inventory', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
