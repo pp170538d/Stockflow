@@ -27,32 +27,23 @@ export class OrdersService {
     this.loading.set(false);
   }
 
-  /** Create an order header + its line items. */
+  /** Create an order header + its line items — atomically via RPC. */
   async create(
     objectId: string,
-    createdBy: string,
+    createdBy: string,          // kept for signature compatibility; server uses auth.uid()
     comment: string | null,
     lines: NewOrderLine[]
   ): Promise<string | null> {
-    // 1. Insert the header, get its id back
-    const { data: header, error: headerErr } = await supabase
-      .from('orders')
-      .insert({ object_id: objectId, created_by: createdBy, comment })
-      .select('id')
-      .single();
+    const { error } = await supabase.rpc('create_order_with_items', {
+      p_object_id: objectId,
+      p_comment: comment,
+      p_items: lines.map((l) => ({
+        product_id: l.product_id,
+        quantity: l.quantity,
+      })),
+    });
 
-    if (headerErr) return headerErr.message;
-
-    // 2. Insert the line items pointing at that header
-    const rows = lines.map((l) => ({
-      order_id: header.id,
-      product_id: l.product_id,
-      quantity: l.quantity,
-    }));
-
-    const { error: itemsErr } = await supabase.from('order_items').insert(rows);
-    if (itemsErr) return itemsErr.message;
-
+    if (error) return error.message;
     await this.load();
     return null;
   }

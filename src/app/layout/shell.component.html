@@ -74,16 +74,17 @@
              stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
 
-      <!-- Search -->
-      <div class="relative hidden max-w-md flex-1 sm:block">
+      <!-- Search (opens command palette) -->
+      <button (click)="palette.openPalette()"
+        class="relative hidden max-w-md flex-1 items-center gap-2 rounded-lg border border-slate-200
+               bg-slate-50 py-2 pl-9 pr-3 text-left text-sm text-slate-400 transition
+               hover:bg-white hover:border-slate-300 sm:flex">
         <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
              stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input type="text" placeholder="Search…  ⌘K"
-               class="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3
-                      text-sm outline-none transition focus:border-brand-500 focus:bg-white
-                      focus:ring-2 focus:ring-brand-500/20" />
-      </div>
+        <span class="flex-1">Search…</span>
+        <kbd class="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400">⌘K</kbd>
+      </button>
 
       <div class="ml-auto flex items-center gap-2">
         <!-- Notifications -->
@@ -120,4 +121,6 @@
       <router-outlet></router-outlet>
     </main>
   </div>
+  <!-- Global command palette -->
+  <app-command-palette #palette />
 </div>

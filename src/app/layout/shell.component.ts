@@ -2,11 +2,12 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
 import { NAV_ITEMS } from './nav-items';
+import { CommandPaletteComponent } from '../shared/ui/command-palette.component';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommandPaletteComponent],
   templateUrl: './shell.component.html',
 })
 export class ShellComponent {
