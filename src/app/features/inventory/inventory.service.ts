@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
-import { InventoryRow, StockMovement, MovementType } from './inventory.model';
+import { InventoryRow, StockMovement, MovementEvent } from './inventory.model';
 
 @Injectable({ providedIn: 'root' })
 export class InventoryService {
@@ -36,14 +36,15 @@ export class InventoryService {
   }
 
   /**
-   * Record a movement. quantity should already be SIGNED:
-   *  INBOUND  → positive, OUTBOUND → negative, ADJUSTMENT → either.
-   * The DB trigger updates inventory automatically.
+   * Record a movement. `quantity` should already be SIGNED:
+   *  RETURN/DELIVERY → positive, WRITE_OFF/SALE → negative, ADJUSTMENT → either.
+   * The DB trigger updates inventory automatically and enforces per-event
+   * oversell rules (SALE / WRITE_OFF / TRANSFER cannot go below zero).
    */
   async recordMovement(
     objectId: string,
     productId: string,
-    type: MovementType,
+    event: MovementEvent,
     signedQty: number,
     createdBy: string,
     note: string | null
@@ -52,7 +53,7 @@ export class InventoryService {
     const { error } = await supabase.from('stock_movements').insert({
       object_id: objectId,
       product_id: productId,
-      movement_type: type,
+      event,                       // ← semantic event (was movement_type)
       quantity: signedQty,
       reference: 'manual',
       note,
@@ -63,24 +64,15 @@ export class InventoryService {
     return null;
   }
 
-  /**
-   * Turn raw Postgres / trigger errors into human-readable messages.
-   * The oversell guard already emits a fully user-readable sentence with the
-   * actual numbers ("Insufficient stock: 3 on hand, movement of -5 would
-   * result in -2.") — we preserve that verbatim.
-   */
+  /** Turn raw Postgres / trigger errors into human-readable messages. */
   private friendly(msg: string): string {
-    if (msg.includes('Insufficient stock')) return msg;                  // keep the numbers
-    if (msg.includes('An order must contain at least one item'))
-      return 'Add at least one product before submitting.';
-    if (msg.includes('Quantity must be a positive number'))
-      return 'Quantity must be a positive number.';
+    if (msg.includes('Insufficient stock')) return msg;               // keep the numbers
     if (msg.includes('violates row-level security'))
       return 'You don’t have permission to record a movement for this object.';
     if (msg.includes('violates foreign key'))
       return 'That product or object no longer exists. Please refresh and try again.';
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError'))
       return 'Network issue — check your connection and try again.';
-    return 'Could not complete the action. Please try again.';
+    return 'Could not record the movement. Please try again.';
   }
 }
