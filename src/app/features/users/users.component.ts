@@ -8,6 +8,8 @@ import { UserRole } from '../../core/auth/user-profile.model';
 import { BadgeComponent } from '../../shared/ui/badge.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
 import { DrawerComponent } from '../../shared/ui/drawer.component';
+import { ToastService } from '../../shared/ui/toast.service';
+import { ConfirmService } from '../../shared/ui/confirm.service';
 
 @Component({
   selector: 'app-users',
@@ -18,6 +20,8 @@ import { DrawerComponent } from '../../shared/ui/drawer.component';
 export class UsersComponent implements OnInit {
   readonly svc = inject(UsersService);
   readonly auth = inject(AuthService);
+  private toast = inject(ToastService);
+  private confirm = inject(ConfirmService);
 
   readonly search = signal('');
   readonly objects = signal<BusinessObject[]>([]);
@@ -63,19 +67,32 @@ export class UsersComponent implements OnInit {
     const u = this.editingUser();
     if (!u) return;
 
+    // Elevating someone to ADMIN is privileged — confirm it explicitly.
+    if (this.draftRole() === 'ADMIN' && u.role !== 'ADMIN') {
+      const ok = await this.confirm.ask({
+        title: 'Grant admin access?',
+        message: `${u.full_name || u.email} will get full access to every object and all management actions.`,
+        confirmLabel: 'Make admin',
+        tone: 'danger',
+      });
+      if (!ok) return;
+    }
+
     this.saving.set(true);
     this.formError.set(null);
-
     // Update role, then object (sellers need an object; admins don't)
     const roleErr = await this.svc.setRole(u.id, this.draftRole());
     const objectId = this.draftRole() === 'ADMIN' ? null : (this.draftObjectId() || null);
     const objErr = roleErr ? null : await this.svc.setObject(u.id, objectId);
-
     this.saving.set(false);
-
     const err = roleErr || objErr;
-    if (err) this.formError.set(err);
-    else this.drawerOpen.set(false);
+    if (err) {
+      this.formError.set(err);
+      this.toast.error(err);
+    } else {
+      this.drawerOpen.set(false);
+      this.toast.success(`${u.full_name || u.email} updated.`);
+    }
   }
 
   isSelf(u: UserRow): boolean {

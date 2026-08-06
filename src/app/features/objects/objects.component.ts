@@ -7,6 +7,8 @@ import { AssignmentsService } from './assignments.service';
 import { BadgeComponent } from '../../shared/ui/badge.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
 import { DrawerComponent } from '../../shared/ui/drawer.component';
+import { ToastService } from '../../shared/ui/toast.service';
+import { ConfirmService } from '../../shared/ui/confirm.service';
 
 @Component({
   selector: 'app-objects',
@@ -18,6 +20,8 @@ export class ObjectsComponent implements OnInit {
   readonly svc = inject(ObjectsService);
   readonly assign = inject(AssignmentsService);
   private fb = inject(FormBuilder);
+  private toast = inject(ToastService);
+  private confirm = inject(ConfirmService);
 
   // --- List / edit state ---
   readonly search = signal('');
@@ -101,7 +105,6 @@ export class ObjectsComponent implements OnInit {
     }
     this.saving.set(true);
     this.formError.set(null);
-
     const v = this.form.getRawValue();
     const input = {
       name: v.name.trim(),
@@ -109,25 +112,46 @@ export class ObjectsComponent implements OnInit {
       address: v.address.trim() || null,
       active: v.active,
     };
-
-    const err = this.editingId()
+    const editing = !!this.editingId();
+    const err = editing
       ? await this.svc.update(this.editingId()!, input)
       : await this.svc.create(input);
-
     this.saving.set(false);
-
     if (err) {
       this.formError.set(err);
+      this.toast.error(err);
     } else {
       this.drawerOpen.set(false);
+      this.toast.success(editing ? 'Object updated.' : 'Object created.');
     }
   }
 
   async toggleActive(obj: BusinessObject): Promise<void> {
     if (obj.active) {
-      await this.svc.deactivate(obj.id);
+      // Deactivation is destructive-ish — confirm, then offer Undo.
+      const ok = await this.confirm.ask({
+        title: 'Deactivate this object?',
+        message: `${obj.name} will be hidden and its sellers won’t be able to order for it. You can reactivate it anytime.`,
+        confirmLabel: 'Deactivate',
+        tone: 'danger',
+      });
+      if (!ok) return;
+      const err = await this.svc.deactivate(obj.id);
+      if (err) { this.toast.error(err); return; }
+      this.toast.success(`${obj.name} deactivated.`, {
+        action: {
+          label: 'Undo',
+          run: async () => {
+            const e = await this.svc.activate(obj.id);
+            if (e) this.toast.error(e);
+            else this.toast.info(`${obj.name} reactivated.`);
+          },
+        },
+      });
     } else {
-      await this.svc.activate(obj.id);
+      const err = await this.svc.activate(obj.id);
+      if (err) { this.toast.error(err); return; }
+      this.toast.success(`${obj.name} activated.`);
     }
   }
 

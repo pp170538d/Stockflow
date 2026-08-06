@@ -100,9 +100,9 @@
               <div class="flex items-center justify-end gap-1 opacity-100 transition lg:opacity-0 lg:group-hover:opacity-100">
                 <!-- Approve / Reject: admin-only decision -->
                 @if (auth.isAdmin() && o.status === 'PENDING') {
-                  <button (click)="setStatus(o, 'APPROVED')"
+                  <button (click)="approve(o)"
                     class="rounded-md px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50">Approve</button>
-                  <button (click)="setStatus(o, 'REJECTED')"
+                  <button (click)="reject(o)"
                     class="rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50">Reject</button>
                 }
                 <!-- Confirm delivery: the RECEIVER (admin OR the seller at this object) -->
@@ -134,7 +134,7 @@
   [open]="deliverDrawerOpen()"
   [order]="deliveringOrder()"
   (close)="closeDeliver()"
-  (delivered)="onDelivered()" />
+  (delivered)="onDelivered($event)" />
 
 <!-- ===== VIEW DELIVERY (read-only) DRAWER ===== -->
 <app-delivery-summary

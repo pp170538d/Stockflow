@@ -9,6 +9,8 @@ import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
 import { RouterLink } from '@angular/router';
 import { ConfirmDeliveryComponent } from '../deliveries/confirm-delivery.component';
 import { DeliverySummaryComponent } from '../deliveries/delivery-summary.component';
+import { ToastService } from '../../shared/ui/toast.service';
+import { ConfirmService } from '../../shared/ui/confirm.service';
 
 @Component({
   selector: 'app-orders',
@@ -27,6 +29,8 @@ export class OrdersComponent implements OnInit {
   readonly svc = inject(OrdersService);
   readonly deliveries = inject(DeliveriesService);
   readonly auth = inject(AuthService);
+  private toast = inject(ToastService);
+  private confirm = inject(ConfirmService);
 
   readonly statusFilter = signal<OrderStatus | ''>('');
   readonly statuses: OrderStatus[] = ['PENDING', 'APPROVED', 'DELIVERED', 'REJECTED'];
@@ -89,8 +93,36 @@ export class OrdersComponent implements OnInit {
     return parts.join(' · ');
   }
 
-  async setStatus(o: Order, status: OrderStatus): Promise<void> {
-    await this.svc.setStatus(o.id, status);
+  // --- Approve: instant, with an Undo toast (revert to PENDING) ---
+  async approve(o: Order): Promise<void> {
+    const err = await this.svc.setStatus(o.id, 'APPROVED');
+    if (err) {
+      this.toast.error('Could not approve the order — try again.');
+      return;
+    }
+    this.toast.success(`Order approved for ${o.object?.name ?? 'location'}`, {
+      action: {
+        label: 'Undo',
+        run: async () => {
+          await this.svc.setStatus(o.id, 'PENDING');
+          this.toast.info('Approval undone — back to Pending.');
+        },
+      },
+    });
+  }
+
+  // --- Reject: destructive, so confirm first (danger tone), then toast ---
+  async reject(o: Order): Promise<void> {
+    const ok = await this.confirm.ask({
+      title: 'Reject this order?',
+      message: `The order for ${o.object?.name ?? 'this location'} will be marked REJECTED. This can’t be undone.`,
+      confirmLabel: 'Reject order',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    const err = await this.svc.setStatus(o.id, 'REJECTED');
+    if (err) this.toast.error('Could not reject the order — try again.');
+    else this.toast.info('Order rejected.');
   }
 
   // --- Confirm delivery ---
@@ -104,8 +136,10 @@ export class OrdersComponent implements OnInit {
     this.deliveringOrder.set(null);
   }
 
-  onDelivered(): void {
+  /** Called after a successful delivery — refresh + confirm with a toast. */
+  onDelivered(summary?: string): void {
     this.svc.load();
+    this.toast.success(summary ?? 'Delivery recorded — stock updated.');
   }
 
   // --- View delivery (read-only reconciliation) ---

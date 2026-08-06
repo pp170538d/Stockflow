@@ -3,11 +3,13 @@ import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/rou
 import { AuthService } from '../core/auth/auth.service';
 import { NAV_ITEMS } from './nav-items';
 import { CommandPaletteComponent } from '../shared/ui/command-palette.component';
+import { ToastHostComponent } from '../shared/ui/toast-host.component';
+import { ConfirmHostComponent } from '../shared/ui/confirm-host.component';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommandPaletteComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommandPaletteComponent, ToastHostComponent, ConfirmHostComponent],
   templateUrl: './shell.component.html',
 })
 export class ShellComponent {

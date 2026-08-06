@@ -2,6 +2,7 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { supabase } from '../../core/supabase/supabase.client';
 import { AuthService } from '../../core/auth/auth.service';
+import { ToastService } from '../../shared/ui/toast.service';
 
 @Component({
   selector: 'app-settings',
@@ -11,6 +12,7 @@ import { AuthService } from '../../core/auth/auth.service';
 export class SettingsComponent implements OnInit {
   readonly auth = inject(AuthService);
   private router = inject(Router);
+  private toast = inject(ToastService);
 
   // Profile
   readonly fullName = signal('');
@@ -31,23 +33,24 @@ export class SettingsComponent implements OnInit {
   async saveProfile(): Promise<void> {
     const id = this.auth.profile()?.id;
     if (!id) return;
-
     this.savingProfile.set(true);
     this.profileMsg.set(null);
-
     const { error } = await supabase
       .from('profiles')
       .update({ full_name: this.fullName().trim() || null })
       .eq('id', id);
-
     this.savingProfile.set(false);
-    this.profileMsg.set(error ? error.message : 'Profile updated ✓');
+    if (error) {
+      this.toast.error('Could not save your name — try again.');
+    } else {
+      this.profileMsg.set('Profile updated ✓');
+      this.toast.success('Profile updated.');
+    }
   }
 
   async changePassword(): Promise<void> {
     this.passwordMsg.set(null);
     this.passwordErr.set(null);
-
     if (this.newPassword().length < 6) {
       this.passwordErr.set('Password must be at least 6 characters.');
       return;
@@ -56,15 +59,15 @@ export class SettingsComponent implements OnInit {
       this.passwordErr.set('Passwords do not match.');
       return;
     }
-
     this.savingPassword.set(true);
     const { error } = await supabase.auth.updateUser({ password: this.newPassword() });
     this.savingPassword.set(false);
-
     if (error) {
       this.passwordErr.set(error.message);
+      this.toast.error('Could not change password — try again.');
     } else {
       this.passwordMsg.set('Password changed ✓');
+      this.toast.success('Password changed. 🔒');
       this.newPassword.set('');
       this.confirmPassword.set('');
     }
