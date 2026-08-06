@@ -7,10 +7,10 @@
       @else { Your orders and their status. }
     </p>
   </div>
-    <a routerLink="/orders/new"
-      class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">
-      + New order
-    </a>
+  <a routerLink="/orders/new"
+    class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">
+    + New order
+  </a>
 </div>
 
 <!-- Status filter -->
@@ -57,7 +57,7 @@
           <th class="px-5 py-3 font-medium">Comment</th>
           <th class="px-5 py-3 font-medium">Status</th>
           <th class="px-5 py-3 font-medium">Created</th>
-          @if (auth.isAdmin()) { <th class="px-5 py-3 text-right font-medium">Actions</th> }
+          <th class="px-5 py-3 text-right font-medium">Actions</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100">
@@ -76,31 +76,68 @@
             </td>
             <td class="px-5 py-3 text-slate-500">{{ o.comment || '—' }}</td>
             <td class="px-5 py-3">
-              <app-badge [tone]="tone(o.status)">{{ o.status }}</app-badge>
+              <div class="flex items-center gap-2">
+                <app-badge [tone]="tone(o.status)">{{ o.status }}</app-badge>
+                <!-- Row-level variance chip: shown only for DELIVERED orders
+                     that had a short/over discrepancy. -->
+                @if (o.status === 'DELIVERED' && variance(o); as v) {
+                  <button (click)="openSummary(o)"
+                    class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition"
+                    [class.bg-amber-50]="v.short > 0"
+                    [class.text-amber-700]="v.short > 0"
+                    [class.hover:bg-amber-100]="v.short > 0"
+                    [class.bg-blue-50]="v.short === 0 && v.over > 0"
+                    [class.text-blue-700]="v.short === 0 && v.over > 0"
+                    [class.hover:bg-blue-100]="v.short === 0 && v.over > 0"
+                    [title]="'Delivered with a discrepancy — click to view'">
+                    ⚠ {{ varianceLabel(o) }}
+                  </button>
+                }
+              </div>
             </td>
             <td class="px-5 py-3 text-slate-500">{{ o.created_at | date: 'MMM d, y' }}</td>
-            @if (auth.isAdmin()) {
-              <td class="px-5 py-3">
-                <div class="flex items-center justify-end gap-1 opacity-100 transition lg:opacity-0 lg:group-hover:opacity-100">
-                  @if (o.status === 'PENDING') {
-                    <button (click)="setStatus(o, 'APPROVED')"
-                      class="rounded-md px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50">Approve</button>
-                    <button (click)="setStatus(o, 'REJECTED')"
-                      class="rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50">Reject</button>
-                  }
-                  @if (o.status === 'APPROVED') {
-                    <button (click)="setStatus(o, 'DELIVERED')"
-                      class="rounded-md px-2 py-1 text-xs font-medium text-green-600 hover:bg-green-50">Mark delivered</button>
-                  }
-                  @if (o.status === 'DELIVERED' || o.status === 'REJECTED') {
-                    <span class="px-2 py-1 text-xs text-slate-400">—</span>
-                  }
-                </div>
-              </td>
-            }
+            <td class="px-5 py-3">
+              <div class="flex items-center justify-end gap-1 opacity-100 transition lg:opacity-0 lg:group-hover:opacity-100">
+                <!-- Approve / Reject: admin-only decision -->
+                @if (auth.isAdmin() && o.status === 'PENDING') {
+                  <button (click)="setStatus(o, 'APPROVED')"
+                    class="rounded-md px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50">Approve</button>
+                  <button (click)="setStatus(o, 'REJECTED')"
+                    class="rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50">Reject</button>
+                }
+                <!-- Confirm delivery: the RECEIVER (admin OR the seller at this object) -->
+                @if (o.status === 'APPROVED') {
+                  <button (click)="openDeliver(o)"
+                    class="rounded-md px-2 py-1 text-xs font-medium text-green-600 hover:bg-green-50">Confirm delivery</button>
+                }
+                <!-- View delivery: read-only reconciliation, once DELIVERED -->
+                @if (o.status === 'DELIVERED') {
+                  <button (click)="openSummary(o)"
+                    class="rounded-md px-2 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50">View delivery</button>
+                }
+                <!-- Nothing to do -->
+                @if (o.status === 'REJECTED'
+                     || (!auth.isAdmin() && o.status === 'PENDING')) {
+                  <span class="px-2 py-1 text-xs text-slate-400">—</span>
+                }
+              </div>
+            </td>
           </tr>
         }
       </tbody>
     </table>
   </div>
 }
+
+<!-- ===== CONFIRM DELIVERY DRAWER ===== -->
+<app-confirm-delivery
+  [open]="deliverDrawerOpen()"
+  [order]="deliveringOrder()"
+  (close)="closeDeliver()"
+  (delivered)="onDelivered()" />
+
+<!-- ===== VIEW DELIVERY (read-only) DRAWER ===== -->
+<app-delivery-summary
+  [open]="summaryDrawerOpen()"
+  [order]="summaryOrder()"
+  (close)="closeSummary()" />

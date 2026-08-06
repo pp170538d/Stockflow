@@ -1,0 +1,139 @@
+<app-drawer [open]="open()" title="Confirm delivery" (close)="close.emit()">
+  <!-- Context: which order / object -->
+  @if (order(); as o) {
+    <div class="mb-5 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-100">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-sm font-semibold text-slate-900">{{ o.object?.name || 'Order' }}</div>
+          <div class="text-xs text-slate-400">Ordered {{ o.created_at | date: 'MMM d, y' }}</div>
+        </div>
+        <app-badge tone="info">APPROVED</app-badge>
+      </div>
+    </div>
+  }
+
+  @if (svc.loading()) {
+    <p class="py-8 text-center text-sm text-slate-400">Loading order lines…</p>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">
+      <!-- Delivery meta -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-slate-700">Carrier</label>
+          <input type="text" formControlName="carrier" placeholder="e.g. NELT"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+                   transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+        </div>
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-slate-700">Received by</label>
+          <input type="text" formControlName="received_by" placeholder="Who counted it"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+                   transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+        </div>
+      </div>
+
+      <!-- Line-by-line count -->
+      <div>
+        <div class="mb-2 flex items-center justify-between">
+          <label class="text-sm font-medium text-slate-700">Count each line</label>
+          <span class="text-xs text-slate-400">Pre-filled with ordered qty</span>
+        </div>
+
+        <div class="space-y-2" formArrayName="lines">
+          @for (row of lines.controls; track $index; let i = $index) {
+            <div [formGroupName]="i"
+              class="rounded-xl border border-slate-200 bg-white p-3 transition"
+              [class.border-amber-300]="needsReason(row) && variance(row) < 0"
+              [class.border-blue-300]="needsReason(row) && variance(row) > 0">
+
+              <!-- Row 1: product name + SKU (full width, truncates cleanly) -->
+              <div class="min-w-0">
+                <div class="truncate text-sm font-medium text-slate-900">
+                  {{ row.get('product_name')?.value }}
+                </div>
+                <div class="truncate font-mono text-xs text-slate-400">
+                  {{ row.get('product_sku')?.value }}
+                </div>
+              </div>
+
+              <!-- Row 2: Ordered · Delivered · Variance -->
+              <div class="mt-3 flex items-end justify-between gap-3">
+                <div class="flex items-end gap-4">
+                  <!-- Ordered (read-only reference) -->
+                  <div>
+                    <div class="text-[10px] uppercase tracking-wide text-slate-400">Ordered</div>
+                    <div class="text-lg font-semibold leading-tight text-slate-500">
+                      {{ row.get('ordered_qty')?.value }}
+                    </div>
+                  </div>
+
+                  <!-- Delivered (the input) -->
+                  <div>
+                    <div class="mb-0.5 text-[10px] uppercase tracking-wide text-slate-400">Delivered</div>
+                    <input type="number" min="0" formControlName="delivered_qty"
+                      class="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-center text-sm font-semibold
+                             outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+                  </div>
+                </div>
+
+                <!-- Live variance badge -->
+                <app-badge [tone]="varianceTone(row)">{{ varianceLabel(row) }}</app-badge>
+              </div>
+
+              <!-- Reason — appears the moment delivered ≠ ordered -->
+              @if (needsReason(row)) {
+                <div class="mt-3 border-t border-slate-100 pt-3">
+                  <label class="mb-1 block text-xs font-medium text-slate-600">
+                    Reason <span class="text-red-500">*</span>
+                    <span class="font-normal text-slate-400">— why does the count differ?</span>
+                  </label>
+                  <input type="text" formControlName="reason"
+                    placeholder="e.g. NELT short-shipped, 2 backordered"
+                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+                           transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+                  @if (row.touched && row.hasError('reasonRequired')) {
+                    <p class="mt-1 text-xs text-red-500">A reason is required when the count differs.</p>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Overall note -->
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">Delivery note</label>
+        <textarea formControlName="note" rows="2" placeholder="Optional — anything about this drop…"
+          class="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"></textarea>
+      </div>
+
+      @if (svc.error()) {
+        <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
+          {{ svc.error() }}
+        </div>
+      }
+    </form>
+  }
+
+  <!-- Footer: live summary + confirm -->
+  <div drawer-footer class="space-y-3">
+    <div class="flex items-center gap-3 text-xs">
+      <span class="text-slate-400">{{ summary().total }} lines:</span>
+      <span class="font-medium text-green-600">{{ summary().exact }} exact</span>
+      @if (summary().short > 0) { <span class="font-medium text-amber-600">{{ summary().short }} short</span> }
+      @if (summary().over > 0) { <span class="font-medium text-blue-600">{{ summary().over }} over</span> }
+    </div>
+    <div class="flex justify-end gap-2">
+      <button type="button" (click)="close.emit()"
+        class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+        Cancel
+      </button>
+      <button type="button" (click)="submit()" [disabled]="svc.saving() || form.invalid"
+        class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60">
+        {{ svc.saving() ? 'Confirming…' : 'Confirm delivery' }}
+      </button>
+    </div>
+  </div>
+</app-drawer>
