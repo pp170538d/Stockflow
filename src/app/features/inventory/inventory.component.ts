@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators,
@@ -25,7 +26,7 @@ function notZero(control: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-inventory',
   standalone: true,
-  imports: [DatePipe, ReactiveFormsModule, BadgeComponent, EmptyStateComponent, DrawerComponent],
+  imports: [DatePipe, RouterLink, ReactiveFormsModule, BadgeComponent, EmptyStateComponent, DrawerComponent],
   templateUrl: './inventory.component.html',
 })
 export class InventoryComponent implements OnInit {

@@ -1,0 +1,93 @@
+<div class="mx-auto max-w-4xl">
+  <!-- Header -->
+  <div class="mb-6">
+    <button (click)="back()"
+      class="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 transition hover:text-slate-700">
+      ← Back to inventory
+    </button>
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Count history</h1>
+        <p class="mt-1 text-sm text-slate-500">Every past stock count and the corrections it made.</p>
+      </div>
+      @if (objectId()) {
+        <a [routerLink]="['/inventory/count']" [queryParams]="{ object: objectId() }"
+          class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">
+          + New count
+        </a>
+      }
+    </div>
+  </div>
+
+  <!-- Admin: object picker -->
+  @if (isAdmin()) {
+    <div class="mb-4 max-w-sm">
+      <label class="mb-1.5 block text-sm font-medium text-slate-700">Object</label>
+      <select [value]="objectId()"
+        (change)="selectObject($any($event.target).value)"
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+        @for (o of objects(); track o.id) {
+          <option [value]="o.id">{{ o.name }}</option>
+        }
+      </select>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
+      Loading count history…
+    </div>
+  } @else if (svc.summaries().length === 0) {
+    <app-empty-state title="No counts yet"
+      subtitle="When you submit a stock count, it will appear here as a permanent record.">
+    </app-empty-state>
+  } @else {
+    <div class="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
+          <tr>
+            <th class="px-5 py-3 font-medium">Counted</th>
+            <th class="px-5 py-3 font-medium">By</th>
+            <th class="px-4 py-3 text-center font-medium">Products</th>
+            <th class="px-5 py-3 font-medium">Result</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          @for (s of svc.summaries(); track s.count_id) {
+            <tr (click)="openDetail(s)"
+              class="cursor-pointer transition hover:bg-slate-50/60">
+              <td class="px-5 py-3 text-slate-700">{{ s.counted_at | date: 'MMM d, y, HH:mm' }}</td>
+              <td class="px-5 py-3 text-slate-600">{{ s.counted_by || '—' }}</td>
+              <td class="px-4 py-3 text-center text-slate-600">{{ s.lines }}</td>
+              <td class="px-5 py-3">
+                @if (hasVariance(s)) {
+                  <div class="flex flex-wrap items-center gap-2">
+                    @if (s.products_short > 0) {
+                      <app-badge tone="warning">
+                        {{ s.products_short }} {{ s.products_short === 1 ? 'product' : 'products' }} short
+                      </app-badge>
+                    }
+                    @if (s.products_over > 0) {
+                      <app-badge tone="info">
+                        {{ s.products_over }} {{ s.products_over === 1 ? 'product' : 'products' }} over
+                      </app-badge>
+                    }
+                  </div>
+                } @else {
+                  <app-badge tone="success">All matched</app-badge>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<!-- ===== READ-ONLY COUNT DETAIL DRAWER ===== -->
+<app-count-summary
+  [open]="detailOpen()"
+  [count]="detailCount()"
+  (close)="closeDetail()" />

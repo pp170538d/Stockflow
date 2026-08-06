@@ -57,6 +57,18 @@ export const routes: Routes = [
                     import('./features/users/users.component').then((m) => m.UsersComponent),
             },
             {
+                path: 'inventory/count',
+                loadComponent: () =>
+                    import('./features/stock-count/stock-count.component').then((m) => m.StockCountComponent),
+                canActivate: [authGuard],
+            },
+            {
+                path: 'inventory/counts',
+                loadComponent: () =>
+                    import('./features/stock-count/count-history.component').then((m) => m.CountHistoryComponent),
+                canActivate: [authGuard],
+            },
+            {
                 path: 'settings',
                 loadComponent: () =>
                     import('./features/settings/settings.component').then((m) => m.SettingsComponent),

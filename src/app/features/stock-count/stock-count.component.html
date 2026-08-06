@@ -1,0 +1,170 @@
+<div class="mx-auto max-w-5xl pb-28">
+  <!-- Header -->
+  <div class="mb-6">
+    <button (click)="cancel()"
+      class="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 transition hover:text-slate-700">
+      ← Back to inventory
+    </button>
+    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Stock count</h1>
+    <p class="mt-1 text-sm text-slate-500">
+      Count the shelf and enter the actual quantities. Differences will correct stock and be logged.
+    </p>
+  </div>
+
+  <!-- Meta card -->
+  <div class="mb-4 grid grid-cols-1 gap-3 rounded-2xl bg-white p-4 ring-1 ring-slate-200 sm:grid-cols-3">
+    @if (isAdmin()) {
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-slate-600">Object</label>
+        <select [value]="objectId()"
+          (change)="selectObject($any($event.target).value)"
+          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+          @for (o of objects(); track o.id) {
+            <option [value]="o.id">{{ o.name }}</option>
+          }
+        </select>
+      </div>
+    } @else {
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-slate-600">Object</label>
+        <div class="rounded-lg bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
+          {{ objectName() || 'Your location' }}
+        </div>
+      </div>
+    }
+    <form [formGroup]="form" class="contents">
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-slate-600">Counted by</label>
+        <input type="text" formControlName="counted_by" placeholder="Who counted"
+          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+      </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-medium text-slate-600">Note</label>
+        <input type="text" formControlName="note" placeholder="Optional"
+          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+      </div>
+    </form>
+  </div>
+
+  <!-- Toolbar: search + reset -->
+  <div class="mb-3 flex items-center justify-between gap-3">
+    <input type="text" [value]="search()"
+      (input)="search.set($any($event.target).value)"
+      placeholder="Search products to count…"
+      class="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+             transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+    <button type="button" (click)="resetAll()"
+      class="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
+      Reset to expected
+    </button>
+  </div>
+
+  @if (building()) {
+    <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
+      Loading products to count…
+    </div>
+  } @else if (lines.controls.length === 0) {
+    <app-empty-state title="Nothing to count"
+      subtitle="No active products are assigned to this object yet.">
+    </app-empty-state>
+  } @else {
+    <form [formGroup]="form">
+      <div class="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+        <table class="w-full text-left text-sm">
+          <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
+            <tr>
+              <th class="px-5 py-3 font-medium">Product</th>
+              <th class="px-4 py-3 text-center font-medium">Expected</th>
+              <th class="px-4 py-3 text-center font-medium">Counted</th>
+              <th class="px-4 py-3 font-medium">Variance</th>
+              <th class="px-5 py-3 font-medium">Reason</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100" formArrayName="lines">
+            @for (row of lines.controls; track $index; let i = $index) {
+              @if (matchesSearch(row)) {
+                <tr [formGroupName]="i" class="align-top transition hover:bg-slate-50/50"
+                  [class.bg-amber-50/40]="needsReason(row) && variance(row) < 0"
+                  [class.bg-blue-50/40]="needsReason(row) && variance(row) > 0">
+                  <!-- Product -->
+                  <td class="px-5 py-3">
+                    <div class="font-medium text-slate-900">{{ row.get('product_name')?.value }}</div>
+                    <div class="font-mono text-xs text-slate-400">{{ row.get('product_sku')?.value }}</div>
+                  </td>
+                  <!-- Expected -->
+                  <td class="px-4 py-3 text-center">
+                    <span class="text-base font-semibold text-slate-400">{{ row.get('expected_qty')?.value }}</span>
+                  </td>
+                  <!-- Counted input -->
+                  <td class="px-4 py-3 text-center">
+                    <input type="number" min="0" formControlName="counted_qty"
+                      class="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-center text-sm font-semibold
+                             outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+                  </td>
+                  <!-- Variance -->
+                  <td class="px-4 py-3">
+                    <app-badge [tone]="varianceTone(row)">{{ varianceLabel(row) }}</app-badge>
+                  </td>
+                  <!-- Reason (only when it differs) -->
+                  <td class="px-5 py-3">
+                    @if (needsReason(row)) {
+                      <input type="text" formControlName="reason"
+                        placeholder="Why the difference? (required)"
+                        class="w-full min-w-[12rem] rounded-lg border px-3 py-1.5 text-sm outline-none transition
+                               focus:ring-2 focus:ring-brand-500/20"
+                        [class.border-red-300]="row.touched && row.hasError('reasonRequired')"
+                        [class.border-slate-300]="!(row.touched && row.hasError('reasonRequired'))" />
+                    } @else {
+                      <span class="text-xs text-slate-300">—</span>
+                    }
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </form>
+  }
+</div>
+
+<!-- Sticky action bar — tints amber when a count will correct stock -->
+<div class="fixed bottom-0 left-0 right-0 z-40 border-t backdrop-blur transition-colors
+            lg:left-[var(--sidebar-w,16rem)]"
+  [class.border-slate-200]="!hasDiscrepancies()"
+  [class.bg-white/90]="!hasDiscrepancies()"
+  [class.border-amber-200]="hasDiscrepancies()"
+  [class.bg-amber-50/90]="hasDiscrepancies()">
+  <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+      @if (hasDiscrepancies()) {
+        <span class="mr-1 font-medium text-amber-700">⚠️ Submitting will correct stock</span>
+      }
+      <span class="text-slate-400">{{ summary().total }} products:</span>
+      <span class="font-medium text-green-600">{{ summary().match }} match</span>
+      @if (summary().short > 0) {
+        <span class="font-medium text-amber-600">{{ summary().short }} short (−{{ summary().netShort }})</span>
+      }
+      @if (summary().over > 0) {
+        <span class="font-medium text-blue-600">{{ summary().over }} over (+{{ summary().netOver }})</span>
+      }
+    </div>
+    <div class="flex items-center gap-2">
+      <button type="button" (click)="cancel()"
+        class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+        Cancel
+      </button>
+      <button type="button" (click)="submit()" [disabled]="svc.saving() || form.invalid || lines.controls.length === 0"
+        class="rounded-lg px-5 py-2 text-sm font-medium text-white transition disabled:opacity-60"
+        [class.bg-brand-600]="!hasDiscrepancies()"
+        [class.hover:bg-brand-700]="!hasDiscrepancies()"
+        [class.bg-amber-600]="hasDiscrepancies()"
+        [class.hover:bg-amber-700]="hasDiscrepancies()">
+        {{ svc.saving() ? 'Submitting…' : 'Submit count' }}
+      </button>
+    </div>
+  </div>
+</div>
