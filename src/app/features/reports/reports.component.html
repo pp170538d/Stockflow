@@ -66,11 +66,12 @@
       <div class="text-2xl font-semibold text-slate-900">{{ svc.stats().ordersMonth }}</div>
       <div class="mt-0.5 text-xs text-slate-500">Orders · {{ rangeDays() }}d</div>
     </div>
+    <!-- V7: reorder count — the actionable signal -->
     <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
       <div class="text-2xl font-semibold"
-        [class.text-amber-600]="svc.stats().lowStock > 0"
-        [class.text-slate-900]="svc.stats().lowStock === 0">{{ svc.stats().lowStock }}</div>
-      <div class="mt-0.5 text-xs text-slate-500">Low-stock items</div>
+        [class.text-red-600]="svc.stats().reorderCount > 0"
+        [class.text-slate-900]="svc.stats().reorderCount === 0">{{ svc.stats().reorderCount }}</div>
+      <div class="mt-0.5 text-xs text-slate-500">Need reordering</div>
     </div>
   </div>
 
@@ -93,18 +94,15 @@
         <div class="flex h-40 items-end gap-1">
           @for (b of bars(); track b.date) {
             <div class="group relative flex flex-1 flex-col items-center justify-end">
-              <!-- Tooltip -->
               <div class="pointer-events-none absolute -top-7 z-10 rounded-md bg-slate-900 px-2 py-1
                           text-[10px] font-medium text-white opacity-0 transition group-hover:opacity-100">
                 {{ b.count }}
               </div>
-              <!-- Bar -->
               <div class="w-full rounded-t-md transition-all duration-500"
                    [class.bg-brand-500]="!b.isLast && b.count > 0"
                    [class.bg-brand-600]="b.isLast && b.count > 0"
                    [class.bg-slate-100]="b.count === 0"
                    [style.height.px]="b.px"></div>
-              <!-- Axis label -->
               <span class="mt-1.5 h-3 text-[10px]"
                     [class.font-semibold]="b.isLast"
                     [class.text-brand-600]="b.isLast"
@@ -138,5 +136,69 @@
         </div>
       }
     </div>
+  </div>
+
+  <!-- ===== V7: STOCK RUNWAY / REORDER ===== -->
+  <div class="mt-6 rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+    <div class="mb-4 flex items-baseline justify-between">
+      <div>
+        <h2 class="text-sm font-semibold text-slate-900">Stock runway</h2>
+        <p class="mt-0.5 text-xs text-slate-400">
+          Days of stock left · based on last {{ rangeDays() }}d sales rate
+        </p>
+      </div>
+      @if (svc.stats().reorderCount > 0) {
+        <span class="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
+          {{ svc.stats().reorderCount }} need reordering
+        </span>
+      }
+    </div>
+
+    @if (svc.runway().length === 0) {
+      <p class="py-10 text-center text-sm text-slate-400">No inventory to project yet.</p>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[640px] text-left text-sm">
+          <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
+            <tr>
+              <th class="px-3 py-2 font-medium">Product</th>
+              <th class="px-3 py-2 text-right font-medium">On hand</th>
+              <th class="px-3 py-2 text-right font-medium">Sold ({{ rangeDays() }}d)</th>
+              <th class="px-3 py-2 text-right font-medium">Rate/day</th>
+              <th class="px-3 py-2 text-right font-medium">Days left</th>
+              <th class="px-3 py-2 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            @for (r of svc.runway(); track r.productId) {
+              <tr class="transition hover:bg-slate-50/60">
+                <td class="px-3 py-2.5">
+                  <div class="font-medium text-slate-900">{{ r.name }}</div>
+                  <div class="font-mono text-xs text-slate-400">{{ r.sku }}</div>
+                </td>
+                <td class="px-3 py-2.5 text-right font-semibold text-slate-900">{{ r.onHand }}</td>
+                <td class="px-3 py-2.5 text-right text-slate-600">{{ r.unitsSold }}</td>
+                <td class="px-3 py-2.5 text-right text-slate-600">{{ r.dailyRate | number: '1.0-1' }}</td>
+                <td class="px-3 py-2.5 text-right">
+                  @if (r.daysLeft === null) {
+                    <span class="text-slate-400">—</span>
+                  } @else {
+                    <span class="font-semibold"
+                      [class.text-red-600]="r.urgency === 'critical' || r.urgency === 'out'"
+                      [class.text-amber-600]="r.urgency === 'warning'"
+                      [class.text-slate-900]="r.urgency === 'healthy'">
+                      {{ r.daysLeft | number: '1.0-0' }}d
+                    </span>
+                  }
+                </td>
+                <td class="px-3 py-2.5">
+                  <app-badge [tone]="runwayTone(r.urgency)">{{ runwayLabel(r.urgency) }}</app-badge>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
   </div>
 }

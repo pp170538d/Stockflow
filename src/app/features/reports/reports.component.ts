@@ -1,7 +1,9 @@
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { supabase } from '../../core/supabase/supabase.client';
-import { ReportsService } from './reports.service';
+import { ReportsService, RunwayRow } from './reports.service';
 import { BusinessObject } from '../objects/object.model';
+import { BadgeComponent } from '../../shared/ui/badge.component';
 
 export interface RangeOption {
   label: string;
@@ -11,7 +13,7 @@ export interface RangeOption {
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [],
+  imports: [DecimalPipe, BadgeComponent],
   templateUrl: './reports.component.html',
 })
 export class ReportsComponent implements OnInit {
@@ -57,18 +59,13 @@ export class ReportsComponent implements OnInit {
     Math.max(1, ...this.svc.topProducts().map((p) => p.unitsOut))
   );
 
-  /**
-   * Bar-chart data: fixed PIXEL heights (percentage heights need an explicit
-   * parent height). Labels are thinned so the axis never gets crowded.
-   */
   readonly bars = computed(() => {
     const data = this.svc.buckets();
     const max = Math.max(1, ...data.map((d) => d.count));
     const today = new Date().toISOString().slice(0, 10);
-    const CHART_H = 140; // px — the drawable bar area
+    const CHART_H = 140;
     const n = data.length;
-    const step = Math.max(1, Math.round(n / 12)); // ~12 labels max
-
+    const step = Math.max(1, Math.round(n / 12));
     return data.map((d, i) => {
       const showLabel = i === n - 1 || i % step === 0;
       return {
@@ -87,4 +84,28 @@ export class ReportsComponent implements OnInit {
   );
 
   readonly rangeLabel = computed(() => `last ${this.rangeDays()} days`);
+
+  // ===== V7: Runway helpers =====
+
+  /** Map an urgency level to a badge tone. */
+  runwayTone(u: RunwayRow['urgency']): 'error' | 'warning' | 'success' | 'neutral' {
+    return {
+      out: 'error' as const,
+      critical: 'error' as const,
+      warning: 'warning' as const,
+      healthy: 'success' as const,
+      idle: 'neutral' as const,
+    }[u] ?? 'neutral';
+  }
+
+  /** Actionable label — tells the user what to DO, not just a colour. */
+  runwayLabel(u: RunwayRow['urgency']): string {
+    return {
+      out: 'Out of stock',
+      critical: 'Reorder now',
+      warning: 'Reorder soon',
+      healthy: 'Healthy',
+      idle: 'No recent sales',
+    }[u] ?? '—';
+  }
 }

@@ -69,6 +69,12 @@ export const routes: Routes = [
                 canActivate: [authGuard],
             },
             {
+                path: 'sales',
+                loadComponent: () =>
+                    import('./features/sales/sales.component').then((m) => m.SalesComponent),
+                canActivate: [authGuard], // or [authGuard, adminGuard] if admin-only
+            },
+            {
                 path: 'settings',
                 loadComponent: () =>
                     import('./features/settings/settings.component').then((m) => m.SettingsComponent),
