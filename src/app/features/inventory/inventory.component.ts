@@ -140,7 +140,7 @@ export class InventoryComponent implements OnInit {
       RETURN: 'RETURN (add back to stock)',
       WRITE_OFF: 'WRITE-OFF (remove — damage/loss)',
       DELIVERY: 'DELIVERY',
-      SALE: 'SALE',
+      SALE: 'SALE (sold — stock out)',
       STOCK_COUNT: 'STOCK COUNT',
       TRANSFER: 'TRANSFER',
     }[ev];
@@ -178,9 +178,9 @@ export class InventoryComponent implements OnInit {
     //  WRITE_OFF  → always negative magnitude (stock out)
     //  ADJUSTMENT → keep the sign the user entered (correction either way)
     let signed: number;
-    if (v.event === 'RETURN')        signed =  Math.abs(v.quantity);
-    else if (v.event === 'WRITE_OFF') signed = -Math.abs(v.quantity);
-    else                              signed =  v.quantity; // ADJUSTMENT
+    if (v.event === 'RETURN') signed = Math.abs(v.quantity);
+    else if (v.event === 'WRITE_OFF' || v.event === 'SALE') signed = -Math.abs(v.quantity);
+    else signed = v.quantity; // ADJUSTMENT
 
     if (signed === 0) {
       this.formError.set('Quantity cannot be zero.');
@@ -190,10 +190,11 @@ export class InventoryComponent implements OnInit {
 
     // Instant client-side guard for WRITE_OFF (an out-event that respects
     // on-hand stock). ADJUSTMENT is intentionally exempt.
-    if (v.event === 'WRITE_OFF') {
+    if (v.event === 'WRITE_OFF' || v.event === 'SALE') {
       const onHand = this.svc.rows().find((r) => r.product_id === v.product_id)?.quantity ?? 0;
       if (Math.abs(v.quantity) > onHand) {
-        this.formError.set(`Only ${onHand} on hand — reduce the write-off quantity.`);
+        const noun = v.event === 'SALE' ? 'sale' : 'write-off';
+        this.formError.set(`Only ${onHand} on hand — reduce the ${noun} quantity.`);
         this.saving.set(false);
         return;
       }

@@ -70,13 +70,14 @@
         <th class="px-5 py-3 font-medium">Product</th>
         <th class="px-5 py-3 font-medium">Category</th>
         <th class="px-5 py-3 font-medium">In stock</th>
+        <th class="px-5 py-3 font-medium"></th>
         <th class="px-5 py-3 font-medium">Status</th>
         <th class="px-5 py-3 font-medium">Updated</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-slate-100">
       @for (r of filtered(); track r.id) {
-      <tr (click)="openHistory(r)" class="cursor-pointer transition hover:bg-slate-50/60">
+      <tr (click)="openHistory(r)" class="group cursor-pointer transition hover:bg-slate-50/60">
         <td class="px-5 py-3">
           <div class="font-medium text-slate-900">{{ r.product?.name || '—' }}</div>
           <div class="font-mono text-xs text-slate-400">{{ r.product?.sku }}</div>
@@ -85,6 +86,15 @@
         <td class="px-5 py-3">
           <span class="text-base font-semibold" [class.text-red-600]="isLow(r)" [class.text-slate-900]="!isLow(r)">{{
             r.quantity }}</span>
+        </td>
+        <td class="px-5 py-3">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg
+text-slate-400 transition group-hover:bg-brand-50 group-hover:text-brand-600" title="View stock history & chart">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18M8 15l3-4 3 2 4-6" />
+            </svg>
+          </span>
         </td>
         <td class="px-5 py-3">
           @if (r.quantity <= 0) { <app-badge tone="error">Out of stock</app-badge>
@@ -139,6 +149,8 @@
         Enter a signed correction — use a negative number to reduce stock (e.g. −4).
         } @else if (form.controls.event.value === 'RETURN') {
         Enter a positive number — stock will be added back.
+        } @else if (form.controls.event.value === 'SALE') {
+        Enter a positive number — stock will be removed (sold).
         } @else {
         Enter a positive number — stock will be removed (write-off).
         }

@@ -24,7 +24,7 @@ export type MovementEvent =
   | 'WRITE_OFF';
 
 /** Events a human can record from the manual stock drawer. */
-export const MANUAL_EVENTS: MovementEvent[] = ['ADJUSTMENT', 'RETURN', 'WRITE_OFF'];
+export const MANUAL_EVENTS: MovementEvent[] = ['SALE', 'ADJUSTMENT', 'RETURN', 'WRITE_OFF'];
 
 /** Current stock balance for one object+product (trigger-maintained cache). */
 export interface InventoryRow {

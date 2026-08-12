@@ -118,9 +118,9 @@
     <!-- Top-moving products -->
     <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200 lg:col-span-2">
       <h2 class="text-sm font-semibold text-slate-900">Top-moving products</h2>
-      <p class="mt-0.5 text-xs text-slate-400">By units shipped out (OUTBOUND)</p>
+      <p class="mt-0.5 text-xs text-slate-400">By units shipped out</p>
       @if (svc.topProducts().length === 0) {
-        <p class="py-10 text-center text-sm text-slate-400">No outbound movements yet.</p>
+        <p class="py-10 text-center text-sm text-slate-400">No sales or outbound stock yet.</p>
       } @else {
         <div class="mt-4 space-y-3">
           @for (p of svc.topProducts(); track p.productId) {

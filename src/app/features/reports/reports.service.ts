@@ -51,13 +51,18 @@ export class ReportsService {
 
     const [invRes, movRes, ordersRes, outRes] = await Promise.all([
       scope(supabase.from('inventory').select('quantity')),
+      // KPI: TOTAL movements in the window — every event counts, no filter.
       scope(supabase.from('stock_movements')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', sinceIso)),
       scope(supabase.from('orders').select('id, created_at').gte('created_at', sinceIso)),
+      // Top-moving products: genuine OUTBOUND events only (semantic ledger, V4+).
+      // SALE / WRITE_OFF / TRANSFER = real goods leaving this object.
+      // STOCK_COUNT and ADJUSTMENT are deliberately excluded — they are
+      // corrections/reconciliation, not movement, and would poison the metric.
       scope(supabase.from('stock_movements')
-        .select('product_id, quantity, product:products ( name, sku )')
-        .eq('movement_type', 'OUTBOUND')
+        .select('product_id, quantity, event, product:products ( name, sku )')
+        .in('event', ['SALE', 'WRITE_OFF', 'TRANSFER'])
         .gte('created_at', sinceIso)),
     ]);
 
@@ -83,6 +88,8 @@ export class ReportsService {
     });
 
     // --- Top-moving products ---
+    // outRes now returns only outbound events; quantities are negative, so we
+    // take the absolute value to accumulate "units shipped out" per product.
     const map = new Map<string, TopProduct>();
     for (const row of (outRes.data ?? []) as any[]) {
       const id = row.product_id;
