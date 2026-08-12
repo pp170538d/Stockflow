@@ -72,7 +72,56 @@
     </app-empty-state>
   } @else {
     <form [formGroup]="form">
-      <div class="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+
+      <!-- ===== MOBILE: stacked cards (below lg) ===== -->
+      <div class="space-y-3 lg:hidden" formArrayName="lines">
+        @for (row of lines.controls; track $index; let i = $index) {
+          @if (matchesSearch(row)) {
+            <div [formGroupName]="i"
+              class="rounded-2xl bg-white p-4 ring-1 ring-slate-200 transition"
+              [class.ring-amber-200]="needsReason(row) && variance(row) < 0"
+              [class.bg-amber-50/40]="needsReason(row) && variance(row) < 0"
+              [class.ring-blue-200]="needsReason(row) && variance(row) > 0"
+              [class.bg-blue-50/40]="needsReason(row) && variance(row) > 0">
+              <!-- product + variance badge -->
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="truncate font-medium text-slate-900">{{ row.get('product_name')?.value }}</div>
+                  <div class="font-mono text-xs text-slate-400">{{ row.get('product_sku')?.value }}</div>
+                </div>
+                <app-badge [tone]="varianceTone(row)">{{ varianceLabel(row) }}</app-badge>
+              </div>
+              <!-- expected + counted -->
+              <div class="mt-3 flex items-center justify-between gap-3">
+                <div class="text-sm">
+                  <span class="text-xs uppercase tracking-wide text-slate-400">Expected</span>
+                  <span class="ml-2 text-base font-semibold text-slate-400">{{ row.get('expected_qty')?.value }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <label class="text-xs uppercase tracking-wide text-slate-400">Counted</label>
+                  <input type="number" min="0" formControlName="counted_qty"
+                    class="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-center text-sm font-semibold
+                           outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+                </div>
+              </div>
+              <!-- reason (only when it differs) -->
+              @if (needsReason(row)) {
+                <div class="mt-3 border-t border-slate-100 pt-3">
+                  <input type="text" formControlName="reason"
+                    placeholder="Why the difference? (required)"
+                    class="w-full rounded-lg border px-3 py-2 text-sm outline-none transition
+                           focus:ring-2 focus:ring-brand-500/20"
+                    [class.border-red-300]="row.touched && row.hasError('reasonRequired')"
+                    [class.border-slate-300]="!(row.touched && row.hasError('reasonRequired'))" />
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+
+      <!-- ===== DESKTOP: table (lg and up) ===== -->
+      <div class="hidden overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200 lg:block">
         <table class="w-full text-left text-sm">
           <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
             <tr>
@@ -138,7 +187,7 @@
   [class.bg-white/90]="!hasDiscrepancies()"
   [class.border-amber-200]="hasDiscrepancies()"
   [class.bg-amber-50/90]="hasDiscrepancies()">
-  <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
+  <div class="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
       @if (hasDiscrepancies()) {
         <span class="mr-1 font-medium text-amber-700">⚠️ Submitting will correct stock</span>
@@ -154,11 +203,11 @@
     </div>
     <div class="flex items-center gap-2">
       <button type="button" (click)="cancel()"
-        class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+        class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:flex-none">
         Cancel
       </button>
       <button type="button" (click)="submit()" [disabled]="svc.saving() || form.invalid || lines.controls.length === 0"
-        class="rounded-lg px-5 py-2 text-sm font-medium text-white transition disabled:opacity-60"
+        class="flex-1 rounded-lg px-5 py-2 text-sm font-medium text-white transition disabled:opacity-60 sm:flex-none"
         [class.bg-brand-600]="!hasDiscrepancies()"
         [class.hover:bg-brand-700]="!hasDiscrepancies()"
         [class.bg-amber-600]="hasDiscrepancies()"
