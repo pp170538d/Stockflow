@@ -8,7 +8,7 @@
   <div class="flex flex-wrap items-center gap-2">
     <a [routerLink]="['/inventory/count']" [queryParams]="{ object: selectedObjectId() }"
       class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-      📋 Stock count
+      ?? Stock count
     </a>
     <a [routerLink]="['/inventory/counts']" [queryParams]="{ object: selectedObjectId() }"
       class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
@@ -28,7 +28,7 @@
   <label class="mb-1.5 block text-sm font-medium text-slate-700">Object</label>
   <select (change)="onObjectChange($any($event.target).value)" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
              transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
-    <option value="">Select an object…</option>
+    <option value="">Select an object�</option>
     @for (o of objects(); track o.id) {
     <option [value]="o.id">{{ o.name }}</option>
     }
@@ -42,14 +42,14 @@
 } @else {
 <!-- Search -->
 <div class="mb-4 max-w-xs">
-  <input type="text" [value]="search()" (input)="search.set($any($event.target).value)" placeholder="Search products…"
+  <input type="text" [value]="search()" (input)="search.set($any($event.target).value)" placeholder="Search products�"
     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
              transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 </div>
 
 @if (svc.loading()) {
 <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
-  Loading inventory…
+  Loading inventory�
 </div>
 } @else if (svc.error()) {
 <div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">
@@ -67,87 +67,114 @@
 <!-- ===== MOBILE: stacked cards (below lg) ===== -->
 <div class="space-y-3 lg:hidden">
   @for (r of filtered(); track r.id) {
-  <button (click)="openHistory(r)"
-    class="block w-full rounded-2xl bg-white p-4 text-left ring-1 ring-slate-200 transition hover:bg-slate-50/60">
-    <div class="flex items-start justify-between gap-3">
-      <div class="min-w-0">
-        <div class="truncate font-medium text-slate-900">{{ r.product?.name || '—' }}</div>
-        <div class="font-mono text-xs text-slate-400">{{ r.product?.sku }}</div>
-        @if (r.product?.category) {
-          <div class="mt-0.5 text-xs text-slate-500">{{ r.product?.category }}</div>
-        }
-      </div>
-      <div class="shrink-0 text-right">
-        <div class="text-xl font-semibold" [class.text-red-600]="isLow(r)" [class.text-slate-900]="!isLow(r)">
-          {{ r.quantity }}
+    <article class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="truncate font-medium text-slate-900">{{ r.product?.name || 'Product' }}</div>
+          <div class="font-mono text-xs text-slate-400">{{ r.product?.sku }}</div>
+          @if (r.product?.category) {
+            <div class="mt-0.5 text-xs text-slate-500">{{ r.product?.category }}</div>
+          }
         </div>
-        <div class="text-[10px] uppercase tracking-wide text-slate-400">in stock</div>
+        <div class="shrink-0 text-right">
+          <div class="text-xl font-semibold" [class.text-red-600]="isLow(r)" [class.text-slate-900]="!isLow(r)">
+            {{ r.quantity }}
+          </div>
+          <div class="text-[10px] uppercase tracking-wide text-slate-400">in stock</div>
+        </div>
       </div>
-    </div>
-    <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-      <div class="flex items-center gap-2">
-        @if (r.quantity <= 0) { <app-badge tone="error">Out of stock</app-badge>
-        } @else if (isLow(r)) { <app-badge tone="warning">Low stock</app-badge>
-        } @else { <app-badge tone="success">In stock</app-badge> }
+
+      <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+        <div>
+          @if (r.quantity <= 0) {
+            <app-badge tone="error">Out of stock</app-badge>
+          } @else if (isLow(r)) {
+            <app-badge tone="warning">Low stock</app-badge>
+          } @else {
+            <app-badge tone="success">In stock</app-badge>
+          }
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button type="button" (click)="openChart(r)"
+            class="inline-flex items-center gap-1.5 rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 transition hover:bg-brand-100">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18M8 15l3-4 3 2 4-6" />
+            </svg>
+            Trend
+          </button>
+
+          <button type="button" (click)="openHistory(r)"
+            class="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-200">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
+              <path d="M3 3v5h5M12 7v5l3 2" />
+            </svg>
+            History
+          </button>
+        </div>
       </div>
-      <!-- chart hint: signals the card opens history + chart -->
-      <span class="inline-flex items-center gap-1 text-xs text-brand-600">
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-          stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 3v18h18M8 15l3-4 3 2 4-6" />
-        </svg>
-        History
-      </span>
-    </div>
-    <div class="mt-2 text-[11px] text-slate-400">Updated {{ r.updated_at | date: 'MMM d, y, HH:mm' }}</div>
-  </button>
+
+      <div class="mt-2 text-[11px] text-slate-400">Updated {{ r.updated_at | date: 'MMM d, y, HH:mm' }}</div>
+    </article>
   }
 </div>
 
 <!-- ===== DESKTOP: table (lg and up) ===== -->
 <div class="hidden overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200 lg:block">
-  <table class="w-full min-w-[640px] text-left text-sm">
+  <table class="w-full min-w-[860px] text-left text-sm">
     <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
       <tr>
         <th class="px-5 py-3 font-medium">Product</th>
         <th class="px-5 py-3 font-medium">Category</th>
         <th class="px-5 py-3 font-medium">In stock</th>
-        <th class="px-5 py-3 font-medium"></th>
+        <th class="px-5 py-3 font-medium">Activity</th>
         <th class="px-5 py-3 font-medium">Status</th>
         <th class="px-5 py-3 font-medium">Updated</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-slate-100">
       @for (r of filtered(); track r.id) {
-      <tr (click)="openHistory(r)" class="group cursor-pointer transition hover:bg-slate-50/60">
-        <td class="px-5 py-3">
-          <div class="font-medium text-slate-900">{{ r.product?.name || '—' }}</div>
-          <div class="font-mono text-xs text-slate-400">{{ r.product?.sku }}</div>
-        </td>
-        <td class="px-5 py-3 text-slate-600">{{ r.product?.category || '—' }}</td>
-        <td class="px-5 py-3">
-          <span class="text-base font-semibold" [class.text-red-600]="isLow(r)" [class.text-slate-900]="!isLow(r)">{{
-            r.quantity }}</span>
-        </td>
-        <td class="px-5 py-3">
-          <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg
-text-slate-400 transition group-hover:bg-brand-50 group-hover:text-brand-600" title="View stock history & chart">
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 3v18h18M8 15l3-4 3 2 4-6" />
-            </svg>
-          </span>
-        </td>
-        <td class="px-5 py-3">
-          @if (r.quantity <= 0) { <app-badge tone="error">Out of stock</app-badge>
+        <tr class="group transition hover:bg-slate-50/60">
+          <td class="px-5 py-3">
+            <div class="font-medium text-slate-900">{{ r.product?.name || 'Product' }}</div>
+            <div class="font-mono text-xs text-slate-400">{{ r.product?.sku }}</div>
+          </td>
+          <td class="px-5 py-3 text-slate-600">{{ r.product?.category || '—' }}</td>
+          <td class="px-5 py-3">
+            <span class="text-base font-semibold" [class.text-red-600]="isLow(r)" [class.text-slate-900]="!isLow(r)">
+              {{ r.quantity }}
+            </span>
+          </td>
+          <td class="px-5 py-3">
+            <div class="flex items-center gap-1">
+              <button type="button" (click)="openChart(r)" title="View stock trend" aria-label="View stock trend"
+                class="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-brand-50 hover:text-brand-600">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 3v18h18M8 15l3-4 3 2 4-6" />
+                </svg>
+              </button>
+
+              <button type="button" (click)="openHistory(r)" title="View movement history" aria-label="View movement history"
+                class="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5M12 7v5l3 2" />
+                </svg>
+              </button>
+            </div>
+          </td>
+          <td class="px-5 py-3">
+            @if (r.quantity <= 0) {
+              <app-badge tone="error">Out of stock</app-badge>
             } @else if (isLow(r)) {
-            <app-badge tone="warning">Low stock</app-badge>
+              <app-badge tone="warning">Low stock</app-badge>
             } @else {
-            <app-badge tone="success">In stock</app-badge>
+              <app-badge tone="success">In stock</app-badge>
             }
-        </td>
-        <td class="px-5 py-3 text-slate-500">{{ r.updated_at | date: 'MMM d, y, HH:mm' }}</td>
-      </tr>
+          </td>
+          <td class="px-5 py-3 text-slate-500">{{ r.updated_at | date: 'MMM d, y, HH:mm' }}</td>
+        </tr>
       }
     </tbody>
   </table>
@@ -162,7 +189,7 @@ text-slate-400 transition group-hover:bg-brand-50 group-hover:text-brand-600" ti
       <label class="mb-1.5 block text-sm font-medium text-slate-700">Product <span class="text-red-500">*</span></label>
       <select formControlName="product_id" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
                transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
-        <option value="">Select a product…</option>
+        <option value="">Select a product�</option>
         @for (p of assignableProducts(); track p.id) {
         <option [value]="p.id">{{ p.name }} ({{ p.sku }})</option>
         }
@@ -188,13 +215,13 @@ text-slate-400 transition group-hover:bg-brand-50 group-hover:text-brand-600" ti
                transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
       <p class="mt-1 text-xs text-slate-400">
         @if (form.controls.event.value === 'ADJUSTMENT') {
-        Enter a signed correction — use a negative number to reduce stock (e.g. −4).
+        Enter a signed correction � use a negative number to reduce stock (e.g. -4).
         } @else if (form.controls.event.value === 'RETURN') {
-        Enter a positive number — stock will be added back.
+        Enter a positive number � stock will be added back.
         } @else if (form.controls.event.value === 'SALE') {
-        Enter a positive number — stock will be removed (sold).
+        Enter a positive number � stock will be removed (sold).
         } @else {
-        Enter a positive number — stock will be removed (write-off).
+        Enter a positive number � stock will be removed (write-off).
         }
       </p>
       @if (form.controls.quantity.touched && form.controls.quantity.hasError('zero')) {
@@ -203,7 +230,7 @@ text-slate-400 transition group-hover:bg-brand-50 group-hover:text-brand-600" ti
     </div>
     <div>
       <label class="mb-1.5 block text-sm font-medium text-slate-700">Note</label>
-      <input type="text" formControlName="note" placeholder="Optional — reason / reference" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+      <input type="text" formControlName="note" placeholder="Optional � reason / reference" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
                transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
     </div>
     @if (formError()) {
@@ -219,74 +246,153 @@ text-slate-400 transition group-hover:bg-brand-50 group-hover:text-brand-600" ti
     </button>
     <button type="button" (click)="save()" [disabled]="saving()"
       class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60">
-      {{ saving() ? 'Saving…' : 'Record' }}
+      {{ saving() ? 'Saving�' : 'Record' }}
     </button>
   </div>
 </app-drawer>
 
-<!-- ===== MOVEMENT HISTORY DRAWER ===== -->
-<app-drawer [open]="historyOpen()" [title]="'History · ' + historyProductName()" (close)="closeHistory()">
-  <!-- Running-balance chart -->
-  @if (svc.movements().length > 0) {
-  <div class="mb-5 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-100">
-    <div class="mb-2 flex items-baseline justify-between">
-      <span class="text-xs font-medium text-slate-500">Stock level over time</span>
-      <span class="text-lg font-semibold text-slate-900">{{ historyChart().current }}</span>
-    </div>
-    <svg viewBox="0 0 100 40" preserveAspectRatio="none" class="h-24 w-full overflow-visible">
-      <polygon [attr.points]="historyChart().area" fill="rgb(99 102 241 / 0.12)" />
-      <polyline [attr.points]="historyChart().line" fill="none" stroke="rgb(79 70 229)" stroke-width="1.2"
-        stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />
-      @for (c of historyChart().coords; track c.at) {
-      <circle [attr.cx]="c.x" [attr.cy]="c.y" r="1.4" fill="white" stroke="rgb(79 70 229)" stroke-width="1"
-        vector-effect="non-scaling-stroke" />
-      }
-    </svg>
-  </div>
-  }
+<!-- ===== FULL STOCK TREND DIALOG ===== -->
+<app-stock-history-dialog
+  [open]="chartOpen()"
+  [objectId]="selectedObjectId()"
+  [objectName]="chartObjectName()"
+  [productId]="chartProductId()"
+  [productName]="chartProductName()"
+  [sku]="chartSku()"
+  (closed)="closeChart()" />
 
-  @if (svc.movements().length === 0) {
-  <p class="py-10 text-center text-sm text-slate-400">
-    No movements recorded yet.
-  </p>
+<!-- ===== MOVEMENT HISTORY DRAWER ===== -->
+<app-drawer [open]="historyOpen()" [title]="'History - ' + historyProductName()" (close)="closeHistory()">
+  <!-- History filters -->
+  <div class="mb-4 grid gap-3 sm:grid-cols-2">
+    <div>
+      <label class="mb-1.5 block text-xs font-medium text-slate-500">Event</label>
+
+      <select
+        [value]="movementEventFilter()"
+        (change)="onMovementEventChange($any($event.target).value)"
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+        <option value="">All events</option>
+
+        @for (event of movementEvents; track event) {
+          <option [value]="event">{{ event }}</option>
+        }
+      </select>
+    </div>
+
+    <div>
+      <label class="mb-1.5 block text-xs font-medium text-slate-500">Search</label>
+
+      <input
+        type="text"
+        [value]="movementSearch()"
+        (input)="onMovementSearch($any($event.target).value)"
+        placeholder="Note or reference..."
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+    </div>
+  </div>
+
+  <!-- Scope note -->
+  <div class="mb-4 rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500 ring-1 ring-slate-100">
+    Showing matching ledger movements for this product and object. Use filters to narrow the audit trail.
+  </div>
+
+  @if (svc.movementsLoading()) {
+    <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
+      Loading movements...
+    </div>
+  } @else if (svc.movementsError()) {
+    <div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">
+      {{ svc.movementsError() }}
+    </div>
   } @else {
-  <!-- Vertical timeline -->
-  <ol class="relative space-y-5 border-l border-slate-200 pl-5">
-    @for (m of svc.movements(); track m.id) {
-    <li class="relative">
-      <span class="absolute -left-[26px] top-1 grid h-4 w-4 place-items-center rounded-full ring-4 ring-white"
-        [class.bg-green-500]="isPositive(m.quantity)" [class.bg-red-500]="!isPositive(m.quantity)"></span>
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-semibold" [class.text-green-600]="isPositive(m.quantity)"
-              [class.text-red-600]="!isPositive(m.quantity)">
-              {{ isPositive(m.quantity) ? '+' : '' }}{{ m.quantity }}
-            </span>
-            <app-badge [tone]="isPositive(m.quantity) ? 'success' : 'error'">
-              {{ m.event }}
-            </app-badge>
-          </div>
-          @if (m.note) {
-          <p class="mt-0.5 text-xs text-slate-500">{{ m.note }}</p>
-          }
-          @if (m.reference && m.reference !== 'manual') {
-          <p class="mt-0.5 font-mono text-[11px] text-slate-400">{{ m.reference }}</p>
-          }
-        </div>
-        <time class="whitespace-nowrap text-xs text-slate-400">
-          {{ m.created_at | date: 'MMM d, HH:mm' }}
-        </time>
-      </div>
-    </li>
+    @if (svc.movements().length === 0) {
+      <p class="py-10 text-center text-sm text-slate-400">
+        No movements match these filters.
+      </p>
+    } @else {
+      <!-- Vertical timeline -->
+      <ol class="relative space-y-5 border-l border-slate-200 pl-5">
+        @for (m of svc.movements(); track m.id) {
+          <li class="relative">
+            <span
+              class="absolute -left-[26px] top-1 grid h-4 w-4 place-items-center rounded-full ring-4 ring-white"
+              [class.bg-green-500]="isPositive(m.quantity)"
+              [class.bg-red-500]="!isPositive(m.quantity)"></span>
+
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span
+                    class="text-sm font-semibold"
+                    [class.text-green-600]="isPositive(m.quantity)"
+                    [class.text-red-600]="!isPositive(m.quantity)">
+                    {{ isPositive(m.quantity) ? '+' : '' }}{{ m.quantity }}
+                  </span>
+
+                  <app-badge [tone]="isPositive(m.quantity) ? 'success' : 'error'">
+                    {{ m.event }}
+                  </app-badge>
+                </div>
+
+                @if (m.note) {
+                  <p class="mt-0.5 text-xs text-slate-500">{{ m.note }}</p>
+                }
+
+                @if (m.reference && m.reference !== 'manual') {
+                  <p class="mt-0.5 font-mono text-[11px] text-slate-400">{{ m.reference }}</p>
+                }
+              </div>
+
+              <time class="whitespace-nowrap text-xs text-slate-400">
+                {{ m.created_at | date: 'MMM d, HH:mm' }}
+              </time>
+            </div>
+          </li>
+        }
+      </ol>
     }
-  </ol>
+
+    @if (svc.movementsTotal() > 0) {
+      <div class="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <div class="text-slate-500">
+          Page
+          <span class="font-medium text-slate-700">{{ svc.movementsPage() }}</span>
+          of
+          <span class="font-medium text-slate-700">{{ svc.movementsTotalPages() }}</span>
+          ·
+          <span class="font-medium text-slate-700">{{ svc.movementsTotal() }}</span>
+          movements
+        </div>
+
+        <div class="flex gap-2">
+          <button
+            type="button"
+            (click)="previousMovements()"
+            [disabled]="svc.movementsPage() <= 1"
+            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
+            Previous
+          </button>
+
+          <button
+            type="button"
+            (click)="nextMovements()"
+            [disabled]="svc.movementsPage() >= svc.movementsTotalPages()"
+            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
+            Next
+          </button>
+        </div>
+      </div>
+    }
   }
 
   <div drawer-footer class="flex justify-end">
-    <button type="button" (click)="closeHistory()"
+    <button
+      type="button"
+      (click)="closeHistory()"
       class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">
       Close
     </button>
   </div>
 </app-drawer>
+

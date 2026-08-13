@@ -14,10 +14,11 @@ import { Product } from '../products/product.model';
 import { BadgeComponent } from '../../shared/ui/badge.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
 import { DrawerComponent } from '../../shared/ui/drawer.component';
+import { StockHistoryDialogComponent } from './stock-history-dialog.component';
 
 const LOW_STOCK_THRESHOLD = 10;
 
-/** A signed correction can be + or −, but never 0. */
+/** A signed correction can be + or -, but never 0. */
 function notZero(control: AbstractControl): ValidationErrors | null {
   const v = control.value;
   return v === 0 || v === null || v === '' ? { zero: true } : null;
@@ -26,7 +27,15 @@ function notZero(control: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-inventory',
   standalone: true,
-  imports: [DatePipe, RouterLink, ReactiveFormsModule, BadgeComponent, EmptyStateComponent, DrawerComponent],
+  imports: [
+    DatePipe,
+    RouterLink,
+    ReactiveFormsModule,
+    BadgeComponent,
+    EmptyStateComponent,
+    DrawerComponent,
+    StockHistoryDialogComponent,
+  ],
   templateUrl: './inventory.component.html',
 })
 export class InventoryComponent implements OnInit {
@@ -48,6 +57,30 @@ export class InventoryComponent implements OnInit {
   readonly historyOpen = signal(false);
   readonly historyProductName = signal('');
 
+  // Dedicated full-history chart dialog
+  readonly chartOpen = signal(false);
+  readonly chartProductId = signal<string | null>(null);
+  readonly chartProductName = signal('');
+  readonly chartSku = signal('');
+  readonly chartObjectName = computed(() => {
+    const objectId = this.selectedObjectId();
+    return this.objects().find((object) => object.id === objectId)?.name ?? 'Current object';
+  });
+  readonly historyObjectId = signal<string | null>(null);
+  readonly historyProductId = signal<string | null>(null);
+  readonly movementSearch = signal('');
+  readonly movementEventFilter = signal<MovementEvent | ''>('');
+  readonly movementEvents: MovementEvent[] = [
+    'DELIVERY',
+    'SALE',
+    'STOCK_COUNT',
+    'ADJUSTMENT',
+    'TRANSFER',
+    'RETURN',
+    'WRITE_OFF',
+  ];
+  private movementSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
   /** Events offered in the manual drawer (DELIVERY/SALE/COUNT/TRANSFER come
    *  from their own flows). */
   readonly manualEvents = MANUAL_EVENTS;
@@ -62,8 +95,8 @@ export class InventoryComponent implements OnInit {
   });
 
   constructor() {
-    // ADJUSTMENT may go either way (exempt from the guard) → notZero.
-    // RETURN (in) and WRITE_OFF (out) are positive magnitudes → min(1).
+    // ADJUSTMENT may go either way (exempt from the guard) ? notZero.
+    // RETURN (in) and WRITE_OFF (out) are positive magnitudes ? min(1).
     this.form.controls.event.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe((ev) => {
@@ -86,31 +119,6 @@ export class InventoryComponent implements OnInit {
         (r.product?.name ?? '').toLowerCase().includes(q) ||
         (r.product?.sku ?? '').toLowerCase().includes(q)
     );
-  });
-
-  /** Running-balance chart points, built from movement history (oldest→newest). */
-  readonly historyChart = computed(() => {
-    const moves = [...this.svc.movements()].reverse(); // service returns newest-first
-    let running = 0;
-    const points = moves.map((m) => {
-      running += m.quantity;
-      return { qty: m.quantity, balance: running, at: m.created_at };
-    });
-    const balances = points.map((p) => p.balance);
-    const max = Math.max(1, ...balances);
-    const min = Math.min(0, ...balances);
-    const range = max - min || 1;
-    const n = points.length;
-    const coords = points.map((p, i) => {
-      const x = n === 1 ? 50 : (i / (n - 1)) * 100;
-      const y = 40 - ((p.balance - min) / range) * 40;
-      return { ...p, x, y };
-    });
-    const line = coords.map((c) => `${c.x},${c.y}`).join(' ');
-    const area = coords.length
-      ? `0,40 ${line} ${coords[coords.length - 1].x},40`
-      : '';
-    return { coords, line, area, max, current: running };
   });
 
   async ngOnInit(): Promise<void> {
@@ -138,9 +146,9 @@ export class InventoryComponent implements OnInit {
     return {
       ADJUSTMENT: 'ADJUSTMENT (signed correction)',
       RETURN: 'RETURN (add back to stock)',
-      WRITE_OFF: 'WRITE-OFF (remove — damage/loss)',
+      WRITE_OFF: 'WRITE-OFF (remove � damage/loss)',
       DELIVERY: 'DELIVERY',
-      SALE: 'SALE (sold — stock out)',
+      SALE: 'SALE (sold � stock out)',
       STOCK_COUNT: 'STOCK COUNT',
       TRANSFER: 'TRANSFER',
     }[ev];
@@ -174,9 +182,9 @@ export class InventoryComponent implements OnInit {
     const v = this.form.getRawValue();
 
     // Convert entered value into a SIGNED quantity by event:
-    //  RETURN     → always positive magnitude (stock in)
-    //  WRITE_OFF  → always negative magnitude (stock out)
-    //  ADJUSTMENT → keep the sign the user entered (correction either way)
+    //  RETURN     ? always positive magnitude (stock in)
+    //  WRITE_OFF  ? always negative magnitude (stock out)
+    //  ADJUSTMENT ? keep the sign the user entered (correction either way)
     let signed: number;
     if (v.event === 'RETURN') signed = Math.abs(v.quantity);
     else if (v.event === 'WRITE_OFF' || v.event === 'SALE') signed = -Math.abs(v.quantity);
@@ -194,7 +202,7 @@ export class InventoryComponent implements OnInit {
       const onHand = this.svc.rows().find((r) => r.product_id === v.product_id)?.quantity ?? 0;
       if (Math.abs(v.quantity) > onHand) {
         const noun = v.event === 'SALE' ? 'sale' : 'write-off';
-        this.formError.set(`Only ${onHand} on hand — reduce the ${noun} quantity.`);
+        this.formError.set(`Only ${onHand} on hand � reduce the ${noun} quantity.`);
         this.saving.set(false);
         return;
       }
@@ -208,16 +216,91 @@ export class InventoryComponent implements OnInit {
     else this.drawerOpen.set(false);
   }
 
+  openChart(r: InventoryRow): void {
+    if (!this.selectedObjectId()) return;
+
+    this.chartProductId.set(r.product_id);
+    this.chartProductName.set(r.product?.name ?? 'Product');
+    this.chartSku.set(r.product?.sku ?? '');
+    this.chartOpen.set(true);
+  }
+
+  closeChart(): void {
+    this.chartOpen.set(false);
+    this.chartProductId.set(null);
+  }
+
   async openHistory(r: InventoryRow): Promise<void> {
     const objectId = this.selectedObjectId();
+
     if (!objectId) return;
+
     this.historyProductName.set(r.product?.name ?? 'Product');
+    this.historyObjectId.set(objectId);
+    this.historyProductId.set(r.product_id);
+    this.movementSearch.set('');
+    this.movementEventFilter.set('');
     this.historyOpen.set(true);
-    await this.svc.loadMovements(objectId, r.product_id);
+
+    await this.svc.loadMovements(objectId, r.product_id, { page: 1 });
   }
 
   closeHistory(): void {
     this.historyOpen.set(false);
+  }
+
+  reloadMovements(page = 1): void {
+    const objectId = this.historyObjectId();
+    const productId = this.historyProductId();
+
+    if (!objectId || !productId) return;
+
+    void this.svc.loadMovements(objectId, productId, {
+      page,
+      event: this.movementEventFilter(),
+      search: this.movementSearch(),
+    });
+  }
+
+  onMovementEventChange(event: MovementEvent | ''): void {
+    this.movementEventFilter.set(event);
+    this.reloadMovements(1);
+  }
+
+  onMovementSearch(value: string): void {
+    this.movementSearch.set(value);
+
+    if (this.movementSearchTimer) {
+      clearTimeout(this.movementSearchTimer);
+    }
+
+    this.movementSearchTimer = setTimeout(() => {
+      this.reloadMovements(1);
+    }, 250);
+  }
+
+  previousMovements(): void {
+    const objectId = this.historyObjectId();
+    const productId = this.historyProductId();
+
+    if (!objectId || !productId) return;
+
+    void this.svc.previousMovements(objectId, productId, {
+      event: this.movementEventFilter(),
+      search: this.movementSearch(),
+    });
+  }
+
+  nextMovements(): void {
+    const objectId = this.historyObjectId();
+    const productId = this.historyProductId();
+
+    if (!objectId || !productId) return;
+
+    void this.svc.nextMovements(objectId, productId, {
+      event: this.movementEventFilter(),
+      search: this.movementSearch(),
+    });
   }
 
   /** Colour the signed quantity green (in) / red (out). */

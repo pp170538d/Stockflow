@@ -1,0 +1,105 @@
+@if (open) {
+  <div class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 p-0 backdrop-blur-sm sm:p-4" (click)="close()">
+    <section role="dialog" aria-modal="true" aria-labelledby="stock-history-title"
+      class="flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[92vh] sm:max-w-5xl sm:rounded-2xl"
+      (click)="$event.stopPropagation()">
+
+      <header class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-7">
+        <div class="min-w-0">
+          <h2 id="stock-history-title" class="truncate text-lg font-semibold text-slate-900 sm:text-xl">Stock level · {{ productName }}</h2>
+          <p class="mt-1 truncate text-xs text-slate-500 sm:text-sm">{{ objectName }} · <span class="font-mono">{{ sku }}</span></p>
+        </div>
+        <button type="button" (click)="close()" class="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Close stock history">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </header>
+
+      <div class="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">
+        <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <label class="mb-1.5 block text-xs font-medium text-slate-500">Range</label>
+            <div class="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-1">
+              @for (option of [{label:'7D', value:7}, {label:'30D', value:30}, {label:'90D', value:90}, {label:'1Y', value:365}, {label:'All', value:null}]; track option.label) {
+                <button type="button" (click)="choosePreset($any(option.value))" class="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition"
+                  [class.bg-white]="preset() === option.value" [class.text-brand-700]="preset() === option.value"
+                  [class.shadow-sm]="preset() === option.value" [class.text-slate-600]="preset() !== option.value">{{ option.label }}</button>
+              }
+            </div>
+          </div>
+
+          <div class="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-slate-500">From</label>
+              <input type="date" [value]="customFrom()" (input)="customFrom.set($any($event.target).value)" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-slate-500">To</label>
+              <input type="date" [value]="customTo()" (input)="customTo.set($any($event.target).value)" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+            </div>
+            <button type="button" (click)="applyCustom()" [disabled]="!customFrom() && !customTo()" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40">Apply</button>
+          </div>
+        </div>
+
+        @if (dateError()) { <div class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">{{ dateError() }}</div> }
+
+        @if (loading()) {
+          <div class="mt-6 rounded-2xl bg-slate-50 p-16 text-center text-sm text-slate-400 ring-1 ring-slate-200">Loading stock history...</div>
+        } @else if (error()) {
+          <div class="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">{{ error() }}</div>
+        } @else if (points().length === 0) {
+          <div class="mt-6 rounded-2xl bg-slate-50 p-16 text-center text-sm text-slate-400 ring-1 ring-slate-200">No stock history is available for this product.</div>
+        } @else {
+          <div class="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            @for (metric of [{label:stockLabel(), value:closingStock()}, {label:'Opening stock', value:openingStock()}, {label:'Lowest stock', value:lowestStock()}, {label:'Highest stock', value:highestStock()}]; track metric.label) {
+              <div class="rounded-xl bg-white p-4 ring-1 ring-slate-200"><div class="text-2xl font-semibold text-slate-900">{{ metric.value }}</div><div class="mt-1 text-xs text-slate-500">{{ metric.label }}</div></div>
+            }
+          </div>
+
+          <div class="mt-4 overflow-hidden rounded-2xl bg-white p-2 ring-1 ring-slate-200 sm:p-3">
+            <div class="mb-2 flex flex-col gap-1 px-2 sm:flex-row sm:items-center sm:justify-between">
+              <div><div class="text-sm font-semibold text-slate-900">Stock trend</div><div class="text-xs text-slate-500">{{ rangeLabel() }} · {{ granularityLabel() }}</div></div>
+              <div class="text-xs text-slate-400">{{ movementCount() }} movements</div>
+            </div>
+
+            @if (activePoint(); as point) {
+              <div class="mx-2 mb-3 grid h-14 grid-cols-[1fr_auto_auto_auto] items-center gap-6 rounded-xl bg-slate-950 px-5 text-sm text-white">
+                <div class="truncate font-medium">{{ formatInspectorDate(point.occurredAt) }}</div>
+                <div class="whitespace-nowrap"><span class="text-slate-400">Closing</span><span class="ml-1.5 font-semibold">{{ point.balance }}</span></div>
+                <div class="whitespace-nowrap"><span class="text-slate-400">Net</span><span class="ml-1.5 font-semibold" [class.text-green-400]="point.netChange > 0" [class.text-red-400]="point.netChange < 0">{{ point.netChange > 0 ? '+' : '' }}{{ point.netChange }}</span></div>
+                <div class="whitespace-nowrap"><span class="text-slate-400">Movements</span><span class="ml-1.5 font-semibold">{{ point.movementCount }}</span></div>
+              </div>
+            } @else {
+              <div class="mx-2 mb-3 flex h-14 items-center rounded-xl bg-slate-50 px-5 text-sm text-slate-500 ring-1 ring-slate-100">Hover or tap the chart to inspect a period.</div>
+            }
+
+            <div class="relative w-full overflow-x-auto">
+              <svg #chartSvg [attr.viewBox]="'0 0 ' + width + ' ' + height" class="block h-auto min-h-[220px] w-full min-w-[680px] touch-none select-none sm:min-w-0" role="img" aria-label="Stock closing balance trend"
+                (pointermove)="onChartPointer($event, $any(chartSvg))" (pointerdown)="onChartPointer($event, $any(chartSvg))" (pointerleave)="clearPointer()">
+                @for (tick of yTicks(); track tick.value) {
+                  <line [attr.x1]="plotLeft" [attr.x2]="width - plotRight" [attr.y1]="tick.y" [attr.y2]="tick.y" stroke="#e2e8f0" stroke-width="1" />
+                  <text [attr.x]="plotLeft - 14" [attr.y]="tick.y + 4" text-anchor="end" fill="#64748b" font-size="12">{{ tick.value }}</text>
+                }
+                <line [attr.x1]="plotLeft" [attr.x2]="plotLeft" [attr.y1]="plotTop" [attr.y2]="height - plotBottom" stroke="#94a3b8" />
+                <line [attr.x1]="plotLeft" [attr.x2]="width - plotRight" [attr.y1]="height - plotBottom" [attr.y2]="height - plotBottom" stroke="#94a3b8" />
+                @for (tick of xTicks(); track tick.value) {
+                  <line [attr.x1]="tick.x" [attr.x2]="tick.x" [attr.y1]="height - plotBottom" [attr.y2]="height - plotBottom + 5" stroke="#94a3b8" />
+                  <text [attr.x]="tick.x" [attr.y]="height - 24" text-anchor="middle" fill="#64748b" font-size="12">{{ tick.label }}</text>
+                }
+                <text x="18" [attr.y]="height / 2" text-anchor="middle" fill="#64748b" font-size="12" [attr.transform]="'rotate(-90 18 ' + (height / 2) + ')'">Stock units</text>
+                <text [attr.x]="width / 2" [attr.y]="height - 4" text-anchor="middle" fill="#64748b" font-size="12">Date</text>
+                <path [attr.d]="areaPath()" fill="rgb(79 70 229 / 0.10)" />
+                <path [attr.d]="linePath()" fill="none" stroke="#4f46e5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+                @if (activePoint(); as point) {
+                  <line [attr.x1]="point.x" [attr.x2]="point.x" [attr.y1]="plotTop" [attr.y2]="height - plotBottom" stroke="#64748b" stroke-width="1" stroke-dasharray="4 4" />
+                  <circle [attr.cx]="point.x" [attr.cy]="point.y" r="6" fill="white" stroke="#4f46e5" stroke-width="3" />
+                }
+              </svg>
+            </div>
+          </div>
+        }
+      </div>
+
+      <footer class="flex shrink-0 justify-end border-t border-slate-200 px-5 py-4 sm:px-7"><button type="button" (click)="close()" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Close</button></footer>
+    </section>
+  </div>
+}
