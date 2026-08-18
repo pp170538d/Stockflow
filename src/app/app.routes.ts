@@ -4,12 +4,24 @@ import { adminGuard } from './core/guards/admin.guard';
 
 export const routes: Routes = [
     {
+        // NEW public landing page — the marketing "front door".
+        // pathMatch:'full' means this ONLY matches the exact empty URL ('/'),
+        // so all existing in-app links (/dashboard, /orders, …) keep working
+        // through the shell route below. Zero breaking changes.
+        // LandingComponent forwards logged-in users to /dashboard in ngOnInit.
+        path: '',
+        pathMatch: 'full',
+        loadComponent: () =>
+            import('./features/landing/landing.component').then((m) => m.LandingComponent),
+    },
+    {
         path: 'login',
         loadComponent: () =>
             import('./features/auth/login.component').then((m) => m.LoginComponent),
     },
     {
-        // Everything inside the shell requires being logged in
+        // Everything inside the shell requires being logged in.
+        // Still mounted at '' (prefix match) so URLs stay /dashboard, /orders, etc.
         path: '',
         canActivate: [authGuard],
         loadComponent: () =>
@@ -26,7 +38,6 @@ export const routes: Routes = [
                     import('./features/reports/reports.component').then((m) => m.ReportsComponent),
             },
             {
-                // ✅ REAL Objects feature (admin only)
                 path: 'objects', canActivate: [adminGuard],
                 loadComponent: () =>
                     import('./features/objects/objects.component').then((m) => m.ObjectsComponent),
@@ -72,15 +83,17 @@ export const routes: Routes = [
                 path: 'sales',
                 loadComponent: () =>
                     import('./features/sales/sales.component').then((m) => m.SalesComponent),
-                canActivate: [authGuard], // or [authGuard, adminGuard] if admin-only
+                canActivate: [authGuard],
             },
             {
                 path: 'settings',
                 loadComponent: () =>
                     import('./features/settings/settings.component').then((m) => m.SettingsComponent),
             },
-            { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+            // NOTE: removed the old `{ path: '', redirectTo: 'dashboard' }` child —
+            // the empty path now belongs to the public landing page above.
         ],
     },
-    { path: '**', redirectTo: 'dashboard' },
+    // Any unknown route → landing page
+    { path: '**', redirectTo: '' },
 ];

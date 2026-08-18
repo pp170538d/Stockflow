@@ -1,69 +1,199 @@
-<div class="grid min-h-screen place-items-center bg-slate-50 px-4">
-  <div class="w-full max-w-sm">
+<!-- =====================================================================
+     Premium split-screen login
+     Left  : brand / marketing panel (hidden on small screens)
+     Right : sign-in card + one-click demo access + "Back to home"
+     Reuses brand-* / slate-* design tokens. Needs RouterLink in the component.
+     ===================================================================== -->
+<div class="flex min-h-screen bg-slate-50">
 
-    <!-- Brand -->
-    <div class="mb-8 flex items-center justify-center gap-2">
-      <div class="grid h-9 w-9 place-items-center rounded-lg bg-brand-600">
-        <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-          <path d="M4 8h11M4 16h7" />
-          <path d="m16 5 4 3-4 3" />
-        </svg>
+  <!-- ============================ LEFT: BRAND PANEL ============================ -->
+  <div class="relative hidden w-1/2 overflow-hidden bg-brand-600 lg:flex lg:flex-col">
+    <div class="absolute inset-0 bg-gradient-to-br from-brand-600 via-brand-600 to-indigo-800"></div>
+    <div class="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-white/10 blur-3xl"></div>
+    <div class="pointer-events-none absolute -bottom-32 -right-16 h-96 w-96 rounded-full bg-indigo-400/20 blur-3xl"></div>
+    <div class="pointer-events-none absolute inset-0 opacity-[0.07]"
+         style="background-image:linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px);background-size:48px 48px;"></div>
+
+    <div class="relative z-10 flex h-full flex-col justify-between p-12 xl:p-16">
+      <!-- Wordmark (clickable → home) -->
+      <a routerLink="/" class="flex items-center gap-2.5">
+        <div class="grid h-10 w-10 place-items-center rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur">
+          <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <path d="M4 8h11M4 16h7" />
+            <path d="m16 5 4 3-4 3" />
+          </svg>
+        </div>
+        <span class="text-xl font-semibold tracking-tight text-white">Stockflow</span>
+      </a>
+
+      <div class="max-w-md">
+        <h2 class="text-4xl font-semibold leading-tight tracking-tight text-white xl:text-[2.6rem]">
+          Inventory &amp; ordering,
+          <span class="text-indigo-200">fully reconciled.</span>
+        </h2>
+        <p class="mt-4 text-base leading-relaxed text-indigo-100/90">
+          Every unit is explainable — in, out, and forecast. A semantic, immutable
+          ledger that answers not just <em>what</em> the stock is, but <em>why</em> —
+          and <em>when</em> it runs out.
+        </p>
+
+        <ul class="mt-8 space-y-4">
+          @for (item of [
+            'Delivery reconciliation — intent vs. what actually arrived',
+            'Physical stock count — reconcile the shelf against the system',
+            'Smart runway — days-of-stock projection with reorder alerts'
+          ]; track item) {
+            <li class="flex items-start gap-3">
+              <span class="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-white/15 ring-1 ring-white/20">
+                <svg class="h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              </span>
+              <span class="text-sm text-indigo-100/90">{{ item }}</span>
+            </li>
+          }
+        </ul>
       </div>
-      <span class="text-xl font-semibold tracking-tight text-slate-900">
-        Stock<span class="text-brand-600">flow</span>
-      </span>
+
+      <div class="flex items-center gap-2 text-xs text-indigo-100/70">
+        <span class="inline-flex h-1.5 w-1.5 rounded-full bg-green-400"></span>
+        Live demo · built in Belgrade 🇷🇸
+      </div>
     </div>
+  </div>
 
-    <!-- Card -->
-    <div class="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
-      <h1 class="text-lg font-semibold text-slate-900">Welcome back</h1>
-      <p class="mt-1 text-sm text-slate-500">Sign in to your account to continue.</p>
+  <!-- ============================ RIGHT: SIGN-IN ============================ -->
+  <div class="relative flex w-full items-center justify-center px-4 py-10 sm:px-6 lg:w-1/2">
 
-      <form [formGroup]="form" (ngSubmit)="submit()" class="mt-6 space-y-4">
+    <!-- Back to landing -->
+    <a routerLink="/"
+       class="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 sm:left-6 sm:top-6">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+      Back to home
+    </a>
+
+    <div class="w-full max-w-sm">
+
+      <!-- Mobile wordmark (brand panel hidden below lg) -->
+      <a routerLink="/" class="mb-8 flex items-center justify-center gap-2 lg:hidden">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-brand-600">
+          <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <path d="M4 8h11M4 16h7" />
+            <path d="m16 5 4 3-4 3" />
+          </svg>
+        </div>
+        <span class="text-xl font-semibold tracking-tight text-slate-900">
+          Stock<span class="text-brand-600">flow</span>
+        </span>
+      </a>
+
+      <div class="mb-8">
+        <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Welcome back</h1>
+        <p class="mt-1.5 text-sm text-slate-500">Sign in to your account to continue.</p>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
         <!-- Email -->
         <div>
           <label class="mb-1.5 block text-sm font-medium text-slate-700">Email</label>
-          <input type="email" formControlName="email" autocomplete="email"
-                 placeholder="you@company.com"
-                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm
-                        text-slate-900 outline-none transition
-                        focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+          <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-0 grid w-10 place-items-center text-slate-400">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+            </span>
+            <input type="email" formControlName="email" autocomplete="email"
+                   placeholder="you@company.com"
+                   class="w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-3 text-sm
+                          text-slate-900 outline-none transition
+                          focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+          </div>
+          @if (form.controls.email.touched && form.controls.email.invalid) {
+            <p class="mt-1 text-xs text-red-500">Enter a valid email address.</p>
+          }
         </div>
 
         <!-- Password -->
         <div>
           <label class="mb-1.5 block text-sm font-medium text-slate-700">Password</label>
-          <input type="password" formControlName="password" autocomplete="current-password"
-                 placeholder="••••••••"
-                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm
-                        text-slate-900 outline-none transition
-                        focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+          <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-0 grid w-10 place-items-center text-slate-400">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            </span>
+            <input [type]="showPassword() ? 'text' : 'password'" formControlName="password"
+                   autocomplete="current-password" placeholder="••••••••"
+                   class="w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-11 text-sm
+                          text-slate-900 outline-none transition
+                          focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+            <button type="button" (click)="showPassword.set(!showPassword())"
+                    [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                    class="absolute inset-y-0 right-0 grid w-11 place-items-center text-slate-400 transition hover:text-slate-600">
+              @if (showPassword()) {
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              } @else {
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c6.5 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.42M6.6 6.6A13.2 13.2 0 0 0 2 11s3.5 7 10 7a9.1 9.1 0 0 0 3.4-.66M3 3l18 18M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+              }
+            </button>
+          </div>
         </div>
 
         <!-- Error -->
         @if (error()) {
-          <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
-            {{ error() }}
+          <div class="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
+            <svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+            <span>{{ error() }}</span>
           </div>
         }
 
         <!-- Submit -->
         <button type="submit" [disabled]="loading()"
-                class="flex w-full items-center justify-center rounded-lg bg-brand-600
-                       px-4 py-2.5 text-sm font-medium text-white transition
-                       hover:bg-brand-700 disabled:opacity-60">
+                class="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600
+                       px-4 py-2.5 text-sm font-medium text-white shadow-sm transition
+                       hover:bg-brand-700 focus:ring-2 focus:ring-brand-500/30 disabled:opacity-60">
           @if (loading()) {
+            <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4Z"/></svg>
             <span>Signing in…</span>
           } @else {
             <span>Sign in</span>
           }
         </button>
       </form>
-    </div>
 
-    <p class="mt-6 text-center text-xs text-slate-400">
-      Stockflow · Inventory &amp; Ordering
-    </p>
+      <!-- ===================== DEMO ACCESS ===================== -->
+      <div class="mt-6">
+        <div class="relative flex items-center">
+          <div class="flex-grow border-t border-slate-200"></div>
+          <span class="mx-3 text-xs font-medium uppercase tracking-wide text-slate-400">Just exploring?</span>
+          <div class="flex-grow border-t border-slate-200"></div>
+        </div>
+
+        <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+          <div class="flex items-center gap-2">
+            <span class="grid h-8 w-8 place-items-center rounded-lg bg-brand-50 text-brand-600">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg>
+            </span>
+            <div>
+              <div class="text-sm font-medium text-slate-900">Try the live demo</div>
+              <div class="text-xs text-slate-400">No sign-up — read-only sample data</div>
+            </div>
+          </div>
+
+          <div class="mt-3 grid grid-cols-1 gap-1.5 rounded-lg bg-slate-50 p-3 font-mono text-xs text-slate-500 ring-1 ring-slate-100">
+            <div class="flex justify-between"><span>email</span><span class="text-slate-700">{{ demoEmail }}</span></div>
+            <div class="flex justify-between"><span>password</span><span class="text-slate-700">{{ demoPassword }}</span></div>
+          </div>
+
+          <button type="button" (click)="useDemo()" [disabled]="loading()"
+                  class="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-brand-200
+                         bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 transition
+                         hover:bg-brand-100 disabled:opacity-60">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            Enter demo account
+          </button>
+        </div>
+      </div>
+
+      <p class="mt-8 text-center text-xs text-slate-400">
+        Stockflow · Inventory &amp; Ordering
+      </p>
+    </div>
   </div>
 </div>
