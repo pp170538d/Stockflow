@@ -2,8 +2,7 @@
      Stockflow — public landing page  (route: '')
      On-brand: Linear/Stripe/Vercel restraint. Motion is subtle & tasteful.
      Scroll-reveal via [appReveal]; cursor-follow glow in the hero.
-     Requires the small CSS block at the bottom (move to styles.css if you
-     prefer). Reuses brand-* / slate-* design tokens.
+     Smooth section nav via scrollTo() in the component.
      ===================================================================== -->
 <div class="min-h-screen bg-white text-slate-900">
 
@@ -17,8 +16,8 @@
         <span class="text-lg font-semibold tracking-tight">Stock<span class="text-brand-600">flow</span></span>
       </a>
       <nav class="flex items-center gap-1 sm:gap-2">
-        <a href="#features" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-slate-900 sm:block">Features</a>
-        <a href="#architecture" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-slate-900 sm:block">Architecture</a>
+        <a href="#features" (click)="scrollTo($event, 'features')" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-slate-900 sm:block">Features</a>
+        <a href="#architecture" (click)="scrollTo($event, 'architecture')" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-slate-900 sm:block">Architecture</a>
         <a routerLink="/login" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-slate-900">Sign in</a>
         <a routerLink="/login" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700">
           Live demo
@@ -74,21 +73,18 @@
             <span class="h-3 w-3 rounded-full bg-red-400"></span>
             <span class="h-3 w-3 rounded-full bg-amber-400"></span>
             <span class="h-3 w-3 rounded-full bg-green-400"></span>
-            <span class="ml-3 flex-1 truncate rounded-md bg-white px-3 py-1 text-left text-xs text-slate-400 ring-1 ring-slate-200">stockflow-chi-eight.vercel.app/dashboard</span>
+            <span class="ml-3 flex-1 truncate rounded-md bg-white px-3 py-1 text-left text-xs text-slate-400 ring-1 ring-slate-200">stockflow-petar.vercel.app/dashboard</span>
           </div>
           <!-- Real product screenshot -->
-          <img
-            src="../../../assets/dashboard.png"
-            alt="Stockflow dashboard — KPIs, order status overview, and recent orders"
-            class="w-full"
-            loading="lazy" />
+          <img src="dashboard.png" alt="Stockflow dashboard — KPIs, order status overview, and recent orders"
+               class="w-full" loading="lazy" />
         </div>
       </div>
     </div>
   </section>
 
   <!-- ============================ FEATURES ============================ -->
-  <section id="features" class="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
+  <section id="features" class="scroll-mt-24 mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
     <div appReveal class="mx-auto max-w-2xl text-center">
       <h2 class="text-3xl font-semibold tracking-tight sm:text-4xl">Not an order tracker. A reconciliation system.</h2>
       <p class="mt-4 text-slate-600">Every unit is explainable — in, out, and forecast. Four capabilities carry the whole product.</p>
@@ -109,7 +105,7 @@
   </section>
 
   <!-- ============================ ARCHITECTURE / RECONCILIATION ============================ -->
-  <section id="architecture" class="border-y border-slate-200 bg-slate-50">
+  <section id="architecture" class="scroll-mt-24 border-y border-slate-200 bg-slate-50">
     <div class="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
       <div class="grid items-center gap-12 lg:grid-cols-2">
         <div appReveal>

@@ -71,4 +71,13 @@ export class LandingComponent implements OnInit {
     this.glowX.set(((event.clientX - rect.left) / rect.width) * 100);
     this.glowY.set(((event.clientY - rect.top) / rect.height) * 100);
   }
+
+  /** Smooth-scroll to a section id, overriding the browser's instant jump. */
+  scrollTo(event: Event, id: string): void {
+    event.preventDefault();
+    document.getElementById(id)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }
 }
