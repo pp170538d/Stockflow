@@ -168,7 +168,10 @@ export class InventoryService {
 
   /** Turn raw Postgres / trigger errors into human-readable messages. */
   private friendly(msg: string): string {
+    if (msg.includes('DEMO_READONLY'))
+        return 'This action is disabled in the demo account.';    
     if (msg.includes('Insufficient stock')) return msg;
+
     if (msg.includes('violates row-level security')) {
       return "You don't have permission to record a movement for this object.";
     }

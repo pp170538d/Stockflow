@@ -1,6 +1,15 @@
 import { Injectable, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
 import { BusinessObject, ObjectInput } from './object.model';
+import { demoFriendly } from '../../core/demo-error';
+
+/**
+ * An UPDATE blocked by a row-level security policy does NOT raise an error in
+ * PostgREST — the policy acts as a filter, so the statement matches zero rows
+ * and reports success. Asking for the touched rows back with .select() is the
+ * only reliable way to tell "blocked" apart from "written".
+ */
+const BLOCKED = 'This action is disabled in the demo account.';
 
 @Injectable({ providedIn: 'root' })
 export class ObjectsService {
@@ -26,34 +35,55 @@ export class ObjectsService {
     this.loading.set(false);
   }
 
-  /** Create a new object. */
+  /** Create a new object. INSERT does raise on a failing WITH CHECK. */
   async create(input: ObjectInput): Promise<string | null> {
     const { error } = await supabase.from('objects').insert(input);
-    if (error) return error.message;
+    if (error) return demoFriendly(error.message);
     await this.load();
     return null;
   }
 
   /** Update an existing object. */
   async update(id: string, input: ObjectInput): Promise<string | null> {
-    const { error } = await supabase.from('objects').update(input).eq('id', id);
-    if (error) return error.message;
+    const { data, error } = await supabase
+      .from('objects')
+      .update(input)
+      .eq('id', id)
+      .select('id');
+
+    if (error) return demoFriendly(error.message);
+    if (!data || data.length === 0) return BLOCKED;
+
     await this.load();
     return null;
   }
 
   /** Soft-delete: flip active to false. */
   async deactivate(id: string): Promise<string | null> {
-    const { error } = await supabase.from('objects').update({ active: false }).eq('id', id);
-    if (error) return error.message;
+    const { data, error } = await supabase
+      .from('objects')
+      .update({ active: false })
+      .eq('id', id)
+      .select('id');
+
+    if (error) return demoFriendly(error.message);
+    if (!data || data.length === 0) return BLOCKED;
+
     await this.load();
     return null;
   }
 
   /** Reactivate an object. */
   async activate(id: string): Promise<string | null> {
-    const { error } = await supabase.from('objects').update({ active: true }).eq('id', id);
-    if (error) return error.message;
+    const { data, error } = await supabase
+      .from('objects')
+      .update({ active: true })
+      .eq('id', id)
+      .select('id');
+
+    if (error) return demoFriendly(error.message);
+    if (!data || data.length === 0) return BLOCKED;
+
     await this.load();
     return null;
   }

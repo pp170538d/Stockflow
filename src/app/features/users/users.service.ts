@@ -1,11 +1,20 @@
 import { Injectable, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
 import { UserProfile, UserRole } from '../../core/auth/user-profile.model';
+import { demoFriendly } from '../../core/demo-error';
 
 // Profile joined with its assigned object's name
 export interface UserRow extends UserProfile {
   object?: { name: string } | null;
 }
+
+/**
+ * An UPDATE blocked by a row-level security policy does NOT raise an error in
+ * PostgREST — the policy acts as a filter, so the statement matches zero rows
+ * and reports success. Asking for the touched rows back with .select() is the
+ * only reliable way to tell "blocked" apart from "written".
+ */
+const BLOCKED = 'This action is disabled in the demo account.';
 
 @Injectable({ providedIn: 'root' })
 export class UsersService {
@@ -28,15 +37,29 @@ export class UsersService {
   }
 
   async setRole(userId: string, role: UserRole): Promise<string | null> {
-    const { error } = await supabase.from('profiles').update({ role }).eq('id', userId);
-    if (error) return error.message;
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ role })
+      .eq('id', userId)
+      .select('id');
+
+    if (error) return demoFriendly(error.message);
+    if (!data || data.length === 0) return BLOCKED;
+
     await this.load();
     return null;
   }
 
   async setObject(userId: string, objectId: string | null): Promise<string | null> {
-    const { error } = await supabase.from('profiles').update({ object_id: objectId }).eq('id', userId);
-    if (error) return error.message;
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ object_id: objectId })
+      .eq('id', userId)
+      .select('id');
+
+    if (error) return demoFriendly(error.message);
+    if (!data || data.length === 0) return BLOCKED;
+
     await this.load();
     return null;
   }

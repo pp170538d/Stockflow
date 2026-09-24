@@ -51,6 +51,13 @@ export class SettingsComponent implements OnInit {
   async changePassword(): Promise<void> {
     this.passwordMsg.set(null);
     this.passwordErr.set(null);
+    this.passwordMsg.set(null);
+  this.passwordErr.set(null);
+ 
+if (this.auth.isDemo()) {
+this.passwordErr.set('Password changes are disabled in the demo account.');
+return;
+}
     if (this.newPassword().length < 6) {
       this.passwordErr.set('Password must be at least 6 characters.');
       return;

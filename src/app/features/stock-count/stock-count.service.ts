@@ -110,8 +110,11 @@ export class StockCountService {
   }
 
   private friendly(msg: string): string {
+    if (msg.includes('DEMO_READONLY'))
+        return 'This action is disabled in the demo account.';
     if (msg.includes('A reason is required'))
-      return 'Add a reason for every product whose counted quantity differs from the expected.';
+      if (msg.includes('A reason is required'))
+        return 'Add a reason for every product whose counted quantity differs from the expected.';
     if (msg.includes('at least one product'))
       return 'Count at least one product before submitting.';
     if (msg.includes('violates row-level security'))

@@ -1,6 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
 import { Order, OrderStatus, NewOrderLine } from './order.model';
+import { demoFriendly } from '../../core/demo-error';
 
 export interface OrdersQuery {
   page: number;
@@ -9,6 +10,14 @@ export interface OrdersQuery {
   objectId: string;
   search: string;
 }
+
+/**
+ * An UPDATE blocked by a row-level security policy does NOT raise an error in
+ * PostgREST — the policy acts as a filter, so the statement matches zero rows
+ * and reports success. Asking for the touched rows back with .select() is the
+ * only reliable way to tell "blocked" apart from "written".
+ */
+const BLOCKED = 'This action is disabled in the demo account.';
 
 @Injectable({ providedIn: 'root' })
 export class OrdersService {
@@ -118,7 +127,7 @@ export class OrdersService {
     });
 
     if (error) {
-      return error.message;
+      return demoFriendly(error.message);
     }
 
     return null;
@@ -130,13 +139,17 @@ export class OrdersService {
    * Caller decides how to reload, so active filters/page are preserved.
    */
   async setStatus(orderId: string, status: OrderStatus): Promise<string | null> {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('orders')
       .update({ status })
-      .eq('id', orderId);
+      .eq('id', orderId)
+      .select('id');
 
     if (error) {
-      return error.message;
+      return demoFriendly(error.message);
+    }
+    if (!data || data.length === 0) {
+      return BLOCKED;
     }
 
     return null;

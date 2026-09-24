@@ -52,6 +52,10 @@ export class UsersComponent implements OnInit {
   }
 
   openEdit(u: UserRow): void {
+    // The demo account is read-only here. The buttons are hidden in the
+    // template, but this guard also covers direct calls from the console.
+    if (this.auth.isDemo()) return;
+
     this.editingUser.set(u);
     this.draftRole.set(u.role);
     this.draftObjectId.set(u.object_id ?? '');
@@ -64,6 +68,13 @@ export class UsersComponent implements OnInit {
   }
 
   async save(): Promise<void> {
+    // Second line of defence — RLS blocks this too, but failing early
+    // avoids a pointless round-trip and a raw Postgres error.
+    if (this.auth.isDemo()) {
+      this.formError.set('This action is disabled in the demo account.');
+      return;
+    }
+
     const u = this.editingUser();
     if (!u) return;
 

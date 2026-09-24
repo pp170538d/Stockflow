@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AuthService } from '../../core/auth/auth.service';
 import { ProductsService } from './products.service';
 import { Product } from './product.model';
 import { BadgeComponent } from '../../shared/ui/badge.component';
@@ -17,6 +18,7 @@ import { ConfirmService } from '../../shared/ui/confirm.service';
 })
 export class ProductsComponent implements OnInit {
   readonly svc = inject(ProductsService);
+  readonly auth = inject(AuthService);
   private fb = inject(FormBuilder);
   private toast = inject(ToastService);
   private confirm = inject(ConfirmService);
@@ -65,6 +67,9 @@ export class ProductsComponent implements OnInit {
   }
 
   openCreate(): void {
+    // Buttons are hidden for the demo account; this also covers console calls.
+    if (this.auth.isDemo()) return;
+
     this.editingId.set(null);
     this.formError.set(null);
     this.form.reset({ sku: '', name: '', category: '', active: true });
@@ -72,6 +77,8 @@ export class ProductsComponent implements OnInit {
   }
 
   openEdit(p: Product): void {
+    if (this.auth.isDemo()) return;
+
     this.editingId.set(p.id);
     this.formError.set(null);
     this.form.reset({
@@ -88,6 +95,10 @@ export class ProductsComponent implements OnInit {
   }
 
   async save(): Promise<void> {
+    if (this.auth.isDemo()) {
+      this.formError.set('This action is disabled in the demo account.');
+      return;
+    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -118,6 +129,11 @@ export class ProductsComponent implements OnInit {
   }
 
   async toggleActive(p: Product): Promise<void> {
+    if (this.auth.isDemo()) {
+      this.toast.error('This action is disabled in the demo account.');
+      return;
+    }
+
     if (p.active) {
       const ok = await this.confirm.ask({
         title: 'Deactivate this product?',

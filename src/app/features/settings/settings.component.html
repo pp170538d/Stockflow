@@ -6,6 +6,17 @@
 
 <div class="max-w-xl space-y-6">
 
+  <!-- ===== DEMO NOTICE ===== -->
+  @if (auth.isDemo()) {
+    <div class="rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200">
+      <p class="text-sm font-medium text-amber-900">You're signed in to the demo account</p>
+      <p class="mt-1 text-xs text-amber-700">
+        Browse everything freely. Changes are limited to the sandbox object so the
+        demo stays usable for the next visitor.
+      </p>
+    </div>
+  }
+
   <!-- ===== PROFILE ===== -->
   <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
     <h2 class="text-sm font-semibold text-slate-900">My profile</h2>
@@ -31,9 +42,12 @@
         <label class="mb-1.5 block text-sm font-medium text-slate-700">Full name</label>
         <input type="text" [value]="fullName()"
           (input)="fullName.set($any($event.target).value)"
-          placeholder="e.g. Petar Petrović"
+          [disabled]="auth.isDemo()"
+          placeholder="e.g. Petar Petrovic"
           class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20
+                 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50
+                 disabled:text-slate-500" />
       </div>
 
       @if (profileMsg()) {
@@ -42,56 +56,70 @@
         </div>
       }
 
-      <button (click)="saveProfile()" [disabled]="savingProfile()"
-        class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
-               transition hover:bg-brand-700 disabled:opacity-60">
-        {{ savingProfile() ? 'Saving…' : 'Save profile' }}
-      </button>
+      @if (auth.isDemo()) {
+        <p class="text-xs text-slate-400">Profile changes are disabled in the demo account.</p>
+      } @else {
+        <button (click)="saveProfile()" [disabled]="savingProfile()"
+          class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
+                 transition hover:bg-brand-700 disabled:opacity-60">
+          {{ savingProfile() ? 'Saving…' : 'Save profile' }}
+        </button>
+      }
     </div>
   </div>
 
   <!-- ===== PASSWORD ===== -->
-  <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
-    <h2 class="text-sm font-semibold text-slate-900">Change password</h2>
-    <p class="mt-0.5 text-xs text-slate-400">Update your login password.</p>
+  @if (!auth.isDemo()) {
+    <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
+      <h2 class="text-sm font-semibold text-slate-900">Change password</h2>
+      <p class="mt-0.5 text-xs text-slate-400">Update your login password.</p>
 
-    <div class="mt-4 space-y-4">
-      <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">New password</label>
-        <input type="password" [value]="newPassword()"
-          (input)="newPassword.set($any($event.target).value)"
-          placeholder="••••••••"
-          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-      </div>
-
-      <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">Confirm password</label>
-        <input type="password" [value]="confirmPassword()"
-          (input)="confirmPassword.set($any($event.target).value)"
-          placeholder="••••••••"
-          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-      </div>
-
-      @if (passwordErr()) {
-        <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
-          {{ passwordErr() }}
+      <div class="mt-4 space-y-4">
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-slate-700">New password</label>
+          <input type="password" [value]="newPassword()"
+            (input)="newPassword.set($any($event.target).value)"
+            placeholder="••••••••"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+                   transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
         </div>
-      }
-      @if (passwordMsg()) {
-        <div class="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 ring-1 ring-green-100">
-          {{ passwordMsg() }}
-        </div>
-      }
 
-      <button (click)="changePassword()" [disabled]="savingPassword()"
-        class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
-               transition hover:bg-brand-700 disabled:opacity-60">
-        {{ savingPassword() ? 'Updating…' : 'Change password' }}
-      </button>
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-slate-700">Confirm password</label>
+          <input type="password" [value]="confirmPassword()"
+            (input)="confirmPassword.set($any($event.target).value)"
+            placeholder="••••••••"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+                   transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+        </div>
+
+        @if (passwordErr()) {
+          <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
+            {{ passwordErr() }}
+          </div>
+        }
+        @if (passwordMsg()) {
+          <div class="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 ring-1 ring-green-100">
+            {{ passwordMsg() }}
+          </div>
+        }
+
+        <button (click)="changePassword()" [disabled]="savingPassword()"
+          class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
+                 transition hover:bg-brand-700 disabled:opacity-60">
+          {{ savingPassword() ? 'Updating…' : 'Change password' }}
+        </button>
+      </div>
     </div>
-  </div>
+  } @else {
+    <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
+      <h2 class="text-sm font-semibold text-slate-900">Change password</h2>
+      <p class="mt-0.5 text-xs text-slate-400">
+        Password changes are disabled in the demo account so the shared
+        credentials keep working.
+      </p>
+    </div>
+  }
 
   <!-- ===== SIGN OUT ===== -->
   <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">

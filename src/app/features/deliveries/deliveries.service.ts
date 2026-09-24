@@ -115,8 +115,10 @@ export class DeliveriesService {
 
   /** Turn raw Postgres / RPC exceptions into human-readable messages. */
   private friendly(msg: string): string {
+    if (msg.includes('DEMO_READONLY'))
+      return 'This action is disabled in the demo account.';
     if (msg.includes('already been delivered'))
-      return 'This order has already been delivered — a delivery is final and can’t be repeated.';
+      return 'This order has already been delivered — a delivery is final and can not be repeated.';
     if (msg.includes('must be APPROVED'))
       return 'Only APPROVED orders can be delivered. Approve the order first.';
     if (msg.includes('A reason is required'))

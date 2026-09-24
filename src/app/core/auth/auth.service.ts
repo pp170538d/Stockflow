@@ -14,7 +14,8 @@ export class AuthService {
   // Convenience computed signals
   readonly isLoggedIn = computed(() => this._profile() !== null);
   readonly isAdmin = computed(() => this._profile()?.role === 'ADMIN');
-
+  readonly isDemo = computed(() => this._profile()?.email === 'demo@stockflow.com'); 
+  
   constructor() {
     this.restoreSession();
 
