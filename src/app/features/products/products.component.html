@@ -160,7 +160,7 @@
   <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4">
     <div>
       <label class="mb-1.5 block text-sm font-medium text-slate-700">SKU <span class="text-red-500">*</span></label>
-      <input type="text" formControlName="sku" placeholder="e.g. IQOS-ILUMA-001"
+      <input type="text" formControlName="sku" placeholder="e.g. SKU-1001"
         class="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none
                transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
       @if (form.controls.sku.touched && form.controls.sku.invalid) {
@@ -170,7 +170,7 @@
 
     <div>
       <label class="mb-1.5 block text-sm font-medium text-slate-700">Name <span class="text-red-500">*</span></label>
-      <input type="text" formControlName="name" placeholder="e.g. IQOS Iluma Prime"
+      <input type="text" formControlName="name" placeholder="e.g. Mineral water 0.5L"
         class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
                transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
       @if (form.controls.name.touched && form.controls.name.invalid) {

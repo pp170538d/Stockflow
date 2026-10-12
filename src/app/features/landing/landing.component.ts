@@ -39,6 +39,9 @@ const MAP_H = 700;
     .flow-line { stroke-dasharray: 6 6; animation: dash 1s linear infinite; }
     @keyframes pulse-ring { 0% { r: 14; opacity: .5; } 100% { r: 40; opacity: 0; } }
     .pulse { animation: pulse-ring 1.6s ease-out infinite; }
+    .btl { transition: opacity .25s ease, transform .3s cubic-bezier(.2,.8,.2,1); transform-box: fill-box; transform-origin: center bottom; }
+    .btl rect { transition: fill .3s ease; }
+    .btl-off { opacity: 0; transform: translateY(-10px) scale(.6); }
     [appReveal] { opacity: 0; transform: translateY(16px); transition: opacity .6s ease, transform .6s ease; }
     [appReveal].is-visible { opacity: 1; transform: none; }
     .card-in  { opacity: 1; transform: none; pointer-events: auto; visibility: visible;
@@ -86,7 +89,7 @@ export class LandingComponent implements OnInit, AfterViewInit {
       mcam: { x: 760, y: 290, s: 2.6 },
       cam: { x: 840, y: 320, s: 2.1 },
       hood: [
-        { layer: 'UI', text: 'New order → 24 × SKU-1001' },
+        { layer: 'UI', text: 'New order \u2192 24 \u00d7 SKU-1001' },
         { layer: 'RPC', text: 'create_order_with_items()' },
         { layer: 'SQL', text: 'orders · status = PENDING' },
         { layer: 'RLS', text: 'seller may only order for own store' },
@@ -111,8 +114,8 @@ export class LandingComponent implements OnInit, AfterViewInit {
         { layer: 'UI', text: 'Confirm delivery · 22 of 24' },
         { layer: 'RPC', text: 'record_delivery() — one per order' },
         { layer: 'SQL', text: 'stock_movements · DELIVERY +22' },
-        { layer: 'TRIGGER', text: 'inventory 4 → 26' },
-        { layer: 'VIEW', text: 'order_fulfillment · variance −2' },
+        { layer: 'TRIGGER', text: 'inventory 4 \u2192 26' },
+        { layer: 'VIEW', text: 'order_fulfillment · variance -2' },
       ] },
     { step: '04 · Stock count', title: 'The shelf is the truth.',
       body: 'A physical count finds 25 where the system expects 26. The gap becomes its own signed event — corrected, never hidden.',
@@ -122,8 +125,8 @@ export class LandingComponent implements OnInit, AfterViewInit {
       hood: [
         { layer: 'UI', text: 'Stock count · counted 25' },
         { layer: 'RPC', text: 'record_stock_count() re-reads expected' },
-        { layer: 'SQL', text: 'stock_movements · STOCK_COUNT −1' },
-        { layer: 'TRIGGER', text: 'inventory 26 → 25' },
+        { layer: 'SQL', text: 'stock_movements · STOCK_COUNT -1' },
+        { layer: 'TRIGGER', text: 'inventory 26 \u2192 25' },
       ] },
     { step: '05 · Sale', title: 'A customer buys 3 bottles.',
       body: 'A customer buys three bottles at the checkout. The database refuses to sell what is not there, and the balance updates itself.',
@@ -132,9 +135,9 @@ export class LandingComponent implements OnInit, AfterViewInit {
       cam: { x: 1060, y: 460, s: 2.3 },
       hood: [
         { layer: 'UI', text: 'Record movement · SALE 3' },
-        { layer: 'SQL', text: 'stock_movements · SALE −3' },
-        { layer: 'TRIGGER', text: 'oversell check 3 ≤ 25 ✓' },
-        { layer: 'TRIGGER', text: 'inventory 25 → 22' },
+        { layer: 'SQL', text: 'stock_movements · SALE -3' },
+        { layer: 'TRIGGER', text: 'oversell check 3 \u2264 25 \u2713' },
+        { layer: 'TRIGGER', text: 'inventory 25 \u2192 22' },
       ] },
     { step: '06 · Runway', title: 'And it knows what comes next.',
       body: 'From real sales over the last 30 days Stockflow calculates how many days the shelf will last — and flags it before it is empty again.',
@@ -144,8 +147,8 @@ export class LandingComponent implements OnInit, AfterViewInit {
       hood: [
         { layer: 'SQL', text: 'SALE movements · last 30 days' },
         { layer: 'VIEW', text: 'rate = 54 sold / 30 d = 1.8 / day' },
-        { layer: 'VIEW', text: 'days left = 22 / 1.8 ≈ 12' },
-        { layer: 'UI', text: 'Reorder soon (≤ 14 days)' },
+        { layer: 'VIEW', text: 'days left = 22 / 1.8 ˜ 12' },
+        { layer: 'UI', text: 'Reorder soon (\u2264 14 days)' },
       ] },
   ];
 
@@ -156,14 +159,23 @@ export class LandingComponent implements OnInit, AfterViewInit {
     { chapter: 4, event: 'SALE',        qty: -3,  balance: 22, ref: 'checkout · 3 sold' },
   ];
 
+  /** The closing equation — every term links back to the chapter that wrote it. */
+  readonly recap: { value: string; label: string; note: string; cls: string; chapter: number | null }[] = [
+    { value: '4',        label: 'Opening',   note: 'what was on the shelf', cls: 'text-slate-400',  chapter: 0 },
+    { value: '+22',      label: 'Delivered', note: '24 ordered, 2 short',   cls: 'text-green-600',  chapter: 2 },
+    { value: '\u22121', label: 'Counted',   note: '1 bottle broken',       cls: 'text-amber-600',  chapter: 3 },
+    { value: '\u22123', label: 'Sold',      note: 'at the checkout',       cls: 'text-red-600',    chapter: 4 },
+    { value: '22',       label: 'On hand',   note: '~12 days left',         cls: 'text-brand-700',  chapter: 5 },
+  ];
+
   // ---------- scroll state ----------
-  /** 0 → 1 across the whole sticky story section. */
+  /** 0 -> 1 across the whole sticky story section. */
   readonly progress = signal(0);
 
   readonly chapter = computed(() =>
     Math.min(this.chapters.length - 1, Math.floor(this.progress() * this.chapters.length))
   );
-  /** 0 → 1 inside the current chapter. */
+  /** 0 -> 1 inside the current chapter. */
   readonly local = computed(() => {
     const n = this.chapters.length;
     return Math.min(1, Math.max(0, this.progress() * n - this.chapter()));
@@ -196,7 +208,7 @@ export class LandingComponent implements OnInit, AfterViewInit {
     return `${(x - w / 2).toFixed(1)} ${(y - h / 2).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`;
   });
 
-  /** Truck drives supplier → dock during chapter 3. */
+  /** Truck drives supplier -> dock during chapter 3. */
   readonly truckX = computed(() => {
     const c = this.chapter();
     if (c < 2) return 170;
@@ -204,7 +216,7 @@ export class LandingComponent implements OnInit, AfterViewInit {
     return lerp(170, 470, ease(clamp(this.local() / 0.6)));
   });
 
-  /** Order packet flies store → HQ in ch.1, approval flies back in ch.2. */
+  /** Order packet flies store -> HQ in ch.1, approval flies back in ch.2. */
   readonly packet = computed(() => {
     const c = this.chapter(), t = this.local();
     const store = { x: 800, y: 270 }, hq = { x: 600, y: 150 };
@@ -216,23 +228,49 @@ export class LandingComponent implements OnInit, AfterViewInit {
   readonly approved = computed(() => this.chapter() > 1 || (this.chapter() === 1 && this.local() > 0.45));
 
   /** Units on the shelf at this point of the story. */
+  /**
+   * Units on the shelf — driven by scroll, ONE unit at a time.
+   * Delivery fills bottle by bottle, count/sale first highlight the exact
+   * bottles that leave, then take them off one by one.
+   */
   readonly balance = computed(() => {
-    const c = this.chapter();
+    const c = this.chapter(), t = this.local();
+    const ramp = (from: number, to: number, a: number, b: number) =>
+      Math.round(lerp(from, to, clamp((t - a) / (b - a))));
     if (c < 2) return 4;
-    if (c === 2) return this.local() > 0.6 ? 26 : 4;
-    if (c === 3) return this.local() > 0.5 ? 25 : 26;
-    if (c === 4) return this.local() > 0.4 ? 22 : 25;
+    if (c === 2) return ramp(4, 26, 0.55, 0.85);   // truck docks first, then unload
+    if (c === 3) return ramp(26, 25, 0.5, 0.52);   // scanner finds it, one bottle out
+    if (c === 4) return ramp(25, 22, 0.38, 0.6);   // three bottles, one by one
     return 22;
   });
 
-  /** One box glyph per 2 units, laid out on a 3-shelf rack. */
-  readonly boxes = computed(() => {
-    const n = Math.ceil(this.balance() / 2);
-    return Array.from({ length: n }, (_, i) => ({
-      x: 772 + (i % 5) * 20,
-      y: 352 - Math.floor(i / 5) * 34,
-    }));
+  /** 26 slots = the highest balance in the story. 1 bottle = 1 unit. */
+  readonly slots = Array.from({ length: 26 }, (_, i) => ({
+    i,
+    x: 766 + (i % 13) * 9,
+    y: i < 13 ? 334 : 380,   // bottom of the bottle (sits on the shelf line)
+  }));
+
+  /** Bottles about to leave: amber for the count, red for the sale. */
+  private readonly marked = computed<{ from: number; to: number; body: string; neck: string } | null>(() => {
+    const c = this.chapter(), t = this.local();
+    if (c === 3 && t >= 0.3 && t < 0.52) return { from: 25, to: 26, body: '#fbbf24', neck: '#d97706' };
+    if (c === 4 && t >= 0.18 && t < 0.6) return { from: 22, to: 25, body: '#f87171', neck: '#dc2626' };
+    return null;
   });
+
+  /** Scanner sweeps the rack during the first half of the count chapter. */
+  clampScan(): number { return clamp(this.local() / 0.5); }
+
+  bottleOn(i: number): boolean { return i < this.balance(); }
+
+  bottleColor(i: number): { body: string; neck: string } {
+    const m = this.marked();
+    if (m && i >= m.from && i < m.to) return m;
+    if (this.chapter() === 2 && i >= 4) return { body: '#4ade80', neck: '#16a34a' };   // just delivered
+    if (this.lowStock()) return { body: '#fca5a5', neck: '#ef4444' };
+    return { body: '#818cf8', neck: '#4f46e5' };
+  }
 
   readonly visibleLedger = computed(() =>
     this.ledger.filter((l) => this.chapter() > l.chapter || (this.chapter() === l.chapter && this.local() > 0.5))
@@ -301,7 +339,7 @@ export class LandingComponent implements OnInit, AfterViewInit {
     this.progress.set(this.current);
   }
 
-  /** 0 → 1 based on how far the sticky stage has travelled through the section. */
+  /** 0 -> 1 based on how far the sticky stage has travelled through the section. */
   private readProgress(): number {
     const section = this.story()?.nativeElement;
     const sticky = this.stickyEl()?.nativeElement;
@@ -313,7 +351,7 @@ export class LandingComponent implements OnInit, AfterViewInit {
 
   /**
    * rAF loop that eases the displayed progress toward the scroll position.
-   * Absorbs iOS momentum / address-bar jumps → no stutter, no skipped frames.
+   * Absorbs iOS momentum / address-bar jumps -> no stutter, no skipped frames.
    */
   private start(): void {
     if (this.running) return;
@@ -333,7 +371,7 @@ export class LandingComponent implements OnInit, AfterViewInit {
     this.running = false;
   }
 
-  /** Tap a rail segment / table-of-contents entry → scroll to that chapter. */
+  /** Tap a rail segment / table-of-contents entry -> scroll to that chapter. */
   goTo(i: number): void {
     const section = this.story()?.nativeElement;
     const sticky = this.stickyEl()?.nativeElement;
@@ -369,19 +407,6 @@ export class LandingComponent implements OnInit, AfterViewInit {
     event.preventDefault();
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
-
-  readonly features = [
-    { title: 'Semantic immutable ledger', icon: 'M4 7h16M4 12h16M4 17h10',
-      body: 'Every change is an append-only event with meaning — DELIVERY, SALE, COUNT, ADJUSTMENT. The stock number always has a why.' },
-    { title: 'Delivery reconciliation', icon: 'M3 7h13l3 3v7h-2M3 7v10h2M8 17h6M5 17a2 2 0 1 0 4 0M14 17a2 2 0 1 0 4 0',
-      body: 'Orders record intent, deliveries record reality. Short and over surface as chips, with the reason attached.' },
-    { title: 'Physical stock count', icon: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
-      body: 'Reconcile the shelf against the system. A server-side re-read at submit protects against mid-count deliveries.' },
-    { title: 'Smart stock runway', icon: 'M3 3v18h18M7 15l4-4 3 3 5-6',
-      body: 'Days-of-stock from real sales velocity, most-at-risk first — and an honest "no recent sales" instead of a made-up number.' },
-  ];
-
-  readonly stack = ['Angular 20', 'TypeScript', 'Tailwind CSS v4', 'Supabase', 'PostgreSQL', 'Row Level Security', 'Vercel'];
 }
 
 function clamp(v: number, lo = 0, hi = 1): number { return Math.min(hi, Math.max(lo, v)); }
