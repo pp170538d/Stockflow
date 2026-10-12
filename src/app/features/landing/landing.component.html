@@ -1,14 +1,15 @@
 <!-- =====================================================================
-     Stockflow — public landing page  (route: '')
-     On-brand: Linear/Stripe/Vercel restraint. Motion is subtle & tasteful.
-     Scroll-reveal via [appReveal]; cursor-follow glow in the hero.
-     Smooth section nav via scrollTo() in the component.
+     Stockflow — landing · "Follow one delivery"
+     Scroll-driven story: a sticky warehouse map whose camera (SVG viewBox)
+     pans & zooms chapter by chapter while real app UI cards appear on top.
+     Visual language = the app itself: slate-50 canvas, white rounded-2xl
+     cards, ring-slate-200, brand-600, <app-badge>, mono SKUs.
      ===================================================================== -->
-<div class="min-h-screen bg-white text-slate-900">
+<div class="min-h-screen bg-slate-50 text-slate-900">
 
   <!-- ============================ NAV ============================ -->
-  <header class="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 backdrop-blur">
-    <div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8">
+  <header class="sticky top-0 z-50 h-16 border-b border-slate-200 bg-white/80 backdrop-blur">
+    <div class="mx-auto flex h-full max-w-7xl items-center justify-between px-5 sm:px-8">
       <a routerLink="/" class="flex items-center gap-2">
         <span class="grid h-8 w-8 place-items-center rounded-lg bg-brand-600">
           <svg class="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8h11M4 16h7"/><path d="m16 5 4 3-4 3"/></svg>
@@ -16,84 +17,377 @@
         <span class="text-lg font-semibold tracking-tight">Stock<span class="text-brand-600">flow</span></span>
       </a>
       <nav class="flex items-center gap-1 sm:gap-2">
+        <a href="#story" (click)="scrollTo($event, 'story')" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-slate-900 sm:block">The flow</a>
         <a href="#features" (click)="scrollTo($event, 'features')" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-slate-900 sm:block">Features</a>
-        <a href="#architecture" (click)="scrollTo($event, 'architecture')" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-slate-900 sm:block">Architecture</a>
         <a routerLink="/login" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-slate-900">Sign in</a>
-        <a routerLink="/login" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700">
-          Live demo
-        </a>
+        <a routerLink="/login" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700">Live demo</a>
       </nav>
     </div>
   </header>
 
   <!-- ============================ HERO ============================ -->
-  <section (pointermove)="onHeroMove($event)"
-           class="relative overflow-hidden border-b border-slate-200 bg-slate-50">
-    <!-- cursor-follow glow -->
-    <div class="pointer-events-none absolute inset-0 transition-[background] duration-200"
-         [style.background]="'radial-gradient(600px circle at ' + glowX() + '% ' + glowY() + '%, rgba(79,70,229,0.10), transparent 40%)'"></div>
-    <!-- grid texture -->
-    <div class="pointer-events-none absolute inset-0 opacity-[0.4]"
-         style="background-image:linear-gradient(#e2e8f0 1px,transparent 1px),linear-gradient(90deg,#e2e8f0 1px,transparent 1px);background-size:56px 56px;mask-image:radial-gradient(ellipse 70% 60% at 50% 0%,#000 40%,transparent 100%);"></div>
-
-    <div class="relative mx-auto max-w-6xl px-5 pb-20 pt-16 text-center sm:px-8 sm:pt-24">
-      <!-- badge -->
-      <div appReveal class="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm">
-        <span class="inline-flex h-1.5 w-1.5 rounded-full bg-green-500"></span>
-        Live · B2B Inventory & Ordering SaaS
+  <section class="border-b border-slate-200 bg-white">
+    <div class="mx-auto grid max-w-7xl gap-12 px-5 pb-16 pt-20 sm:px-8 sm:pt-24 lg:grid-cols-[1.4fr_1fr] lg:items-end">
+      <div>
+        <h1 appReveal class="max-w-3xl text-5xl font-semibold leading-[1.04] tracking-tight sm:text-7xl">
+          Where did the stock go?
+        </h1>
+        <p appReveal="80" class="mt-7 max-w-xl text-lg leading-relaxed text-slate-600">
+          Stockflow answers that for every unit. Scroll down and follow one order —
+          a case of water for a corner store — from an empty shelf to the checkout,
+          and see what the app does on screen and in the database at every step.
+        </p>
+        <div appReveal="140" class="mt-9 flex flex-col gap-3 sm:flex-row">
+          <a href="#story" (click)="scrollTo($event, 'story')" class="inline-flex items-center justify-center rounded-lg bg-brand-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-brand-700">
+            Follow the order ↓
+          </a>
+          <a routerLink="/login" class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+            Skip to the live demo
+          </a>
+        </div>
       </div>
 
-      <h1 appReveal class="mx-auto max-w-3xl text-4xl font-semibold leading-[1.1] tracking-tight sm:text-6xl">
-        Inventory &amp; ordering,
-        <span class="bg-gradient-to-r from-brand-600 to-indigo-500 bg-clip-text text-transparent">fully reconciled.</span>
-      </h1>
+      <!-- table of contents: the story at a glance -->
+      <ol appReveal="200" class="divide-y divide-slate-200 border-y border-slate-200 text-sm">
+        @for (c of chapters; track c.step; let i = $index) {
+          <li>
+            <button type="button" (click)="goTo(i)" class="group flex w-full items-baseline gap-4 py-2.5 text-left">
+              <span class="w-6 font-mono text-xs text-slate-400">{{ c.step.slice(0, 2) }}</span>
+              <span class="flex-1 text-slate-700 group-hover:text-slate-900">{{ c.title }}</span>
+              <span class="font-mono text-xs text-slate-300 group-hover:text-brand-600">→</span>
+            </button>
+          </li>
+        }
+      </ol>
+    </div>
+  </section>
 
-      <p appReveal="80" class="mx-auto mt-6 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
-        A premium stock-reconciliation platform built on a semantic, immutable ledger.
-        It answers not just <em>what</em> the stock is — but <em>why</em> it's that number,
-        and <em>when</em> it runs out.
-      </p>
+  <!-- ============================ STORY (sticky, scroll-driven) ============================
+       Mobile: step → text → map (+ shelf counter) → app screen (stacked, nothing overlaps)
+       Desktop: narrative + hood on the left, map stage with overlay screen on the right
+       ======================================================================================= -->
+  <section id="story" #story class="relative h-[620svh] lg:h-[720vh]">
+    <div #stickyEl class="sticky top-16 h-[calc(100svh-4rem)] overflow-hidden">
+      <div class="mx-auto flex h-full max-w-7xl flex-col gap-2.5 px-3 py-3 sm:gap-3 sm:px-6 lg:grid lg:grid-cols-[360px_1fr] lg:gap-8 lg:px-8 lg:py-8">
 
-      <div appReveal="160" class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-        <a routerLink="/login" class="group inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 sm:w-auto">
-          View live demo
-          <svg class="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </a>
-        <a routerLink="/login" class="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:w-auto">
-          Sign in
-        </a>
-      </div>
-      <p appReveal="220" class="mt-3 text-xs text-slate-400">No sign-up — a read-only demo account is on the login screen.</p>
-
-      <!-- product screenshot frame -->
-      <div appReveal="280" class="mx-auto mt-14 max-w-4xl">
-        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10">
-          <!-- fake browser chrome -->
-          <div class="flex items-center gap-1.5 border-b border-slate-200 bg-slate-50 px-4 py-3">
-            <span class="h-3 w-3 rounded-full bg-red-400"></span>
-            <span class="h-3 w-3 rounded-full bg-amber-400"></span>
-            <span class="h-3 w-3 rounded-full bg-green-400"></span>
-            <span class="ml-3 flex-1 truncate rounded-md bg-white px-3 py-1 text-left text-xs text-slate-400 ring-1 ring-slate-200">stockflow-petar.vercel.app/dashboard</span>
+        <!-- ---------- NARRATIVE ---------- -->
+        <div class="flex shrink-0 flex-col lg:justify-center">
+          <!-- chapter rail -->
+          <div class="flex items-center gap-3">
+            <div class="flex flex-1 gap-1">
+              @for (c of chapters; track c.step; let i = $index) {
+                <button type="button" (click)="goTo(i)" [attr.aria-label]="c.step"
+                        class="h-1 flex-1 overflow-hidden rounded-full bg-slate-200 lg:h-1.5">
+                  <span class="block h-full rounded-full bg-brand-600"
+                        [style.width.%]="chapter() > i ? 100 : chapter() === i ? local() * 100 : 0"></span>
+                </button>
+              }
+            </div>
+            <span class="font-mono text-[11px] tabular-nums text-slate-500">Step {{ chapter() + 1 }} of {{ chapters.length }}</span>
           </div>
-          <!-- Real product screenshot -->
-          <img src="dashboard.png" alt="Stockflow dashboard — KPIs, order status overview, and recent orders"
-               class="w-full" loading="lazy" />
+
+          <!-- chapter text: all chapters stacked in ONE grid cell → fixed height, no jumping -->
+          <div class="mt-3 grid lg:mt-6">
+            @for (c of chapters; track c.step; let i = $index) {
+              <div class="[grid-area:1/1] transition-all duration-500" [class.card-in]="on(i)" [class.card-out]="!on(i)" [attr.aria-hidden]="!on(i)">
+                <p class="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-brand-600">{{ c.step }}</p>
+                <h2 class="mt-1.5 text-2xl font-semibold leading-tight tracking-tight sm:text-2xl lg:mt-3 lg:text-4xl">{{ c.title }}</h2>
+                <p class="mt-1.5 text-[15px] leading-snug text-slate-600 lg:hidden">{{ c.short }}</p>
+                <p class="mt-3 hidden leading-relaxed text-slate-600 lg:block">{{ c.body }}</p>
+              </div>
+            }
+          </div>
+
+          <!-- desktop: under the hood timeline -->
+          <div class="mt-6 hidden rounded-2xl bg-white p-4 ring-1 ring-slate-200 lg:block">
+            <div class="mb-3 flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-900">Under the hood</span>
+              <span class="font-mono text-[10px] text-slate-400">{{ chapters[chapter()].step }}</span>
+            </div>
+            <ol class="relative space-y-2 border-l border-slate-200 pl-4">
+              @for (s of hood(); track $index; let j = $index) {
+                <li class="relative transition-opacity duration-300" [class.opacity-100]="stepLit(j)" [class.opacity-30]="!stepLit(j)">
+                  <span class="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full ring-4 ring-white transition-colors"
+                        [class.bg-brand-600]="stepLit(j)" [class.bg-slate-300]="!stepLit(j)"></span>
+                  <div class="flex items-center gap-2">
+                    <span class="w-[58px] shrink-0 rounded px-1.5 py-0.5 text-center font-mono text-[10px] font-semibold" [class]="layerClass(s.layer)">{{ s.layer }}</span>
+                    <span class="truncate font-mono text-xs text-slate-700">{{ s.text }}</span>
+                  </div>
+                </li>
+              }
+            </ol>
+          </div>
+        </div>
+
+        <!-- ---------- STAGE ---------- -->
+        <div class="flex min-h-0 flex-1 flex-col gap-2.5 sm:gap-3 lg:relative lg:block lg:overflow-hidden lg:rounded-3xl lg:bg-white lg:shadow-xl lg:shadow-slate-900/5 lg:ring-1 lg:ring-slate-200">
+
+          <!-- map (camera = viewBox, fitted to this box) -->
+          <div #mapBox class="relative min-h-[150px] flex-1 overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-200 lg:absolute lg:inset-0 lg:rounded-none lg:ring-0">
+            <svg class="absolute inset-0 h-full w-full" [attr.viewBox]="viewBox()" preserveAspectRatio="xMidYMid meet"
+               role="img" aria-label="Animated warehouse map following one order">
+            <defs>
+              <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">
+                <circle cx="1" cy="1" r="1" fill="#e2e8f0" />
+              </pattern>
+            </defs>
+            <rect x="-2000" y="-2000" width="5200" height="4700" fill="#f8fafc" />
+            <rect x="-2000" y="-2000" width="5200" height="4700" fill="url(#dots)" />
+
+            <!-- ===== road supplier → dock ===== -->
+            <rect x="200" y="448" width="330" height="44" rx="8" fill="#e2e8f0" />
+            <line x1="210" y1="470" x2="520" y2="470" stroke="#fff" stroke-width="2" stroke-dasharray="14 12" />
+
+            <!-- ===== supplier DC ===== -->
+            <g>
+              <rect x="50" y="390" width="160" height="120" rx="14" fill="#fff" stroke="#cbd5e1" stroke-width="2" />
+              <path d="M50 420 h160" stroke="#e2e8f0" stroke-width="2" />
+              @for (i of [0,1,2,3]; track i) {
+                <rect [attr.x]="70 + i * 33" y="440" width="24" height="18" rx="3" fill="#e0e7ff" />
+                <rect [attr.x]="70 + i * 33" y="466" width="24" height="18" rx="3" fill="#e0e7ff" />
+              }
+              <text x="130" y="410" text-anchor="middle" font-size="13" font-family="ui-monospace,monospace" font-weight="600" fill="#334155">SUPPLIER</text>
+            </g>
+
+            <!-- ===== HQ ===== -->
+            <g>
+              <rect x="530" y="95" width="140" height="95" rx="14" fill="#fff"
+                    [attr.stroke]="on(1) ? '#4f46e5' : '#cbd5e1'" stroke-width="2" style="transition: stroke .3s" />
+              <rect x="552" y="122" width="96" height="48" rx="6" fill="#f1f5f9" />
+              <rect x="560" y="132" width="40" height="5" rx="2" fill="#cbd5e1" />
+              <rect x="560" y="144" width="64" height="5" rx="2" fill="#cbd5e1" />
+              <rect x="560" y="156" width="28" height="7" rx="3" [attr.fill]="approved() ? '#22c55e' : '#f59e0b'" style="transition: fill .3s" />
+              <text x="600" y="113" text-anchor="middle" font-size="12" font-family="ui-monospace,monospace" font-weight="600" fill="#334155">HQ · ADMIN</text>
+            </g>
+            <!-- data link store ↔ HQ -->
+            <path d="M800 268 Q 700 160 640 168" fill="none" stroke="#a5b4fc" stroke-width="2" class="flow-line" />
+            @if (packet().show) {
+              <circle [attr.cx]="packet().x" [attr.cy]="packet().y" r="7" fill="#4f46e5" />
+              <circle [attr.cx]="packet().x" [attr.cy]="packet().y" r="14" fill="#4f46e5" opacity=".15" />
+            }
+
+            <!-- ===== store: Corner Store ===== -->
+            <g>
+              <rect x="520" y="230" width="640" height="330" rx="22" fill="#fff" stroke="#cbd5e1" stroke-width="2" />
+              <text x="545" y="258" font-size="13" font-family="ui-monospace,monospace" font-weight="600" fill="#334155">CORNER STORE</text>
+              <!-- dock door -->
+              <rect x="514" y="436" width="14" height="68" rx="4" [attr.fill]="on(2) ? '#4f46e5' : '#94a3b8'" style="transition: fill .3s" />
+              <text x="545" y="525" font-size="12" font-family="ui-monospace,monospace" fill="#64748b">DOCK</text>
+            </g>
+
+            <!-- rack -->
+            <g>
+              @if (lowStock()) {
+                <circle cx="820" cy="320" r="14" fill="#ef4444" class="pulse" />
+              }
+              <rect x="760" y="270" width="124" height="120" rx="10" fill="#f8fafc"
+                    [attr.stroke]="on(3) || on(0) ? '#4f46e5' : '#cbd5e1'" stroke-width="2" style="transition: stroke .3s" />
+              @for (y of [308, 342, 376]; track y) {
+                <line x1="764" [attr.y1]="y" x2="880" [attr.y2]="y" stroke="#94a3b8" stroke-width="2" />
+              }
+              @for (b of boxes(); track $index) {
+                <rect [attr.x]="b.x" [attr.y]="b.y" width="16" height="22" rx="3"
+                      [attr.fill]="lowStock() ? '#fca5a5' : '#818cf8'" style="transition: fill .4s" />
+              }
+              <text x="822" y="410" text-anchor="middle" font-size="12" font-family="ui-monospace,monospace" fill="#334155" font-weight="600">SHELF 3 · SKU-1001</text>
+              <text x="822" y="426" text-anchor="middle" font-size="12" font-family="ui-monospace,monospace"
+                    [attr.fill]="lowStock() ? '#dc2626' : '#64748b'">on hand {{ balance() }}</text>
+              <!-- scanner beam during count -->
+              @if (on(3)) {
+                <line x1="760" x2="884" [attr.y1]="280 + local() * 100" [attr.y2]="280 + local() * 100" stroke="#4f46e5" stroke-width="2" opacity=".7" />
+              }
+            </g>
+
+            <!-- POS -->
+            <g>
+              <rect x="1000" y="440" width="120" height="44" rx="10" fill="#fff"
+                    [attr.stroke]="on(4) ? '#4f46e5' : '#cbd5e1'" stroke-width="2" style="transition: stroke .3s" />
+              <rect x="1012" y="450" width="34" height="24" rx="4" fill="#e0e7ff" />
+              <text x="1060" y="503" text-anchor="middle" font-size="12" font-family="ui-monospace,monospace" font-weight="600" fill="#334155">CHECKOUT</text>
+              <circle cx="1090" cy="418" r="10" fill="#cbd5e1" />
+              <rect x="1078" y="428" width="24" height="10" rx="5" fill="#cbd5e1" />
+              @if (on(4) && local() > 0.4) {
+                @for (i of [0,1,2]; track i) {
+                  <rect [attr.x]="1056 + i * 8" [attr.y]="430 - local() * 30 - i * 4" width="7" height="9" rx="2" fill="#818cf8" />
+                }
+              }
+            </g>
+
+            <!-- truck -->
+            <g [attr.transform]="'translate(' + truckX() + ' 452)'">
+              <rect x="-50" y="0" width="64" height="34" rx="5" fill="#4f46e5" />
+              <rect x="16" y="8" width="26" height="26" rx="5" fill="#3730a3" />
+              <rect x="24" y="12" width="12" height="9" rx="2" fill="#c7d2fe" />
+              <circle cx="-34" cy="36" r="6" fill="#0f172a" /><circle cx="28" cy="36" r="6" fill="#0f172a" />
+              <text x="-18" y="22" text-anchor="middle" font-size="9" font-family="ui-monospace,monospace" font-weight="700" fill="#fff">22</text>
+            </g>
+          </svg>
+
+            <!-- mobile: one simple number — bottles on the shelf -->
+            <div class="absolute left-2 top-2 flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 shadow-sm ring-1 ring-slate-200 lg:hidden">
+              <span class="text-xs text-slate-500">On the shelf</span>
+              <span class="text-lg font-semibold tabular-nums" [class.text-red-600]="lowStock()">{{ balance() }}</span>
+              @if (stockDelta() !== 0) {
+                <span class="row-in rounded-md px-1.5 py-0.5 text-xs font-semibold"
+                      [class]="stockDelta() > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'">
+                  {{ stockDelta() > 0 ? '+' : '' }}{{ stockDelta() }}
+                </span>
+              }
+            </div>
+
+            <!-- scroll cue -->
+            <div class="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center lg:bottom-auto lg:top-3 transition-opacity duration-300"
+                 [class.opacity-0]="progress() > 0.02">
+              <span class="rounded-full bg-slate-900/80 px-3 py-1 text-[11px] font-medium text-white">Scroll to follow the order ↓</span>
+            </div>
+          </div>
+
+          <!-- app screen: in flow on mobile, floating on desktop -->
+          <p class="-mb-1 shrink-0 px-1 text-[11px] font-medium uppercase tracking-wider text-slate-400 lg:hidden">In the app</p>
+          <div class="grid shrink-0 lg:pointer-events-none lg:absolute lg:right-5 lg:top-5 lg:w-80">
+              <!-- 01 order -->
+              <div class="[grid-area:1/1] rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 transition-all duration-500 sm:p-4 lg:shadow-lg" [class.card-in]="on(0)" [class.card-out]="!on(0)">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-semibold">New order</span>
+                  <app-badge tone="warning">PENDING</app-badge>
+                </div>
+                <div class="mt-2 sm:mt-3 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
+                  <div><div class="text-sm font-medium">Mineral water 0.5 L</div><div class="font-mono text-xs text-slate-400">SKU-1001</div></div>
+                  <span class="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-medium text-white">24 in cart</span>
+                </div>
+                <p class="mt-2 text-xs text-slate-400">Corner Store · on hand 4</p>
+              </div>
+
+              <!-- 02 approval -->
+              <div class="[grid-area:1/1] rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 transition-all duration-500 sm:p-4 lg:shadow-lg" [class.card-in]="on(1)" [class.card-out]="!on(1)">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-semibold">Corner Store</span>
+                  @if (approved()) { <app-badge tone="info">APPROVED</app-badge> } @else { <app-badge tone="warning">PENDING</app-badge> }
+                </div>
+                <p class="mt-1 text-xs text-slate-500"><span class="font-medium text-slate-700">24×</span> Mineral water 0.5 L</p>
+                <div class="mt-2 sm:mt-3 flex gap-2">
+                  <span class="rounded-md px-3 py-1.5 text-xs font-medium transition"
+                        [class.bg-blue-600]="approved()" [class.text-white]="approved()"
+                        [class.bg-blue-50]="!approved()" [class.text-blue-600]="!approved()">Approve</span>
+                  <span class="rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600">Reject</span>
+                </div>
+              </div>
+
+              <!-- 03 delivery -->
+              <div class="[grid-area:1/1] rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 transition-all duration-500 sm:p-4 lg:shadow-lg" [class.card-in]="on(2)" [class.card-out]="!on(2)">
+                <div class="text-sm font-semibold">Confirm delivery</div>
+                <div class="mt-2 sm:mt-3 rounded-xl border border-amber-300 p-3">
+                  <div class="text-sm font-medium">Mineral water 0.5 L <span class="font-mono text-xs text-slate-400">SKU-1001</span></div>
+                  <div class="mt-2 flex items-end justify-between">
+                    <div class="flex gap-4">
+                      <div><div class="text-[10px] uppercase tracking-wide text-slate-400">Ordered</div><div class="text-lg font-semibold text-slate-500">24</div></div>
+                      <div><div class="text-[10px] uppercase tracking-wide text-slate-400">Delivered</div><div class="text-lg font-semibold">22</div></div>
+                    </div>
+                    <app-badge tone="warning">Short 2</app-badge>
+                  </div>
+                  <div class="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-500">Reason: <span class="text-slate-700">supplier short-shipped, 2 backordered</span></div>
+                </div>
+              </div>
+
+              <!-- 04 count -->
+              <div class="[grid-area:1/1] rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 transition-all duration-500 sm:p-4 lg:shadow-lg" [class.card-in]="on(3)" [class.card-out]="!on(3)">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-semibold">Stock count</span>
+                  <span class="font-mono text-[11px] text-slate-400">Shelf 3</span>
+                </div>
+                <div class="mt-2 sm:mt-3 grid grid-cols-3 gap-2 text-center">
+                  <div class="rounded-lg bg-slate-50 py-2"><div class="text-lg font-semibold text-slate-400">26</div><div class="text-[10px] uppercase text-slate-400">Expected</div></div>
+                  <div class="rounded-lg bg-slate-50 py-2"><div class="text-lg font-semibold">25</div><div class="text-[10px] uppercase text-slate-400">Counted</div></div>
+                  <div class="grid place-items-center"><app-badge tone="warning">Short 1</app-badge></div>
+                </div>
+                <p class="mt-2 text-xs text-slate-500">Reason: <span class="text-slate-700">1 bottle broken</span></p>
+              </div>
+
+              <!-- 05 sale -->
+              <div class="[grid-area:1/1] rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 transition-all duration-500 sm:p-4 lg:shadow-lg" [class.card-in]="on(4)" [class.card-out]="!on(4)">
+                <div class="text-sm font-semibold">Record movement</div>
+                <div class="mt-2 sm:mt-3 space-y-2 text-sm">
+                  <div class="flex justify-between rounded-lg bg-slate-50 px-3 py-2"><span class="text-slate-500">Event</span><span class="font-medium">SALE</span></div>
+                  <div class="flex justify-between rounded-lg bg-slate-50 px-3 py-2"><span class="text-slate-500">Quantity</span><span class="font-semibold text-red-600">−3</span></div>
+                </div>
+                <p class="mt-2 text-xs text-slate-400">Trigger check: 3 ≤ 25 on hand ✓</p>
+              </div>
+
+              <!-- 06 runway -->
+              <div class="[grid-area:1/1] rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 transition-all duration-500 sm:p-4 lg:shadow-lg" [class.card-in]="on(5)" [class.card-out]="!on(5)">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-semibold">Stock runway</span>
+                  <app-badge tone="warning">Reorder soon</app-badge>
+                </div>
+                <div class="mt-2 sm:mt-3 grid grid-cols-3 gap-2 text-center">
+                  <div><div class="text-sm font-semibold">22</div><div class="text-[10px] uppercase text-slate-400">On hand</div></div>
+                  <div><div class="text-sm font-semibold text-slate-700">1.8</div><div class="text-[10px] uppercase text-slate-400">Rate/d</div></div>
+                  <div><div class="text-sm font-semibold text-amber-600">12d</div><div class="text-[10px] uppercase text-slate-400">Days left</div></div>
+                </div>
+                <div class="mt-2 sm:mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full w-[40%] rounded-full bg-amber-400"></div></div>
+              </div>
+          </div>
+
+          <!-- desktop: ledger strip -->
+          <div class="absolute inset-x-5 bottom-5 hidden rounded-2xl bg-white/95 shadow-lg ring-1 ring-slate-200 backdrop-blur lg:block">
+            <div class="flex items-center justify-between border-b border-slate-100 px-4 py-2">
+              <span class="font-mono text-[11px] font-semibold uppercase tracking-widest text-slate-500">stock_movements</span>
+              <span class="font-mono text-[11px] text-slate-400">append-only</span>
+            </div>
+            <ul class="divide-y divide-slate-100 font-mono text-xs">
+              <li class="grid grid-cols-[120px_60px_60px_1fr] gap-3 px-4 py-1.5 text-slate-400">
+                <span>opening</span><span class="text-right">—</span><span class="text-right">4</span><span class="truncate">balance before the story</span>
+              </li>
+              @for (l of visibleLedger(); track l.event) {
+                <li class="row-in grid grid-cols-[120px_60px_60px_1fr] gap-3 px-4 py-1.5">
+                  <span class="font-semibold text-slate-800">{{ l.event }}</span>
+                  <span class="text-right font-semibold" [class.text-green-600]="l.qty > 0" [class.text-red-600]="l.qty < 0">{{ l.qty > 0 ? '+' : '' }}{{ l.qty }}</span>
+                  <span class="text-right text-slate-800">{{ l.balance }}</span>
+                  <span class="truncate text-slate-400">{{ l.ref }}</span>
+                </li>
+              }
+            </ul>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
+  <!-- ============================ RECAP: the equation ============================ -->
+  <section class="border-y border-slate-200 bg-white">
+    <div appReveal class="mx-auto max-w-5xl px-5 py-16 text-center sm:px-8">
+      <p class="font-mono text-xs uppercase tracking-[0.2em] text-slate-400">what you just watched</p>
+      <p class="mt-5 font-mono text-xl font-semibold tracking-tight sm:text-3xl">
+        <span class="text-slate-400">4</span>
+        <span class="text-green-600"> + 22</span>
+        <span class="text-amber-600"> − 1</span>
+        <span class="text-red-600"> − 3</span>
+        <span class="text-slate-400"> = </span>
+        <span class="rounded-lg bg-brand-50 px-2 text-brand-700">22</span>
+      </p>
+      <p class="mx-auto mt-4 max-w-xl text-slate-600">Opening + deliveries ± counts − sales = on hand. Every term has a row, a person and a reason behind it.</p>
+    </div>
+  </section>
+
+  <!-- ============================ SCREENSHOT ============================ -->
+  <section class="mx-auto max-w-5xl px-5 py-20 sm:px-8">
+    <div appReveal class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10">
+      <div class="flex items-center gap-1.5 border-b border-slate-200 bg-slate-50 px-4 py-3">
+        <span class="h-3 w-3 rounded-full bg-red-400"></span><span class="h-3 w-3 rounded-full bg-amber-400"></span><span class="h-3 w-3 rounded-full bg-green-400"></span>
+        <span class="ml-3 flex-1 truncate rounded-md bg-white px-3 py-1 text-left text-xs text-slate-400 ring-1 ring-slate-200">stockflow-petar.vercel.app/dashboard</span>
+      </div>
+      <img src="dashboard.png" alt="Stockflow dashboard" class="w-full" loading="lazy" />
+    </div>
+  </section>
+
   <!-- ============================ FEATURES ============================ -->
-  <section id="features" class="scroll-mt-24 mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
+  <section id="features" class="scroll-mt-24 mx-auto max-w-6xl px-5 pb-24 sm:px-8">
     <div appReveal class="mx-auto max-w-2xl text-center">
       <h2 class="text-3xl font-semibold tracking-tight sm:text-4xl">Not an order tracker. A reconciliation system.</h2>
-      <p class="mt-4 text-slate-600">Every unit is explainable — in, out, and forecast. Four capabilities carry the whole product.</p>
     </div>
-
-    <div class="mt-14 grid gap-5 sm:grid-cols-2">
+    <div class="mt-12 grid gap-5 sm:grid-cols-2">
       @for (f of features; track f.title; let i = $index) {
-        <div [appReveal]="i * 80"
-             class="group rounded-2xl border border-slate-200 bg-white p-7 transition hover:border-brand-200 hover:shadow-lg hover:shadow-slate-900/5">
+        <div [appReveal]="i * 80" class="group rounded-2xl bg-white p-7 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-900/5">
           <div class="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-brand-600 transition group-hover:bg-brand-600 group-hover:text-white">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path [attr.d]="f.icon"/></svg>
           </div>
@@ -102,122 +396,30 @@
         </div>
       }
     </div>
-  </section>
-
-  <!-- ============================ ARCHITECTURE / RECONCILIATION ============================ -->
-  <section id="architecture" class="scroll-mt-24 border-y border-slate-200 bg-slate-50">
-    <div class="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
-      <div class="grid items-center gap-12 lg:grid-cols-2">
-        <div appReveal>
-          <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-            Source of truth vs. derived cache
-          </div>
-          <h2 class="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">
-            One immutable ledger. Many honest views.
-          </h2>
-          <p class="mt-4 leading-relaxed text-slate-600">
-            An append-only <code class="rounded bg-slate-200/70 px-1.5 py-0.5 text-sm">stock_movements</code>
-            table is the truth; <code class="rounded bg-slate-200/70 px-1.5 py-0.5 text-sm">inventory</code> is a
-            trigger-maintained balance cache — never edited by hand. Business rules live in Postgres functions
-            &amp; Row Level Security, so they hold no matter how the data is touched.
-          </p>
-          <ul class="mt-6 space-y-3">
-            @for (point of ['Intent vs. reality — variance is always computed, never stored','Per-event oversell protection in the database trigger','Atomic order / delivery / count RPCs','RLS is the real security boundary — the UI only adapts']; track point) {
-              <li class="flex items-start gap-3 text-sm text-slate-700">
-                <svg class="mt-0.5 h-4 w-4 shrink-0 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                {{ point }}
-              </li>
-            }
-          </ul>
-        </div>
-
-        <!-- flow diagram -->
-        <div appReveal="120" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <div class="space-y-3 font-mono text-xs sm:text-sm">
-            @for (step of [
-              {label:'ORDER', sub:'intent — what was asked for', tone:'border-slate-200 text-slate-700'},
-              {label:'DELIVERY', sub:'reality — what actually arrived', tone:'border-blue-200 text-blue-700 bg-blue-50/50'},
-              {label:'STOCK COUNT', sub:'truth — expected vs counted', tone:'border-amber-200 text-amber-700 bg-amber-50/50'},
-              {label:'SALE · ADJUSTMENT · RETURN', sub:'offtake — stock leaves', tone:'border-slate-200 text-slate-700'},
-              {label:'RUNWAY', sub:'forecast — days of stock left', tone:'border-green-200 text-green-700 bg-green-50/50'}
-            ]; track step.label; let last = $last) {
-              <div>
-                <div class="flex items-center justify-between rounded-xl border px-4 py-3" [class]="step.tone">
-                  <span class="font-semibold">{{ step.label }}</span>
-                  <span class="text-[11px] font-normal opacity-70">{{ step.sub }}</span>
-                </div>
-                @if (!last) {
-                  <div class="flex justify-center py-1 text-slate-300">
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
-                  </div>
-                }
-              </div>
-            }
-          </div>
-          <p class="mt-5 border-t border-slate-100 pt-4 text-center text-xs text-slate-500">
-            opening + deliveries − sales ± counts ± adjustments = current
-          </p>
-        </div>
-      </div>
-
-      <!-- stack chips -->
-      <div appReveal class="mt-16 flex flex-wrap items-center justify-center gap-2.5">
-        @for (tech of stack; track tech) {
-          <span class="rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-600">{{ tech }}</span>
-        }
-      </div>
+    <div appReveal class="mt-14 flex flex-wrap justify-center gap-2.5">
+      @for (tech of stack; track tech) {
+        <span class="rounded-lg bg-white px-3.5 py-1.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200">{{ tech }}</span>
+      }
     </div>
   </section>
 
   <!-- ============================ CTA ============================ -->
   <section class="relative overflow-hidden bg-brand-600">
-    <div class="pointer-events-none absolute -left-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl"></div>
-    <div class="pointer-events-none absolute -bottom-24 -right-10 h-72 w-72 rounded-full bg-indigo-400/20 blur-3xl"></div>
     <div appReveal class="relative mx-auto max-w-3xl px-5 py-20 text-center sm:px-8">
-      <h2 class="text-3xl font-semibold tracking-tight text-white sm:text-4xl">See it for yourself.</h2>
-      <p class="mx-auto mt-4 max-w-lg text-indigo-100/90">
-        Jump straight into a working instance with sample data — no sign-up, nothing to install.
-      </p>
-      <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-        <a routerLink="/login" class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold text-brand-700 shadow-sm transition hover:bg-indigo-50 sm:w-auto">
-          Enter the live demo
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </a>
-      </div>
+      <h2 class="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Now run it yourself.</h2>
+      <p class="mx-auto mt-4 max-w-lg text-indigo-100/90">Same flow, real database, sample data. No sign-up.</p>
+      <a routerLink="/login" class="mt-8 inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold text-brand-700 transition hover:bg-indigo-50">
+        Enter the live demo
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
     </div>
   </section>
 
-  <!-- ============================ FOOTER ============================ -->
   <footer class="border-t border-slate-200 bg-white">
     <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 py-8 sm:flex-row sm:px-8">
-      <div class="flex items-center gap-2">
-        <span class="grid h-7 w-7 place-items-center rounded-lg bg-brand-600">
-          <svg class="h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8h11M4 16h7"/><path d="m16 5 4 3-4 3"/></svg>
-        </span>
-        <span class="text-sm font-semibold">Stock<span class="text-brand-600">flow</span></span>
-      </div>
-      <p class="text-xs text-slate-400">Designed &amp; built by Petar · Belgrade, Serbia 🇷🇸 · © {{ year }}</p>
+      <span class="text-sm font-semibold">Stock<span class="text-brand-600">flow</span></span>
+      <p class="text-xs text-slate-400">Designed &amp; built by Petar · Belgrade, Serbia · © {{ year }}</p>
       <a routerLink="/login" class="text-xs font-medium text-brand-600 hover:text-brand-700">Live demo →</a>
     </div>
   </footer>
 </div>
-
-<!-- =====================================================================
-     Scroll-reveal styles. Prefer moving these into styles.css once, but
-     they work here too. Paired with the RevealDirective.
-     ===================================================================== -->
-<style>
-  [appReveal] {
-    opacity: 0;
-    transform: translateY(16px);
-    transition: opacity 0.6s ease, transform 0.6s ease;
-    will-change: opacity, transform;
-  }
-  [appReveal].is-visible {
-    opacity: 1;
-    transform: none;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    [appReveal] { opacity: 1; transform: none; transition: none; }
-  }
-</style>
