@@ -217,12 +217,15 @@
 <!-- ======================= STOCK FLOW + LEDGER ======================= -->
 <div class="mt-4 grid gap-4 lg:grid-cols-5">
 
-  <!-- Stock flow chart -->
+  <!-- Stock flow chart
+       top    : what is on the shelf (stepped line, revealed left -> right)
+       bottom : what moved - came in grows up (green), went out grows down (red)
+       hover  : one day column is highlighted, the readout and the equation switch to that day -->
   <section class="rounded-2xl bg-white p-5 ring-1 ring-slate-200 lg:col-span-3">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h2 class="text-sm font-semibold text-slate-900">Stock flow</h2>
-        <p class="mt-0.5 text-xs text-slate-400">What came in, what went out, and what is on the shelf.</p>
+        <p class="mt-0.5 text-xs text-slate-400">What is on the shelf, and what moved it.</p>
       </div>
       <div class="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 text-xs font-medium">
         @for (r of ranges; track r) {
@@ -235,108 +238,152 @@
     </div>
 
     <!-- readout: hovered day, or "now" -->
-    <div class="mt-4 flex h-11 items-end justify-between gap-3">
+    <div class="mt-4 flex min-h-[52px] items-end justify-between gap-3">
       @if (hoverDay(); as d) {
-        <div>
-          <div class="text-xs text-slate-400">{{ d.day | date: 'EEE, MMM d' }}{{ dayEvents(d) ? ' · ' + dayEvents(d) : '' }}</div>
-          <div class="text-lg font-semibold tabular-nums">
-            <span class="text-blue-600">+{{ d.in }}</span>
-            <span class="mx-1.5 text-red-500">−{{ d.out }}</span>
-            <span class="text-slate-400">→</span>
-            <span class="ml-1.5 text-slate-900">{{ d.closing }} on hand</span>
+        @for (k of [d.day]; track k) {
+          <div class="swap min-w-0">
+            <div class="truncate text-xs text-slate-400">{{ d.day | date: 'EEE, MMM d' }}{{ dayEvents(d) ? ' · ' + dayEvents(d) : (d.in || d.out ? '' : ' · no movement') }}</div>
+            <div class="mt-0.5 flex items-center gap-2">
+              <span class="text-2xl font-semibold tabular-nums text-slate-900">{{ d.closing }}</span>
+              <span class="text-xs text-slate-500">on the shelf</span>
+              @if (d.in - d.out !== 0) {
+                <span class="rounded-md px-1.5 py-0.5 font-mono text-xs font-semibold"
+                      [class.bg-green-50]="d.in > d.out" [class.text-green-700]="d.in > d.out"
+                      [class.bg-red-50]="d.in < d.out" [class.text-red-700]="d.in < d.out">{{ signed(d.in - d.out) }}</span>
+              }
+            </div>
+          </div>
+        }
+      } @else {
+        <div class="min-w-0">
+          <div class="text-xs text-slate-400">On the shelf now{{ isAdmin() ? ' · all stores and products' : ' · all products' }}</div>
+          <div class="mt-0.5 flex items-center gap-2">
+            <span class="text-2xl font-semibold tabular-nums text-slate-900">{{ svc.totals()?.on_hand ?? 0 }}</span>
+            <span class="text-xs text-slate-500">units</span>
+            @if (periodNet() !== 0) {
+              <span class="rounded-md px-1.5 py-0.5 font-mono text-xs font-semibold"
+                    [class.bg-green-50]="periodNet() > 0" [class.text-green-700]="periodNet() > 0"
+                    [class.bg-red-50]="periodNet() < 0" [class.text-red-700]="periodNet() < 0">{{ signed(periodNet()) }} in {{ svc.days() }}d</span>
+            }
           </div>
         </div>
-      } @else {
-        <div>
-          <div class="text-xs text-slate-400">On hand now</div>
-          <div class="text-2xl font-semibold tabular-nums">{{ svc.totals()?.on_hand ?? 0 }}</div>
-        </div>
-        <span class="hidden text-[11px] text-slate-400 sm:block">Hover the chart to inspect a day</span>
       }
+      <div class="hidden shrink-0 items-center gap-3 text-[11px] text-slate-500 sm:flex">
+        <span class="flex items-center gap-1.5"><span class="h-0.5 w-3.5 rounded bg-brand-600"></span>On shelf</span>
+        <span class="flex items-center gap-1.5"><span class="h-2.5 w-1.5 rounded-sm bg-green-500"></span>Came in</span>
+        <span class="flex items-center gap-1.5"><span class="h-2.5 w-1.5 rounded-sm bg-red-400"></span>Went out</span>
+      </div>
     </div>
 
     @if (svc.loading()) {
-      <div class="skeleton mt-3 h-52"></div>
+      <div class="skeleton mt-3 h-60"></div>
     } @else {
       <div class="mt-3 flex gap-2 transition-opacity" [class.opacity-40]="svc.refreshing()">
-        <!-- y axis labels -->
-        <div class="relative h-52 w-7 shrink-0 text-right text-[10px] tabular-nums text-slate-400">
-          @for (t of yTicks(); track t.v) {
-            <span class="absolute right-0 -translate-y-1/2" [style.top.%]="t.top">{{ t.v }}</span>
-          }
+
+        <!-- axis labels: balance scale on top, in/out band below -->
+        <div class="w-7 shrink-0 text-right text-[10px] tabular-nums text-slate-400">
+          <div class="relative h-40">
+            @for (t of yTicks(); track t.v) {
+              <span class="absolute right-0 -translate-y-1/2" [style.top.%]="t.top">{{ t.v }}</span>
+            }
+          </div>
+          <div class="relative h-20">
+            <span class="absolute right-0 top-[25%] -translate-y-1/2 text-green-600">in</span>
+            <span class="absolute right-0 top-[75%] -translate-y-1/2 text-red-500">out</span>
+          </div>
         </div>
 
-        <div class="relative h-52 flex-1 cursor-crosshair touch-none select-none"
+        <!-- plot: one column per day, shared by line, bars and hover -->
+        <div class="relative flex-1 cursor-crosshair touch-pan-y select-none"
              (pointermove)="onChartMove($event)" (pointerdown)="onChartMove($event)" (pointerleave)="hover.set(null)">
-          <!-- gridlines -->
-          @for (t of yTicks(); track t.v) {
-            <div class="pointer-events-none absolute inset-x-0 border-t"
-                 [class.border-slate-200]="t.v === 0" [class.border-dashed]="t.v !== 0" [class.border-slate-100]="t.v !== 0"
-                 [style.top.%]="t.top"></div>
+
+          <!-- hovered day column -->
+          @if (hover() !== null) {
+            <div class="pointer-events-none absolute inset-y-0 rounded-md bg-slate-100"
+                 [style.left.%]="(centerPct(hover()!) - colWidthPct() / 2)" [style.width.%]="colWidthPct()"></div>
           }
 
-          <!-- in/out bars, bottom 40% -->
-          <div class="absolute inset-x-0 bottom-0 flex h-2/5 items-end">
-            @for (b of bars(); track $index; let i = $index) {
-              <div class="flex h-full flex-1 items-end justify-center gap-[2px] px-[1px]">
-                <div class="w-full max-w-[8px] rounded-t bg-blue-400/70 transition-[height] duration-500" [style.height.%]="b.inPct"
-                     [class.bg-blue-500]="hover() === i"></div>
-                <div class="w-full max-w-[8px] rounded-t bg-red-400/70 transition-[height] duration-500" [style.height.%]="b.outPct"
-                     [class.bg-red-500]="hover() === i"></div>
+          <!-- balance line -->
+          <div class="relative h-40">
+            @for (t of yTicks(); track t.v) {
+              <div class="pointer-events-none absolute inset-x-0 border-t border-dashed border-slate-100" [style.top.%]="t.top"></div>
+            }
+
+            @for (q of quietRuns(); track q.left) {
+              <div class="pointer-events-none absolute bottom-3 flex justify-center" [style.left.%]="q.left" [style.width.%]="q.width">
+                <span class="whitespace-nowrap rounded-full bg-white/90 px-2 py-0.5 text-[10px] text-slate-400 ring-1 ring-slate-100">{{ q.days }} quiet days</span>
               </div>
+            }
+
+            @for (k of [svc.days()]; track k) {
+              <svg class="reveal absolute inset-0 h-full w-full overflow-visible" [attr.viewBox]="'0 0 ' + W + ' ' + H" preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                  <linearGradient id="flowFill" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stop-color="#6366f1" stop-opacity=".14" />
+                    <stop offset="100%" stop-color="#6366f1" stop-opacity="0" />
+                  </linearGradient>
+                </defs>
+                <path [attr.d]="areaPath()" fill="url(#flowFill)" />
+                <path [attr.d]="linePath()" fill="none" stroke="#4f46e5" stroke-width="2.25"
+                      vector-effect="non-scaling-stroke" stroke-linejoin="round" />
+              </svg>
+            }
+
+            <!-- today -->
+            @if (endDot(); as e) {
+              <span class="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2" [style.left.%]="e.left" [style.top.%]="e.top">
+                @if (svc.live()) { <span class="live-ping absolute inset-0 rounded-full bg-brand-500"></span> }
+                <span class="relative block h-2.5 w-2.5 rounded-full bg-brand-600 ring-2 ring-white"></span>
+              </span>
             }
           </div>
 
-          <!-- closing balance -->
-          <svg class="absolute inset-0 h-full w-full overflow-visible" [attr.viewBox]="'0 0 ' + W + ' ' + H" preserveAspectRatio="none" aria-hidden="true">
-            <defs>
-              <linearGradient id="flowFill" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stop-color="#6366f1" stop-opacity=".16" />
-                <stop offset="100%" stop-color="#6366f1" stop-opacity="0" />
-              </linearGradient>
-            </defs>
-            <path [attr.d]="areaPath()" fill="url(#flowFill)" />
-            @for (k of [svc.days()]; track k) {
-              <path class="draw" [attr.d]="linePath()" fill="none" stroke="#4f46e5" stroke-width="2.25"
-                    vector-effect="non-scaling-stroke" stroke-linejoin="round" />
-            }
-          </svg>
-
-          <!-- event dots (HTML so they stay round with preserveAspectRatio=none) -->
-          @for (d of dots(); track d.key) {
-            <span class="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white"
-                  [class]="d.cls" [style.left.%]="d.left" [style.top]="'calc(' + d.top + '% - ' + d.shift + 'px)'"></span>
-          }
-
-          <!-- crosshair -->
-          @if (hover() !== null) {
-            <div class="pointer-events-none absolute inset-y-0 w-px bg-slate-400/60" [style.left.%]="hoverX()"></div>
-          }
+          <!-- what moved: in up, out down, from one baseline -->
+          <div class="relative h-20 border-t border-slate-200">
+            <div class="pointer-events-none absolute inset-x-0 top-1/2 border-t border-slate-200"></div>
+            <div class="absolute inset-0 flex">
+              @for (b of bars(); track $index; let i = $index) {
+                <div class="flex h-full flex-1 flex-col items-center px-[1px]">
+                  <div class="flex h-1/2 w-full items-end justify-center">
+                    <div class="w-[60%] max-w-[10px] rounded-t-sm transition-[height,background-color] duration-500"
+                         [class.bg-green-500]="hover() === i" [class.bg-green-400]="hover() !== i"
+                         [style.height.%]="b.inPct"></div>
+                  </div>
+                  <div class="flex h-1/2 w-full items-start justify-center">
+                    <div class="w-[60%] max-w-[10px] rounded-b-sm transition-[height,background-color] duration-500"
+                         [class.bg-red-500]="hover() === i" [class.bg-red-300]="hover() !== i"
+                         [style.height.%]="b.outPct"></div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="ml-9 mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
+      <!-- dates -->
+      <div class="ml-9 mt-2 flex items-center justify-between text-[11px] text-slate-400">
         <span>{{ svc.flow()[0]?.day | date: 'MMM d' }}</span>
-        <span class="flex flex-wrap items-center gap-3">
-          <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-blue-500"></span>Delivery</span>
-          <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-red-500"></span>Sale</span>
-          <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-amber-500"></span>Count</span>
-          <span class="flex items-center gap-1"><span class="h-0.5 w-3 rounded bg-brand-600"></span>On hand</span>
-        </span>
+        @if (midDay(); as m) { <span>{{ m | date: 'MMM d' }}</span> }
         <span>Today</span>
       </div>
 
-      <!-- the ledger equation -->
-      @if (svc.flowTotals(); as t) {
-        <div class="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-xl bg-slate-50 px-4 py-3 text-sm tabular-nums ring-1 ring-slate-100">
-          <span class="flex flex-col items-center leading-tight"><span class="font-semibold text-slate-500">{{ t.opening }}</span><span class="text-[10px] text-slate-400">opening</span></span>
-          <span class="text-slate-300">+</span>
-          <span class="flex flex-col items-center leading-tight"><span class="font-semibold text-blue-600">{{ t.units_in }}</span><span class="text-[10px] text-slate-400">came in</span></span>
-          <span class="text-slate-300">−</span>
-          <span class="flex flex-col items-center leading-tight"><span class="font-semibold text-red-600">{{ t.units_out }}</span><span class="text-[10px] text-slate-400">went out</span></span>
-          <span class="text-slate-300">=</span>
-          <span class="flex flex-col items-center rounded-lg bg-brand-50 px-3 py-0.5 leading-tight"><span class="font-semibold text-brand-700">{{ t.closing }}</span><span class="text-[10px] text-brand-600/70">on hand</span></span>
-        </div>
+      <!-- the ledger equation: whole period, or the hovered day -->
+      @if (equation(); as q) {
+        @for (k of [q.key]; track k) {
+          <div class="swap mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-xl bg-slate-50 px-4 py-3 text-sm tabular-nums ring-1 ring-slate-100">
+            <span class="w-full text-center text-[10px] font-medium uppercase tracking-widest text-slate-400 sm:w-auto sm:text-left">
+              {{ q.day ? (q.day | date: 'MMM d') : 'Last ' + svc.days() + ' days' }}
+            </span>
+            <span class="flex flex-col items-center leading-tight"><span class="font-semibold text-slate-500">{{ q.opening }}</span><span class="text-[10px] text-slate-400">{{ q.day ? 'start of day' : 'opening' }}</span></span>
+            <span class="text-slate-300">+</span>
+            <span class="flex flex-col items-center leading-tight"><span class="font-semibold text-green-600">{{ q.in }}</span><span class="text-[10px] text-slate-400">came in</span></span>
+            <span class="text-slate-300">−</span>
+            <span class="flex flex-col items-center leading-tight"><span class="font-semibold text-red-600">{{ q.out }}</span><span class="text-[10px] text-slate-400">went out</span></span>
+            <span class="text-slate-300">=</span>
+            <span class="flex flex-col items-center rounded-lg bg-brand-50 px-3 py-0.5 leading-tight"><span class="font-semibold text-brand-700">{{ q.closing }}</span><span class="text-[10px] text-brand-600/70">on the shelf</span></span>
+          </div>
+        }
       }
     }
   </section>
@@ -352,7 +399,7 @@
     } @else if (svc.ledger().length === 0) {
       <p class="p-5 text-sm text-slate-500">No stock movements yet. The first delivery will appear here.</p>
     } @else {
-      <ul class="mt-3 flex-1 divide-y divide-slate-100 overflow-y-auto lg:max-h-[380px]">
+      <ul class="mt-3 flex-1 divide-y divide-slate-100 overflow-y-auto lg:max-h-[420px]">
         @for (l of svc.ledger(); track l.id) {
           <li class="flex items-center gap-3 px-5 py-2.5" [class.row-in]="isFresh(l)">
             <span class="w-11 shrink-0 text-right font-mono text-sm font-semibold tabular-nums"

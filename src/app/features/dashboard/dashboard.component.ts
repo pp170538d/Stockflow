@@ -9,11 +9,18 @@ import {
   DashboardService, FlowDay, LedgerRow, MovementEvent, PendingOrder, RangeDays, StoreHealth, Urgency,
 } from './dashboard.service';
 
-/** Chart geometry (SVG units — the SVG scales to the card width). */
+/**
+ * Stock flow chart geometry (SVG units - the SVG stretches to the card width).
+ * Every day is one column. The balance line, the in/out bars and the hover band
+ * all use the same columns, so they always line up.
+ */
 const W = 600;
-const H = 180;
-const PAD_T = 12;
-const PAD_B = 8;
+const H = 150;
+const PAD_T = 14;
+const PAD_B = 6;
+
+/** Flat stretches at least this long get a "quiet days" label. */
+const QUIET_MIN = 5;
 
 @Component({
   selector: 'app-dashboard',
@@ -26,14 +33,25 @@ const PAD_B = 8;
     .row-in { animation: rowIn .8s ease-out; }
     @keyframes cardIn { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
     .card-in { animation: cardIn .35s ease-out; }
-    @keyframes draw { from { stroke-dashoffset: 2000; } to { stroke-dashoffset: 0; } }
-    .draw { stroke-dasharray: 2000; animation: draw 1.1s ease-out both; }
+
+    /* the balance line is revealed left -> right on load and on range change */
+    @keyframes reveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+    .reveal { animation: reveal 1s cubic-bezier(.4,0,.2,1) both; }
+
+    @keyframes ping { 0% { transform: scale(1); opacity: .5; } 100% { transform: scale(2.6); opacity: 0; } }
+    .live-ping { animation: ping 1.6s ease-out infinite; }
+
+    @keyframes swap { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+    .swap { animation: swap .2s ease-out; }
+
     @keyframes shimmer { 100% { transform: translateX(100%); } }
     .skeleton { position: relative; overflow: hidden; background: #f1f5f9; border-radius: .5rem; }
     .skeleton::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%);
       background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent);
       animation: shimmer 1.3s infinite; }
-    @media (prefers-reduced-motion: reduce) { .row-in, .card-in, .draw, .skeleton::after { animation: none; } }
+    @media (prefers-reduced-motion: reduce) {
+      .row-in, .card-in, .reveal, .live-ping, .swap, .skeleton::after { animation: none; }
+    }
   `],
 })
 export class DashboardComponent implements OnInit, OnDestroy {
@@ -48,7 +66,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly W = W;
   readonly H = H;
 
-  /** Index of the hovered day in the chart (null = show totals). */
+  /** Index of the hovered day (null = show the whole period). */
   readonly hover = signal<number | null>(null);
 
   ngOnInit(): void {
@@ -76,117 +94,156 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   readonly briefing = computed(() => this.svc.briefing(this.isAdmin()));
 
-  // ---------- chart ----------
-  /** Rounded-up axis max so gridlines land on friendly numbers (0 / 15 / 30). */
+  // =====================================================================
+  // STOCK FLOW CHART
+  // top:    what is on the shelf (stepped line)
+  // bottom: what moved that day - in grows up (green), out grows down (red)
+  // =====================================================================
+
+  private readonly n = computed(() => this.svc.flow().length);
+
+  /** Balance before the first visible day. */
+  private readonly opening0 = computed(() => {
+    const f = this.svc.flow()[0];
+    return f ? f.closing - f.in + f.out : 0;
+  });
+
+  /** Rounded-up axis max so gridlines land on friendly numbers. */
   private readonly maxClosing = computed(() => {
-    const raw = Math.max(1, ...this.svc.flow().map((d) => d.closing));
+    const raw = Math.max(1, this.opening0(), ...this.svc.flow().map((d) => d.closing));
     const step = raw <= 10 ? 2 : raw <= 50 ? 5 : raw <= 200 ? 25 : raw <= 1000 ? 100 : 500;
     return Math.ceil((raw * 1.1) / (step * 2)) * step * 2;
   });
 
-  /** 3 gridlines: 0, half, max — positioned in % of the chart height. */
+  /** 3 gridlines: max, half, 0 - in % of the line area height. */
   readonly yTicks = computed(() => {
     const m = this.maxClosing();
     return [m, m / 2, 0].map((v) => ({ v, top: (this.y(v) / H) * 100 }));
   });
+
   private readonly maxBar = computed(() =>
     Math.max(1, ...this.svc.flow().map((d) => Math.max(d.in, d.out))));
 
-  private x(i: number): number {
-    const n = this.svc.flow().length;
-    return n <= 1 ? W / 2 : (i / (n - 1)) * W;
+  /** Left edge of a day column, in SVG units. */
+  private colX(i: number): number {
+    return (i / Math.max(1, this.n())) * W;
   }
+
   private y(v: number): number {
     return PAD_T + (1 - v / this.maxClosing()) * (H - PAD_T - PAD_B);
   }
 
-  /** Closing balance as a stepped line (stock changes at events, not gradually). */
+  /** Column centre in % - for HTML overlays. */
+  centerPct(i: number): number {
+    return ((i + 0.5) / Math.max(1, this.n())) * 100;
+  }
+
+  readonly colWidthPct = computed(() => 100 / Math.max(1, this.n()));
+
+  /** Stock changes at the start of a day column and stays flat across it. */
   readonly linePath = computed(() => {
     const f = this.svc.flow();
     if (!f.length) return '';
-    let d = `M0 ${this.y(f[0].closing)}`;
-    f.forEach((p, i) => {
-      if (i === 0) return;
-      d += ` H${this.x(i)} V${this.y(p.closing)}`;
-    });
-    return d;
+    let d = `M0 ${this.y(this.opening0())}`;
+    f.forEach((p, i) => { d += ` H${this.colX(i)} V${this.y(p.closing)}`; });
+    return d + ` H${W}`;
   });
+
   readonly areaPath = computed(() => {
     const line = this.linePath();
     return line ? `${line} V${H} H0 Z` : '';
   });
 
-  /** In/out bars per day, as % of the chart height (rendered in HTML for crisp edges). */
+  /** In/out bars as % of their half of the band. */
   readonly bars = computed(() => {
     const m = this.maxBar();
-    return this.svc.flow().map((d) => ({ inPct: (d.in / m) * 100, outPct: (d.out / m) * 100 }));
+    return this.svc.flow().map((d) => ({
+      inPct: d.in ? Math.max(6, (d.in / m) * 100) : 0,
+      outPct: d.out ? Math.max(6, (d.out / m) * 100) : 0,
+    }));
+  });
+
+  /** "Today" marker at the end of the line. */
+  readonly endDot = computed(() => {
+    const f = this.svc.flow();
+    if (!f.length) return null;
+    return { left: this.centerPct(f.length - 1), top: (this.y(f[f.length - 1].closing) / H) * 100 };
+  });
+
+  /** Long flat stretches are labelled instead of looking like a broken chart. */
+  readonly quietRuns = computed(() => {
+    const f = this.svc.flow();
+    const n = f.length;
+    const out: { left: number; width: number; days: number }[] = [];
+    if (n < 14) return out;
+    let start = -1;
+    for (let i = 0; i <= n; i++) {
+      const idle = i < n && f[i].in === 0 && f[i].out === 0;
+      if (idle && start < 0) start = i;
+      if (!idle && start >= 0) {
+        const len = i - start;
+        if (len >= QUIET_MIN) out.push({ left: (start / n) * 100, width: (len / n) * 100, days: len });
+        start = -1;
+      }
+    }
+    return out;
+  });
+
+  /** Middle date label - only when there is room for three. */
+  readonly midDay = computed(() => {
+    const f = this.svc.flow();
+    return f.length >= 14 ? f[Math.floor(f.length / 2)].day : null;
+  });
+
+  // ---------- hover ----------
+  readonly hoverDay = computed<FlowDay | null>(() => {
+    const i = this.hover();
+    return i === null ? null : this.svc.flow()[i] ?? null;
   });
 
   /**
-   * One dot per event type on days that had activity, placed on the
-   * closing-balance line. Stacked upward when a day has several types.
+   * The equation under the chart: the whole period, or the hovered day.
+   * opening + in - out = closing
    */
-  readonly dots = computed(() => {
-    const out: { left: number; top: number; cls: string; key: string }[] = [];
-    this.svc.flow().forEach((d, i) => {
-      const e = d.events;
-      const types: { on: boolean; cls: string }[] = e
-        ? [
-            { on: e.delivery > 0, cls: 'bg-blue-500' },
-            { on: e.count > 0,    cls: 'bg-amber-500' },
-            { on: e.sale > 0,     cls: 'bg-red-500' },
-            { on: e.other > 0,    cls: 'bg-violet-500' },
-          ]
-        : [{ on: d.in > 0 || d.out > 0, cls: 'bg-brand-600' }];
-      let k = 0;
-      for (const t of types) {
-        if (!t.on) continue;
-        out.push({
-          left: (this.x(i) / W) * 100,
-          top: (this.y(d.closing) / H) * 100,
-          cls: t.cls,
-          key: `${d.day}-${k}`,
-        });
-        k++;
-      }
-    });
-    // offset stacked dots on the same day
-    const seen = new Map<number, number>();
-    return out.map((dot) => {
-      const n = seen.get(dot.left) ?? 0;
-      seen.set(dot.left, n + 1);
-      return { ...dot, shift: n * 11 };
-    });
+  readonly equation = computed(() => {
+    const d = this.hoverDay();
+    if (d) {
+      return { key: d.day, day: d.day, opening: d.closing - d.in + d.out, in: d.in, out: d.out, closing: d.closing };
+    }
+    const t = this.svc.flowTotals();
+    if (!t) return null;
+    return { key: 'all', day: null, opening: t.opening, in: t.units_in, out: t.units_out, closing: t.closing };
   });
 
-  /** Human summary of a day's events for the hover readout. */
+  /** Net change over the visible period - chip next to "On shelf now". */
+  readonly periodNet = computed(() => {
+    const t = this.svc.flowTotals();
+    return t ? t.units_in - t.units_out : 0;
+  });
+
+  onChartMove(e: PointerEvent): void {
+    const el = e.currentTarget as HTMLElement;
+    const r = el.getBoundingClientRect();
+    const n = this.n();
+    if (!n || !r.width) return;
+    const i = Math.floor(((e.clientX - r.left) / r.width) * n);
+    this.hover.set(Math.min(n - 1, Math.max(0, i)));
+  }
+
+  /** Human summary of a day's events for the readout. */
   dayEvents(d: FlowDay): string {
     const e = d.events;
     if (!e) return '';
     const parts: string[] = [];
     if (e.delivery) parts.push(`${e.delivery} ${e.delivery === 1 ? 'delivery' : 'deliveries'}`);
     if (e.sale) parts.push(`${e.sale} ${e.sale === 1 ? 'sale' : 'sales'}`);
-    if (e.count) parts.push(`${e.count} counted`);
+    if (e.count) parts.push(`${e.count} ${e.count === 1 ? 'count' : 'counts'}`);
     if (e.other) parts.push(`${e.other} other`);
     return parts.join(' · ');
   }
 
-  readonly hoverDay = computed<FlowDay | null>(() => {
-    const i = this.hover();
-    return i === null ? null : this.svc.flow()[i] ?? null;
-  });
-  readonly hoverX = computed(() => {
-    const i = this.hover();
-    return i === null ? 0 : (this.x(i) / W) * 100;
-  });
-
-  onChartMove(e: PointerEvent): void {
-    const el = e.currentTarget as HTMLElement;
-    const r = el.getBoundingClientRect();
-    const n = this.svc.flow().length;
-    if (!n) return;
-    const i = Math.round(((e.clientX - r.left) / r.width) * (n - 1));
-    this.hover.set(Math.min(n - 1, Math.max(0, i)));
+  signed(n: number): string {
+    return n > 0 ? `+${n}` : n < 0 ? `\u2212${Math.abs(n)}` : '0';
   }
 
   // ---------- approve / reject ----------
@@ -264,14 +321,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   // ---------- ledger ----------
+  /** Same colours as the landing page: delivery green, count amber, sale red. */
   readonly eventMeta: Record<MovementEvent, { label: string; cls: string }> = {
-    DELIVERY:    { label: 'Delivery',    cls: 'bg-blue-50 text-blue-700' },
-    SALE:        { label: 'Sale',        cls: 'bg-slate-100 text-slate-700' },
+    DELIVERY:    { label: 'Delivery',    cls: 'bg-green-50 text-green-700' },
+    SALE:        { label: 'Sale',        cls: 'bg-red-50 text-red-700' },
     STOCK_COUNT: { label: 'Stock count', cls: 'bg-amber-50 text-amber-700' },
     ADJUSTMENT:  { label: 'Adjustment',  cls: 'bg-violet-50 text-violet-700' },
     TRANSFER:    { label: 'Transfer',    cls: 'bg-sky-50 text-sky-700' },
-    RETURN:      { label: 'Return',      cls: 'bg-green-50 text-green-700' },
-    WRITE_OFF:   { label: 'Write-off',   cls: 'bg-red-50 text-red-700' },
+    RETURN:      { label: 'Return',      cls: 'bg-teal-50 text-teal-700' },
+    WRITE_OFF:   { label: 'Write-off',   cls: 'bg-slate-100 text-slate-700' },
   };
 
   isFresh(l: LedgerRow): boolean {
