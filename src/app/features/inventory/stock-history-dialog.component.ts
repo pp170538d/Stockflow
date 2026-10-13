@@ -55,6 +55,7 @@ export class StockHistoryDialogComponent implements OnChanges {
 
   readonly loading = this.svc.loading;
   readonly error = this.svc.error;
+
   readonly preset = signal<Preset>(null);
   readonly customFrom = signal('');
   readonly customTo = signal('');
@@ -126,19 +127,23 @@ export class StockHistoryDialogComponent implements OnChanges {
     }));
   });
 
+  /** Stepped line: stock jumps at events, it never glides between them. */
   readonly linePath = computed(() => {
-    const points = this.points();
-    if (!points.length) return '';
-    return points
-      .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
-      .join(' ');
+    const p = this.points();
+    if (!p.length) return '';
+    if (p.length === 1) return `M ${this.plotLeft} ${p[0].y} H ${this.width - this.plotRight}`;
+    let d = `M ${p[0].x} ${p[0].y}`;
+    for (let i = 1; i < p.length; i++) d += ` H ${p[i].x} V ${p[i].y}`;
+    return d;
   });
 
   readonly areaPath = computed(() => {
-    const points = this.points();
-    if (!points.length) return '';
+    const p = this.points();
+    if (!p.length) return '';
     const baseline = this.height - this.plotBottom;
-    return `${this.linePath()} L ${points.at(-1)!.x} ${baseline} L ${points[0].x} ${baseline} Z`;
+    const x0 = p.length === 1 ? this.plotLeft : p[0].x;
+    const x1 = p.length === 1 ? this.width - this.plotRight : p[p.length - 1].x;
+    return `${this.linePath()} L ${x1} ${baseline} L ${x0} ${baseline} Z`;
   });
 
   readonly yTicks = computed<AxisTick[]>(() => {
@@ -146,7 +151,6 @@ export class StockHistoryDialogComponent implements OnChanges {
     const { min, max, step } = this.yDomain();
     const plotHeight = this.height - this.plotTop - this.plotBottom;
     const ticks: AxisTick[] = [];
-
     for (let value = min; value <= max + step / 2; value += step) {
       ticks.push({
         value,
@@ -161,7 +165,7 @@ export class StockHistoryDialogComponent implements OnChanges {
     if (!points.length) return [];
 
     const start = new Date(points[0].occurredAt).getTime();
-    const end = new Date(points.at(-1)!.occurredAt).getTime();
+    const end = new Date(points[points.length - 1].occurredAt).getTime();
     const duration = Math.max(1, end - start);
     const plotWidth = this.width - this.plotLeft - this.plotRight;
     const count = this.axisTickCount();
@@ -190,24 +194,25 @@ export class StockHistoryDialogComponent implements OnChanges {
   readonly movementCount = computed(() =>
     this.rawPoints().filter((point) => !point.isOpening).length
   );
+
   readonly stockLabel = computed(() =>
     this.isHistoricalEnd() ? 'Closing stock' : 'Current stock'
   );
+
   readonly rangeLabel = computed(() => {
     const points = this.rawPoints();
     if (!points.length) return '';
-
     const start = this.requestedRangeStart() ?? points[0].occurredAt;
-    const end = this.requestedRangeEnd() ?? points.at(-1)!.occurredAt;
+    const end = this.requestedRangeEnd() ?? points[points.length - 1].occurredAt;
     const prefix =
       this.preset() === null
         ? 'All history'
         : this.preset() === 'custom'
           ? 'Custom range'
           : `Last ${this.preset()} days`;
-
     return `${prefix} · ${this.formatLongDate(start)} to ${this.formatLongDate(end)}`;
   });
+
   readonly granularityLabel = computed(() =>
     ({
       hour: 'Hourly stock snapshots',
@@ -251,12 +256,10 @@ export class StockHistoryDialogComponent implements OnChanges {
   async applyCustom(): Promise<void> {
     this.dateError.set(null);
     if (!this.customFrom() && !this.customTo()) return;
-
     if (this.customFrom() && this.customTo() && this.customFrom() > this.customTo()) {
       this.dateError.set('Start date must be before end date.');
       return;
     }
-
     this.preset.set('custom');
     this.activePoint.set(null);
     await this.reload();
@@ -272,7 +275,6 @@ export class StockHistoryDialogComponent implements OnChanges {
 
     let nearest = points[0];
     let distance = Math.abs(points[0].x - clampedX);
-
     for (let index = 1; index < points.length; index += 1) {
       const nextDistance = Math.abs(points[index].x - clampedX);
       if (nextDistance < distance) {
@@ -280,7 +282,6 @@ export class StockHistoryDialogComponent implements OnChanges {
         distance = nextDistance;
       }
     }
-
     this.activePoint.set(nearest);
   }
 
@@ -293,9 +294,7 @@ export class StockHistoryDialogComponent implements OnChanges {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-      ...(this.granularity() === 'hour'
-        ? { hour: '2-digit', minute: '2-digit' }
-        : {}),
+      ...(this.granularity() === 'hour' ? { hour: '2-digit', minute: '2-digit' } : {}),
     }).format(new Date(value));
   }
 
@@ -308,15 +307,12 @@ export class StockHistoryDialogComponent implements OnChanges {
     const opening = points[0];
     const movements = points
       .filter((point) => !point.isOpening)
-      .sort(
-        (a, b) =>
-          new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
-      );
+      .sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
 
     const start = this.seriesStart(opening.occurredAt);
-    const end = this.seriesEnd(points.at(-1)!.occurredAt);
-    const buckets = new Map<string, StockHistoryPoint[]>();
+    const end = this.seriesEnd(points[points.length - 1].occurredAt);
 
+    const buckets = new Map<string, StockHistoryPoint[]>();
     for (const movement of movements) {
       const key = this.bucketKey(movement.occurredAt, granularity);
       const bucket = buckets.get(key) ?? [];
@@ -335,11 +331,8 @@ export class StockHistoryDialogComponent implements OnChanges {
       const openingBalance = currentBalance;
 
       if (bucket.length) {
-        bucket.sort(
-          (a, b) =>
-            new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
-        );
-        currentBalance = bucket.at(-1)!.balance;
+        bucket.sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
+        currentBalance = bucket[bucket.length - 1].balance;
       }
 
       result.push({
@@ -366,37 +359,29 @@ export class StockHistoryDialogComponent implements OnChanges {
 
   private requestedRangeStart(): string | null {
     const selected = this.preset();
-
     if (typeof selected === 'number') {
       const start = new Date();
       start.setHours(0, 0, 0, 0);
       start.setDate(start.getDate() - selected + 1);
       return start.toISOString();
     }
-
     if (selected === 'custom' && this.customFrom()) {
       return new Date(`${this.customFrom()}T00:00:00`).toISOString();
     }
-
     return null;
   }
 
+  /** Every non-custom range ends TODAY, so the last balance is carried to now. */
   private requestedRangeEnd(): string | null {
     if (this.preset() === 'custom' && this.customTo()) {
       return new Date(`${this.customTo()}T23:59:59.999`).toISOString();
     }
-
-    if (typeof this.preset() === 'number') {
-      return new Date().toISOString();
-    }
-
-    return null;
+    return new Date().toISOString();
   }
 
   private floorToBucket(value: string, granularity: Granularity): Date {
     const date = new Date(value);
     date.setMinutes(0, 0, 0);
-
     if (granularity === 'hour') return date;
 
     date.setHours(0, 0, 0, 0);
@@ -414,18 +399,15 @@ export class StockHistoryDialogComponent implements OnChanges {
 
   private addBucket(value: Date, granularity: Granularity): Date {
     const next = new Date(value);
-
     if (granularity === 'hour') next.setHours(next.getHours() + 1);
     else if (granularity === 'day') next.setDate(next.getDate() + 1);
     else if (granularity === 'week') next.setDate(next.getDate() + 7);
     else next.setMonth(next.getMonth() + 1);
-
     return next;
   }
 
   private bucketDisplayTime(value: Date, granularity: Granularity): Date {
     const display = new Date(value);
-
     if (granularity === 'hour') display.setMinutes(59, 59, 999);
     else if (granularity === 'day') display.setHours(23, 59, 59, 999);
     else if (granularity === 'week') {
@@ -435,32 +417,22 @@ export class StockHistoryDialogComponent implements OnChanges {
       display.setMonth(display.getMonth() + 1, 0);
       display.setHours(23, 59, 59, 999);
     }
-
     return display;
   }
 
   private bucketKey(value: string, granularity: Granularity): string {
     const date = this.floorToBucket(value, granularity);
-
     if (granularity === 'hour') {
-      return `${date.getFullYear()}-${this.pad(date.getMonth() + 1)}-${this.pad(
-        date.getDate()
-      )}T${this.pad(date.getHours())}`;
+      return `${date.getFullYear()}-${this.pad(date.getMonth() + 1)}-${this.pad(date.getDate())}T${this.pad(date.getHours())}`;
     }
-
     if (granularity === 'month') {
       return `${date.getFullYear()}-${this.pad(date.getMonth() + 1)}`;
     }
-
-    return `${date.getFullYear()}-${this.pad(date.getMonth() + 1)}-${this.pad(
-      date.getDate()
-    )}`;
+    return `${date.getFullYear()}-${this.pad(date.getMonth() + 1)}-${this.pad(date.getDate())}`;
   }
 
   private axisTickCount(): number {
-    const range = this.selectedRangeDays();
-    if (range <= 7) return 7;
-    return 6;
+    return this.selectedRangeDays() <= 7 ? 7 : 6;
   }
 
   private selectedRangeDays(): number {
@@ -477,25 +449,20 @@ export class StockHistoryDialogComponent implements OnChanges {
       return Math.max(1, Math.ceil((end - start) / 86_400_000));
     }
 
+    // "All": from the first point up to today.
     const points = this.rawPoints();
-    if (points.length < 2) return 1;
-
+    if (!points.length) return 1;
     return Math.max(
       1,
-      Math.ceil(
-        (new Date(points.at(-1)!.occurredAt).getTime() -
-          new Date(points[0].occurredAt).getTime()) /
-          86_400_000
-      )
+      Math.ceil((Date.now() - new Date(points[0].occurredAt).getTime()) / 86_400_000)
     );
   }
 
   private async reload(): Promise<void> {
     if (!this.objectId || !this.productId) return;
-
     const from = this.requestedRangeStart();
-    const to = this.requestedRangeEnd();
-
+    // "All" still asks the database for the full history (no upper bound).
+    const to = this.preset() === null ? null : this.requestedRangeEnd();
     await this.svc.load(this.objectId, this.productId, from, to);
   }
 
@@ -509,23 +476,12 @@ export class StockHistoryDialogComponent implements OnChanges {
     const day = 86_400_000;
 
     if (duration <= 2 * day) {
-      return new Intl.DateTimeFormat('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(date);
+      return new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit' }).format(date);
     }
-
     if (duration <= 366 * day) {
-      return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-      }).format(date);
+      return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
     }
-
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      year: 'numeric',
-    }).format(date);
+    return new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(date);
   }
 
   private formatLongDate(value: string): string {
@@ -551,9 +507,6 @@ export class StockHistoryDialogComponent implements OnChanges {
   }
 
   private isTouchDevice(): boolean {
-    return (
-      typeof window !== 'undefined' &&
-      window.matchMedia('(pointer: coarse)').matches
-    );
+    return typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
   }
 }

@@ -1,398 +1,532 @@
-<!-- Header -->
-<div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-  <div>
+<!-- ======================= HEADER ======================= -->
+<div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+  <div class="min-w-0">
     <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Inventory</h1>
-    <p class="mt-1 text-sm text-slate-500">Current stock levels per object.</p>
+    <p class="mt-1 text-sm text-slate-500">
+      What is on every shelf, how fast it moves, and when it runs out.
+    </p>
   </div>
-  @if (selectedObjectId()) {
-  <div class="flex flex-wrap items-center gap-2">
-    <a [routerLink]="['/inventory/count']" [queryParams]="{ object: selectedObjectId() }"
-      class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-      ?? Stock count
-    </a>
-    <a [routerLink]="['/inventory/counts']" [queryParams]="{ object: selectedObjectId() }"
-      class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-      Count history
-    </a>
-    <button (click)="openRecord()"
-      class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">
-      + Record movement
-    </button>
-  </div>
-  }
-</div>
 
-<!-- Admin: object picker -->
-@if (isAdmin()) {
-<div class="mb-4 max-w-sm">
-  <label class="mb-1.5 block text-sm font-medium text-slate-700">Object</label>
-  <select (change)="onObjectChange($any($event.target).value)" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-             transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
-    <option value="">Select an object�</option>
-    @for (o of objects(); track o.id) {
-    <option [value]="o.id">{{ o.name }}</option>
+  <div class="flex flex-wrap items-center gap-2">
+    @if (isAdmin()) {
+      <div class="relative">
+        <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l9-5 9 5v12M2 21h20M8 21v-7h8v7"/></svg>
+        <select [value]="selectedObjectId() ?? ''" (change)="selectObject($any($event.target).value)"
+          class="h-10 rounded-lg border border-slate-300 bg-white pl-9 pr-8 text-sm font-medium text-slate-800 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+          @for (o of objects(); track o.id) {
+            <option [value]="o.id">{{ o.name }}</option>
+          }
+        </select>
+      </div>
     }
-  </select>
+
+    @if (selectedObjectId()) {
+      <a [routerLink]="['/inventory/count']" [queryParams]="{ object: selectedObjectId() }"
+        class="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2h9"/></svg>
+        Stock count
+      </a>
+      <a [routerLink]="['/inventory/counts']" [queryParams]="{ object: selectedObjectId() }"
+        class="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+        Count history
+      </a>
+      <button type="button" (click)="openRecord()"
+        class="inline-flex h-10 items-center gap-1.5 rounded-lg bg-brand-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Record movement
+      </button>
+    }
+  </div>
 </div>
-}
 
 @if (!selectedObjectId()) {
-<app-empty-state title="No object selected" subtitle="Choose an object above to see its stock.">
-</app-empty-state>
-} @else {
-<!-- Search -->
-<div class="mb-4 max-w-xs">
-  <input type="text" [value]="search()" (input)="search.set($any($event.target).value)" placeholder="Search products�"
-    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-             transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-</div>
+  <app-empty-state title="No store yet" subtitle="Create a store under Objects to start tracking stock." />
+} @else if (svc.loading()) {
 
-@if (svc.loading()) {
-<div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
-  Loading inventory�
-</div>
+  <!-- ======================= SKELETON ======================= -->
+  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    @for (i of [1,2,3,4,5]; track i) {
+      <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+        <div class="sk h-3 w-20"></div><div class="sk mt-3 h-7 w-14"></div><div class="sk mt-2 h-3 w-24"></div>
+      </div>
+    }
+  </div>
+  <div class="mt-5 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+    @for (i of [1,2,3,4,5,6]; track i) {
+      <div class="flex items-center gap-6 border-b border-slate-100 px-5 py-4 last:border-0">
+        <div class="w-1/4 space-y-1.5"><div class="sk h-3.5 w-4/5"></div><div class="sk h-3 w-16"></div></div>
+        <div class="sk h-6 w-10"></div>
+        <div class="sk hidden h-7 w-40 md:block"></div>
+        <div class="sk h-2 flex-1"></div>
+        <div class="sk hidden h-5 w-24 rounded-full lg:block"></div>
+      </div>
+    }
+  </div>
+
 } @else if (svc.error()) {
-<div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">
-  {{ svc.error() }}
-</div>
-} @else if (filtered().length === 0) {
-<app-empty-state title="No stock yet" subtitle="Record a movement to start tracking stock for this object.">
-  <button (click)="openRecord()"
-    class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">
-    + Record movement
-  </button>
-</app-empty-state>
+  <div class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{{ svc.error() }}</div>
+} @else if (svc.items().length === 0) {
+  <app-empty-state title="No stock yet" subtitle="Record a movement or confirm a delivery to start tracking stock here.">
+    <button (click)="openRecord()" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">
+      + Record movement
+    </button>
+  </app-empty-state>
 } @else {
 
-<!-- ===== MOBILE: stacked cards (below lg) ===== -->
-<div class="space-y-3 lg:hidden">
-  @for (r of filtered(); track r.id) {
-    <article class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
-      <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <div class="truncate font-medium text-slate-900">{{ r.product?.name || 'Product' }}</div>
-          <div class="font-mono text-xs text-slate-400">{{ r.product?.sku }}</div>
-          @if (r.product?.category) {
-            <div class="mt-0.5 text-xs text-slate-500">{{ r.product?.category }}</div>
-          }
-        </div>
-        <div class="shrink-0 text-right">
-          <div class="text-xl font-semibold" [class.text-red-600]="isLow(r)" [class.text-slate-900]="!isLow(r)">
-            {{ r.quantity }}
-          </div>
-          <div class="text-[10px] uppercase tracking-wide text-slate-400">in stock</div>
-        </div>
+  <!-- ======================= KPI STRIP ======================= -->
+  @let k = kpis();
+  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+      <div class="text-xs font-medium text-slate-500">On hand</div>
+      <div class="mt-1.5 text-2xl font-semibold tabular-nums text-slate-900">{{ k.units | number }}</div>
+      <div class="mt-0.5 text-xs text-slate-400">units · {{ k.products }} products</div>
+    </div>
+
+    <button type="button" (click)="filter.set(filter() === 'reorder' ? 'all' : 'reorder')"
+      class="rounded-2xl p-4 text-left ring-1 transition hover:-translate-y-0.5 hover:shadow-md"
+      [class]="filter() === 'reorder' ? 'bg-red-50 ring-red-300' : 'bg-white ring-slate-200'">
+      <div class="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+        @if (k.reorder > 0) { <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500"></span> }
+        Reorder now
       </div>
+      <div class="mt-1.5 text-2xl font-semibold tabular-nums" [class]="k.reorder ? 'text-red-600' : 'text-slate-300'">{{ k.reorder }}</div>
+      <div class="mt-0.5 text-xs text-slate-400">out, or ≤ 7 days left</div>
+    </button>
 
-      <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-        <div>
-          @if (r.quantity <= 0) {
-            <app-badge tone="error">Out of stock</app-badge>
-          } @else if (isLow(r)) {
-            <app-badge tone="warning">Low stock</app-badge>
-          } @else {
-            <app-badge tone="success">In stock</app-badge>
-          }
-        </div>
+    <button type="button" (click)="filter.set(filter() === 'soon' ? 'all' : 'soon')"
+      class="rounded-2xl p-4 text-left ring-1 transition hover:-translate-y-0.5 hover:shadow-md"
+      [class]="filter() === 'soon' ? 'bg-amber-50 ring-amber-300' : 'bg-white ring-slate-200'">
+      <div class="text-xs font-medium text-slate-500">Reorder soon</div>
+      <div class="mt-1.5 text-2xl font-semibold tabular-nums" [class]="k.soon ? 'text-amber-600' : 'text-slate-300'">{{ k.soon }}</div>
+      <div class="mt-0.5 text-xs text-slate-400">8–14 days left</div>
+    </button>
 
-        <div class="flex items-center gap-2">
-          <button type="button" (click)="openChart(r)"
-            class="inline-flex items-center gap-1.5 rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 transition hover:bg-brand-100">
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 3v18h18M8 15l3-4 3 2 4-6" />
-            </svg>
-            Trend
-          </button>
+    <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+      <div class="text-xs font-medium text-slate-500">Sold · {{ days }}d</div>
+      <div class="mt-1.5 text-2xl font-semibold tabular-nums text-slate-900">{{ k.sold | number }}</div>
+      <div class="mt-0.5 text-xs text-slate-400">{{ k.rate | number: '1.0-1' }} units / day</div>
+    </div>
 
-          <button type="button" (click)="openHistory(r)"
-            class="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-200">
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
-              <path d="M3 3v5h5M12 7v5l3 2" />
-            </svg>
-            History
-          </button>
-        </div>
+    <div class="col-span-2 rounded-2xl bg-white p-4 ring-1 ring-slate-200 sm:col-span-1">
+      <div class="text-xs font-medium text-slate-500">Net flow · {{ days }}d</div>
+      <div class="mt-1.5 text-2xl font-semibold tabular-nums"
+           [class.text-green-600]="k.net > 0" [class.text-red-600]="k.net < 0" [class.text-slate-300]="k.net === 0">
+        {{ signed(k.net) }}
       </div>
+      <div class="mt-0.5 text-xs text-slate-400">
+        <span class="text-green-600">+{{ k.inU }}</span> in · <span class="text-red-500">−{{ k.outU }}</span> out
+      </div>
+    </div>
+  </div>
 
-      <div class="mt-2 text-[11px] text-slate-400">Updated {{ r.updated_at | date: 'MMM d, y, HH:mm' }}</div>
-    </article>
-  }
-</div>
-
-<!-- ===== DESKTOP: table (lg and up) ===== -->
-<div class="hidden overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200 lg:block">
-  <table class="w-full min-w-[860px] text-left text-sm">
-    <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-      <tr>
-        <th class="px-5 py-3 font-medium">Product</th>
-        <th class="px-5 py-3 font-medium">Category</th>
-        <th class="px-5 py-3 font-medium">In stock</th>
-        <th class="px-5 py-3 font-medium">Activity</th>
-        <th class="px-5 py-3 font-medium">Status</th>
-        <th class="px-5 py-3 font-medium">Updated</th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-slate-100">
-      @for (r of filtered(); track r.id) {
-        <tr class="group transition hover:bg-slate-50/60">
-          <td class="px-5 py-3">
-            <div class="font-medium text-slate-900">{{ r.product?.name || 'Product' }}</div>
-            <div class="font-mono text-xs text-slate-400">{{ r.product?.sku }}</div>
-          </td>
-          <td class="px-5 py-3 text-slate-600">{{ r.product?.category || '—' }}</td>
-          <td class="px-5 py-3">
-            <span class="text-base font-semibold" [class.text-red-600]="isLow(r)" [class.text-slate-900]="!isLow(r)">
-              {{ r.quantity }}
-            </span>
-          </td>
-          <td class="px-5 py-3">
-            <div class="flex items-center gap-1">
-              <button type="button" (click)="openChart(r)" title="View stock trend" aria-label="View stock trend"
-                class="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-brand-50 hover:text-brand-600">
-                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 3v18h18M8 15l3-4 3 2 4-6" />
-                </svg>
-              </button>
-
-              <button type="button" (click)="openHistory(r)" title="View movement history" aria-label="View movement history"
-                class="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
-                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
-                  <path d="M3 3v5h5M12 7v5l3 2" />
-                </svg>
-              </button>
-            </div>
-          </td>
-          <td class="px-5 py-3">
-            @if (r.quantity <= 0) {
-              <app-badge tone="error">Out of stock</app-badge>
-            } @else if (isLow(r)) {
-              <app-badge tone="warning">Low stock</app-badge>
-            } @else {
-              <app-badge tone="success">In stock</app-badge>
-            }
-          </td>
-          <td class="px-5 py-3 text-slate-500">{{ r.updated_at | date: 'MMM d, y, HH:mm' }}</td>
-        </tr>
+  <!-- ======================= TOOLBAR ======================= -->
+  <div class="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <div class="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:pb-0">
+      @for (f of filters; track f.key) {
+        <button type="button" (click)="filter.set(f.key)"
+          class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
+          [class]="filter() === f.key ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'">
+          {{ f.label }}
+          <span class="rounded-full px-1.5 text-[10px] tabular-nums"
+                [class]="filter() === f.key ? 'bg-white/20' : 'bg-slate-100 text-slate-500'">{{ counts()[f.key] }}</span>
+        </button>
       }
-    </tbody>
-  </table>
-</div>
-}
+    </div>
+
+    <div class="flex gap-2">
+      <div class="relative flex-1 lg:w-64 lg:flex-none">
+        <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" [value]="search()" (input)="search.set($any($event.target).value)"
+          placeholder="Product, SKU or category"
+          class="h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+      </div>
+      <select [value]="sort()" (change)="sort.set($any($event.target).value)"
+        class="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+        @for (s of sorts; track s.key) { <option [value]="s.key">{{ s.label }}</option> }
+      </select>
+    </div>
+  </div>
+
+  @if (filtered().length === 0) {
+    <div class="mt-4 rounded-2xl bg-white px-6 py-12 text-center ring-1 ring-slate-200">
+      <p class="text-sm font-medium text-slate-900">Nothing matches</p>
+      <p class="mt-1 text-sm text-slate-500">Try another filter or search term.</p>
+      <button type="button" (click)="filter.set('all'); search.set('')"
+        class="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear filters</button>
+    </div>
+  } @else {
+
+    <!-- ======================= MOBILE: cards ======================= -->
+    <div class="mt-4 space-y-3 lg:hidden">
+      @for (r of filtered(); track r.product_id; let i = $index) {
+        @let t = tone(r.urgency);
+        <article (click)="openHistory(r)" class="row-in cursor-pointer rounded-2xl bg-white p-4 ring-1 ring-slate-200 active:bg-slate-50"
+                 [class.row-flash]="flashId() === r.product_id" [style.animation-delay.ms]="delay(i)">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="truncate font-medium text-slate-900">{{ r.product?.name || 'Product' }}</div>
+              <div class="truncate text-xs text-slate-400">
+                <span class="font-mono">{{ r.product?.sku }}</span>@if (r.product?.category) { · {{ r.product?.category }} }
+              </div>
+            </div>
+            <div class="shrink-0 text-right">
+              <div class="text-2xl font-semibold leading-none tabular-nums" [class]="t.text">{{ r.quantity }}</div>
+              <div class="mt-1 text-[10px] uppercase tracking-wide text-slate-400">on hand</div>
+            </div>
+          </div>
+
+          <svg viewBox="0 0 100 28" preserveAspectRatio="none" class="mt-3 h-10 w-full overflow-visible spark" aria-hidden="true">
+            <path [attr.d]="r.sparkArea" [attr.fill]="t.spark" fill-opacity=".1" />
+            <path  [attr.d]="r.sparkLine" fill="none" [attr.stroke]="t.spark"
+                  stroke-width="1.75" vector-effect="non-scaling-stroke" stroke-linejoin="round" />
+          </svg>
+
+          <div class="mt-3">
+            <div class="flex items-center justify-between gap-2 text-xs">
+              <span class="rounded-full px-2 py-0.5 font-medium ring-1" [class]="t.chip">{{ t.label }}</span>
+              <span class="flex items-baseline gap-2">
+                <span class="font-medium" [class]="t.text">{{ runwayText(r) }}</span>
+                <span class="tabular-nums text-slate-400">{{ rateText(r) }}</span>
+              </span>
+            </div>
+            <div class="relative mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+              <div class="h-full rounded-full transition-[width] duration-700" [style.width.%]="runwayPct(r)" [style.background]="t.hex"></div>
+              <span class="absolute inset-y-0 w-px bg-white" style="left: 23.33%"></span>
+              <span class="absolute inset-y-0 w-px bg-white" style="left: 46.67%"></span>
+            </div>
+          </div>
+
+          <div class="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3 text-xs">
+            @if (r.last; as l) {
+              <span class="flex min-w-0 items-center gap-1.5">
+                <span class="rounded-md px-1.5 py-0.5 font-medium" [class]="eventMeta[l.event].chip">{{ eventMeta[l.event].label }}</span>
+                <span class="font-semibold tabular-nums" [class.text-green-600]="l.quantity > 0" [class.text-red-600]="l.quantity < 0">{{ signed(l.quantity) }}</span>
+                <span class="truncate text-slate-400">{{ ago(l.created_at) }}</span>
+              </span>
+            } @else {
+              <span class="text-slate-400">No movement in {{ days }}d</span>
+            }
+            <span class="flex shrink-0 gap-1">
+              <button type="button" (click)="$event.stopPropagation(); openChart(r)" aria-label="Stock trend"
+                class="grid h-8 w-8 place-items-center rounded-lg bg-slate-100 text-slate-600">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M8 15l3-4 3 2 4-6"/></svg>
+              </button>
+              <button type="button" (click)="$event.stopPropagation(); openRecord(r.product_id)" aria-label="Record movement"
+                class="grid h-8 w-8 place-items-center rounded-lg bg-brand-50 text-brand-700">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </span>
+          </div>
+        </article>
+      }
+    </div>
+
+    <!-- ======================= DESKTOP: table ======================= -->
+    <div class="mt-4 hidden overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200 lg:block">
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-slate-200 bg-slate-50/60 text-[11px] uppercase tracking-wide text-slate-400">
+          <tr>
+            <th class="px-5 py-3 font-medium">Product</th>
+            <th class="px-4 py-3 text-right font-medium">On hand</th>
+            <th class="w-[24%] px-4 py-3 font-medium">{{ days }}-day trend</th>
+            <th class="w-[20%] px-4 py-3 font-medium">Runway</th>
+            <th class="px-4 py-3 font-medium">Last activity</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          @for (r of filtered(); track r.product_id; let i = $index) {
+            @let t = tone(r.urgency);
+            <tr (click)="openHistory(r)" class="row-in group cursor-pointer transition hover:bg-slate-50/70"
+                [class.row-flash]="flashId() === r.product_id" [style.animation-delay.ms]="delay(i)">
+
+              <td class="px-5 py-3.5">
+                <div class="flex items-center gap-3">
+                  <span class="h-8 w-1 shrink-0 rounded-full" [style.background]="t.hex"></span>
+                  <div class="min-w-0">
+                    <div class="truncate font-medium text-slate-900">{{ r.product?.name || 'Product' }}</div>
+                    <div class="truncate text-xs text-slate-400">
+                      <span class="font-mono">{{ r.product?.sku }}</span>@if (r.product?.category) { · {{ r.product?.category }} }
+                    </div>
+                  </div>
+                </div>
+              </td>
+
+              <td class="px-4 py-3.5 text-right">
+                <div class="text-lg font-semibold leading-tight tabular-nums" [class]="t.text">{{ r.quantity }}</div>
+                <div class="text-[11px] tabular-nums text-slate-400">
+                  @if (r.in30 || r.out30) {
+                    <span class="text-green-600">+{{ r.in30 }}</span> / <span class="text-red-500">−{{ r.out30 }}</span>
+                  } @else { no movement }
+                </div>
+              </td>
+
+              <td class="px-4 py-3.5">
+                <svg viewBox="0 0 100 28" preserveAspectRatio="none" class="h-10 w-full max-w-[240px] overflow-visible spark" aria-hidden="true">
+                  <path [attr.d]="r.sparkArea" [attr.fill]="t.spark" fill-opacity=".1" />
+                  <path  [attr.d]="r.sparkLine" fill="none" [attr.stroke]="t.spark"
+                        stroke-width="1.75" vector-effect="non-scaling-stroke" stroke-linejoin="round" />
+                </svg>
+              </td>
+
+              <td class="px-4 py-3.5">
+                <div class="flex items-baseline justify-between gap-2 text-xs">
+                  <span class="font-semibold" [class]="t.text">{{ runwayText(r) }}</span>
+                  <span class="tabular-nums text-slate-400">{{ rateText(r) }}</span>
+                </div>
+                <div class="relative mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div class="h-full rounded-full transition-[width] duration-700" [style.width.%]="runwayPct(r)" [style.background]="t.hex"></div>
+                  <span class="absolute inset-y-0 w-px bg-white" style="left: 23.33%"></span>
+                  <span class="absolute inset-y-0 w-px bg-white" style="left: 46.67%"></span>
+                </div>
+                <span class="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ring-1" [class]="t.chip">{{ t.label }}</span>
+              </td>
+
+              <td class="px-4 py-3.5">
+                @if (r.last; as l) {
+                  <div class="flex items-center gap-1.5">
+                    <span class="rounded-md px-1.5 py-0.5 text-[11px] font-medium" [class]="eventMeta[l.event].chip">{{ eventMeta[l.event].label }}</span>
+                    <span class="text-sm font-semibold tabular-nums" [class.text-green-600]="l.quantity > 0" [class.text-red-600]="l.quantity < 0">{{ signed(l.quantity) }}</span>
+                  </div>
+                  <div class="mt-0.5 text-xs text-slate-400">{{ ago(l.created_at) }}</div>
+                } @else {
+                  <div class="text-xs text-slate-400">No movement in {{ days }}d</div>
+                  <div class="text-[11px] text-slate-300">updated {{ r.updated_at | date: 'MMM d' }}</div>
+                }
+              </td>
+
+              <td class="px-4 py-3.5">
+                <div class="flex justify-end gap-1 opacity-60 transition group-hover:opacity-100">
+                  <button type="button" (click)="$event.stopPropagation(); openChart(r)" title="Full stock trend"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-slate-500 transition hover:bg-brand-50 hover:text-brand-600">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M8 15l3-4 3 2 4-6"/></svg>
+                  </button>
+                  <button type="button" (click)="$event.stopPropagation(); openRecord(r.product_id)" title="Record movement"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-slate-500 transition hover:bg-brand-50 hover:text-brand-600">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <div class="flex items-center justify-between border-t border-slate-100 px-5 py-2.5 text-[11px] text-slate-400">
+        <span>{{ filtered().length }} of {{ svc.items().length }} products · {{ objectName() }}</span>
+        <span>Runway = on hand ÷ average daily sales over the last {{ days }} days · click a row for its full ledger</span>
+      </div>
+    </div>
+  }
 }
 
-<!-- ===== RECORD MOVEMENT DRAWER ===== -->
+<!-- ======================= RECORD MOVEMENT DRAWER ======================= -->
 <app-drawer [open]="drawerOpen()" title="Record stock movement" (close)="closeDrawer()">
   <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4">
     <div>
       <label class="mb-1.5 block text-sm font-medium text-slate-700">Product <span class="text-red-500">*</span></label>
-      <select formControlName="product_id" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
-        <option value="">Select a product�</option>
+      <select formControlName="product_id"
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+        <option value="">Select a product…</option>
         @for (p of assignableProducts(); track p.id) {
-        <option [value]="p.id">{{ p.name }} ({{ p.sku }})</option>
+          <option [value]="p.id">{{ p.name }} ({{ p.sku }})</option>
         }
       </select>
       @if (form.controls.product_id.touched && form.controls.product_id.invalid) {
-      <p class="mt-1 text-xs text-red-500">Please select a product.</p>
+        <p class="mt-1 text-xs text-red-500">Please select a product.</p>
       }
     </div>
+
     <div>
       <label class="mb-1.5 block text-sm font-medium text-slate-700">Event</label>
-      <select formControlName="event" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+      <div class="grid grid-cols-2 gap-2">
         @for (ev of manualEvents; track ev) {
-        <option [value]="ev">{{ eventLabel(ev) }}</option>
+          <label class="cursor-pointer rounded-xl border px-3 py-2.5 text-sm transition"
+                 [class]="form.controls.event.value === ev ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500/20' : 'border-slate-200 hover:bg-slate-50'">
+            <input type="radio" formControlName="event" [value]="ev" class="sr-only" />
+            <span class="flex items-center gap-2 font-medium text-slate-900">
+              <span class="h-2 w-2 rounded-full" [class]="eventMeta[ev].dot"></span>{{ eventMeta[ev].label }}
+            </span>
+            <span class="mt-0.5 block text-[11px] text-slate-500">{{ eventLabel(ev).split('— ')[1] }}</span>
+          </label>
         }
-      </select>
+      </div>
     </div>
+
     <div>
-      <label class="mb-1.5 block text-sm font-medium text-slate-700">Quantity <span
-          class="text-red-500">*</span></label>
+      <label class="mb-1.5 block text-sm font-medium text-slate-700">Quantity <span class="text-red-500">*</span></label>
       <input type="number" [attr.min]="form.controls.event.value === 'ADJUSTMENT' ? null : 1" formControlName="quantity"
-        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-      <p class="mt-1 text-xs text-slate-400">
-        @if (form.controls.event.value === 'ADJUSTMENT') {
-        Enter a signed correction � use a negative number to reduce stock (e.g. -4).
-        } @else if (form.controls.event.value === 'RETURN') {
-        Enter a positive number � stock will be added back.
-        } @else if (form.controls.event.value === 'SALE') {
-        Enter a positive number � stock will be removed (sold).
-        } @else {
-        Enter a positive number � stock will be removed (write-off).
-        }
-      </p>
-      @if (form.controls.quantity.touched && form.controls.quantity.hasError('zero')) {
-      <p class="mt-1 text-xs text-red-500">A correction cannot be zero.</p>
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+      @if (form.controls.event.value === 'ADJUSTMENT') {
+        <p class="mt-1 text-xs text-slate-400">Signed correction — use a negative number to reduce stock (e.g. −4).</p>
+      }
+      @if (form.controls.quantity.touched && form.controls.quantity.invalid) {
+        <p class="mt-1 text-xs text-red-500">Enter a valid quantity.</p>
       }
     </div>
+
+    <!-- live preview -->
+    @if (preview(); as p) {
+      <div class="rounded-xl p-4 ring-1 transition"
+           [class]="p.after < 0 ? 'bg-red-50 ring-red-200' : 'bg-slate-50 ring-slate-200'">
+        <div class="text-[11px] font-medium uppercase tracking-wide text-slate-400">After this movement</div>
+        <div class="mt-1.5 flex items-center gap-3 font-mono text-lg tabular-nums">
+          <span class="text-slate-500">{{ p.onHand }}</span>
+          <span class="font-semibold" [class.text-green-600]="p.delta > 0" [class.text-red-600]="p.delta < 0">{{ signed(p.delta) }}</span>
+          <span class="text-slate-300">=</span>
+          <span class="rounded-md px-2 py-0.5 font-semibold"
+                [class]="p.after < 0 ? 'bg-red-100 text-red-700' : 'bg-brand-50 text-brand-700'">{{ p.after }}</span>
+        </div>
+        @if (p.after < 0) {
+          <p class="mt-2 text-xs text-red-600">That is more than is on the shelf.</p>
+        }
+      </div>
+    }
+
     <div>
       <label class="mb-1.5 block text-sm font-medium text-slate-700">Note</label>
-      <input type="text" formControlName="note" placeholder="Optional � reason / reference" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+      <input type="text" formControlName="note" placeholder="Optional — reason or reference"
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
     </div>
+
     @if (formError()) {
-    <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
-      {{ formError() }}
-    </div>
+      <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">{{ formError() }}</div>
     }
   </form>
+
   <div drawer-footer class="flex justify-end gap-2">
     <button type="button" (click)="closeDrawer()"
-      class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-      Cancel
-    </button>
+      class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Cancel</button>
     <button type="button" (click)="save()" [disabled]="saving()"
       class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60">
-      {{ saving() ? 'Saving�' : 'Record' }}
+      {{ saving() ? 'Saving…' : 'Record' }}
     </button>
   </div>
 </app-drawer>
 
-<!-- ===== FULL STOCK TREND DIALOG ===== -->
+<!-- ======================= FULL TREND DIALOG ======================= -->
 <app-stock-history-dialog
   [open]="chartOpen()"
   [objectId]="selectedObjectId()"
-  [objectName]="chartObjectName()"
+  [objectName]="objectName()"
   [productId]="chartProductId()"
   [productName]="chartProductName()"
   [sku]="chartSku()"
   (closed)="closeChart()" />
 
-<!-- ===== MOVEMENT HISTORY DRAWER ===== -->
-<app-drawer [open]="historyOpen()" [title]="'History - ' + historyProductName()" (close)="closeHistory()">
-  <!-- History filters -->
-  <div class="mb-4 grid gap-3 sm:grid-cols-2">
-    <div>
-      <label class="mb-1.5 block text-xs font-medium text-slate-500">Event</label>
+<!-- ======================= HISTORY DRAWER ======================= -->
+<app-drawer [open]="historyOpen()" [title]="historyItem()?.product?.name || 'History'" (close)="closeHistory()">
 
-      <select
-        [value]="movementEventFilter()"
-        (change)="onMovementEventChange($any($event.target).value)"
-        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
-        <option value="">All events</option>
-
-        @for (event of movementEvents; track event) {
-          <option [value]="event">{{ event }}</option>
-        }
-      </select>
+  @if (historyItem(); as h) {
+    @let ht = tone(h.urgency);
+    <div class="mb-5 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="font-mono text-xs text-slate-400">{{ h.product?.sku }}</div>
+          <div class="mt-1 text-3xl font-semibold leading-none tabular-nums" [class]="ht.text">{{ h.quantity }}</div>
+          <div class="mt-1 text-xs text-slate-500">on hand · {{ objectName() }}</div>
+        </div>
+        <span class="rounded-full px-2 py-0.5 text-xs font-medium ring-1" [class]="ht.chip">{{ ht.label }}</span>
+      </div>
+      <svg viewBox="0 0 100 28" preserveAspectRatio="none" class="mt-3 h-12 w-full overflow-visible spark" aria-hidden="true">
+        <path [attr.d]="h.sparkArea" [attr.fill]="ht.spark" fill-opacity=".12" />
+        <path  [attr.d]="h.sparkLine" fill="none" [attr.stroke]="ht.spark"
+              stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" />
+      </svg>
+      <div class="mt-3 grid grid-cols-3 gap-2 border-t border-slate-200 pt-3 text-center">
+        <div>
+          <div class="text-sm font-semibold" [class]="ht.text">{{ runwayText(h) }}</div>
+          <div class="text-[10px] uppercase tracking-wide text-slate-400">runway</div>
+        </div>
+        <div>
+          <div class="text-sm font-semibold tabular-nums text-slate-900">{{ h.sold30 }}</div>
+          <div class="text-[10px] uppercase tracking-wide text-slate-400">sold · {{ days }}d</div>
+        </div>
+        <div>
+          <div class="flex justify-center gap-1.5 text-sm font-semibold tabular-nums">
+            <span class="text-green-600">+{{ h.in30 }}</span><span class="text-red-500">−{{ h.out30 }}</span>
+          </div>
+          <div class="text-[10px] uppercase tracking-wide text-slate-400">in / out</div>
+        </div>
+      </div>
     </div>
+  }
 
-    <div>
-      <label class="mb-1.5 block text-xs font-medium text-slate-500">Search</label>
-
-      <input
-        type="text"
-        [value]="movementSearch()"
-        (input)="onMovementSearch($any($event.target).value)"
-        placeholder="Note or reference..."
-        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-    </div>
-  </div>
-
-  <!-- Scope note -->
-  <div class="mb-4 rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500 ring-1 ring-slate-100">
-    Showing matching ledger movements for this product and object. Use filters to narrow the audit trail.
+  <div class="mb-4 grid grid-cols-2 gap-2">
+    <select [value]="movementEventFilter()" (change)="onMovementEventChange($any($event.target).value)"
+      class="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+      <option value="">All events</option>
+      @for (e of movementEvents; track e) { <option [value]="e">{{ eventMeta[e].label }}</option> }
+    </select>
+    <input type="text" [value]="movementSearch()" (input)="onMovementSearch($any($event.target).value)"
+      placeholder="Note or reference…"
+      class="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
   </div>
 
   @if (svc.movementsLoading()) {
-    <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
-      Loading movements...
+    <div class="space-y-4 pl-5">
+      @for (i of [1,2,3,4,5]; track i) {
+        <div class="space-y-1.5"><div class="sk h-4 w-1/2"></div><div class="sk h-3 w-1/3"></div></div>
+      }
     </div>
   } @else if (svc.movementsError()) {
-    <div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">
-      {{ svc.movementsError() }}
-    </div>
+    <div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">{{ svc.movementsError() }}</div>
+  } @else if (svc.movements().length === 0) {
+    <p class="py-10 text-center text-sm text-slate-400">No movements match these filters.</p>
   } @else {
-    @if (svc.movements().length === 0) {
-      <p class="py-10 text-center text-sm text-slate-400">
-        No movements match these filters.
-      </p>
-    } @else {
-      <!-- Vertical timeline -->
-      <ol class="relative space-y-5 border-l border-slate-200 pl-5">
-        @for (m of svc.movements(); track m.id) {
-          <li class="relative">
-            <span
-              class="absolute -left-[26px] top-1 grid h-4 w-4 place-items-center rounded-full ring-4 ring-white"
-              [class.bg-green-500]="isPositive(m.quantity)"
-              [class.bg-red-500]="!isPositive(m.quantity)"></span>
+    <ol class="relative space-y-4 border-l border-slate-200 pl-5">
+      @for (m of svc.movements(); track m.id; let i = $index) {
 
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <div class="flex items-center gap-2">
-                  <span
-                    class="text-sm font-semibold"
-                    [class.text-green-600]="isPositive(m.quantity)"
-                    [class.text-red-600]="!isPositive(m.quantity)">
-                    {{ isPositive(m.quantity) ? '+' : '' }}{{ m.quantity }}
-                  </span>
-
-                  <app-badge [tone]="isPositive(m.quantity) ? 'success' : 'error'">
-                    {{ m.event }}
-                  </app-badge>
-                </div>
-
-                @if (m.note) {
-                  <p class="mt-0.5 text-xs text-slate-500">{{ m.note }}</p>
-                }
-
-                @if (m.reference && m.reference !== 'manual') {
-                  <p class="mt-0.5 font-mono text-[11px] text-slate-400">{{ m.reference }}</p>
-                }
-              </div>
-
-              <time class="whitespace-nowrap text-xs text-slate-400">
-                {{ m.created_at | date: 'MMM d, HH:mm' }}
-              </time>
-            </div>
-          </li>
+        @if (i === 0 || dayKey(m.created_at) !== dayKey(svc.movements()[i - 1].created_at)) {
+          <li class="relative -ml-[21px] bg-white py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400"
+              [class.pt-2]="i > 0">{{ dayLabel(m.created_at) }}</li>
         }
-      </ol>
-    }
 
-    @if (svc.movementsTotal() > 0) {
-      <div class="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <div class="text-slate-500">
-          Page
-          <span class="font-medium text-slate-700">{{ svc.movementsPage() }}</span>
-          of
-          <span class="font-medium text-slate-700">{{ svc.movementsTotalPages() }}</span>
-          ·
-          <span class="font-medium text-slate-700">{{ svc.movementsTotal() }}</span>
-          movements
-        </div>
+        @let bal = svc.balances().get(m.id);
+        <li class="row-in relative" [style.animation-delay.ms]="delay(i)">
+          <span class="absolute -left-[26px] top-1 h-3 w-3 rounded-full ring-4 ring-white" [class]="eventMeta[m.event].dot"></span>
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-sm font-semibold tabular-nums"
+                      [class.text-green-600]="m.quantity > 0" [class.text-red-600]="m.quantity < 0">{{ signed(m.quantity) }}</span>
+                <span class="rounded-md px-1.5 py-0.5 text-[11px] font-medium" [class]="eventMeta[m.event].chip">{{ eventMeta[m.event].label }}</span>
+                <span class="text-xs tabular-nums text-slate-400">{{ m.created_at | date: 'HH:mm' }}</span>
+              </div>
+              @if (showNote(m)) { <p class="mt-1 text-xs text-slate-600">{{ m.note }}</p> }
+              @if (m.reference && m.reference !== 'manual') {
+                <p class="mt-0.5 font-mono text-[11px] text-slate-400">{{ refLabel(m.reference) }}</p>
+              }
+            </div>
+            @if (bal !== undefined) {
+              <div class="shrink-0 text-right">
+                <div class="font-mono text-sm font-semibold tabular-nums text-slate-900">{{ bal }}</div>
+                <div class="text-[10px] uppercase tracking-wide text-slate-400">balance</div>
+              </div>
+            }
+          </div>
+        </li>
+      }
+    </ol>
 
+    @if (svc.movementsTotalPages() > 1) {
+      <div class="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 text-sm">
+        <span class="text-slate-500">{{ svc.movementsPage() }} / {{ svc.movementsTotalPages() }} · {{ svc.movementsTotal() }} movements</span>
         <div class="flex gap-2">
-          <button
-            type="button"
-            (click)="previousMovements()"
-            [disabled]="svc.movementsPage() <= 1"
-            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
-            Previous
-          </button>
-
-          <button
-            type="button"
-            (click)="nextMovements()"
-            [disabled]="svc.movementsPage() >= svc.movementsTotalPages()"
-            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
-            Next
-          </button>
+          <button type="button" (click)="previousMovements()" [disabled]="svc.movementsPage() <= 1"
+            class="rounded-lg border border-slate-300 px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-40">Previous</button>
+          <button type="button" (click)="nextMovements()" [disabled]="svc.movementsPage() >= svc.movementsTotalPages()"
+            class="rounded-lg border border-slate-300 px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-40">Next</button>
         </div>
       </div>
     }
   }
 
-  <div drawer-footer class="flex justify-end">
-    <button
-      type="button"
-      (click)="closeHistory()"
-      class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">
-      Close
-    </button>
+  <div drawer-footer class="flex justify-between gap-2">
+    @if (historyItem(); as h) {
+      <button type="button" (click)="closeHistory(); openChart(h)"
+        class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Full trend</button>
+      <button type="button" (click)="closeHistory(); openRecord(h.product_id)"
+        class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">+ Record movement</button>
+    }
   </div>
 </app-drawer>
-

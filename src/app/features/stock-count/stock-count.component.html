@@ -1,116 +1,214 @@
-<div class="mx-auto max-w-5xl pb-28">
-  <!-- Header -->
+<div class="mx-auto max-w-5xl pb-36">
+
+  <!-- ======================= HEADER ======================= -->
   <div class="mb-6">
-    <button (click)="cancel()"
+    <button type="button" (click)="cancel()"
       class="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 transition hover:text-slate-700">
-      ← Back to inventory
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Back to inventory
     </button>
     <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Stock count</h1>
     <p class="mt-1 text-sm text-slate-500">
-      Count the shelf and enter the actual quantities. Differences will correct stock and be logged.
+      Count what is physically on the shelf. Every field starts empty — differences correct stock and are logged.
     </p>
   </div>
 
-  <!-- Meta card -->
+  <!-- ======================= META ======================= -->
   <div class="mb-4 grid grid-cols-1 gap-3 rounded-2xl bg-white p-4 ring-1 ring-slate-200 sm:grid-cols-3">
-    @if (isAdmin()) {
-      <div>
-        <label class="mb-1.5 block text-xs font-medium text-slate-600">Object</label>
-        <select [value]="objectId()"
-          (change)="selectObject($any($event.target).value)"
-          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+    <div>
+      <label class="mb-1.5 block text-xs font-medium text-slate-600">Store</label>
+      @if (isAdmin()) {
+        <select [value]="objectId()" (change)="selectObject($any($event.target).value)"
+          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
           @for (o of objects(); track o.id) {
             <option [value]="o.id">{{ o.name }}</option>
           }
         </select>
-      </div>
-    } @else {
-      <div>
-        <label class="mb-1.5 block text-xs font-medium text-slate-600">Object</label>
-        <div class="rounded-lg bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
-          {{ objectName() || 'Your location' }}
-        </div>
-      </div>
-    }
+      } @else {
+        <div class="rounded-lg bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">{{ objectName() || 'Your location' }}</div>
+      }
+    </div>
     <form [formGroup]="form" class="contents">
       <div>
         <label class="mb-1.5 block text-xs font-medium text-slate-600">Counted by</label>
         <input type="text" formControlName="counted_by" placeholder="Who counted"
-          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
       </div>
       <div>
         <label class="mb-1.5 block text-xs font-medium text-slate-600">Note</label>
         <input type="text" formControlName="note" placeholder="Optional"
-          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
       </div>
     </form>
   </div>
 
-  <!-- Toolbar: search + reset -->
-  <div class="mb-3 flex items-center justify-between gap-3">
-    <input type="text" [value]="search()"
-      (input)="search.set($any($event.target).value)"
-      placeholder="Search products to count…"
-      class="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-             transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-    <button type="button" (click)="resetAll()"
-      class="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
-      Reset to expected
-    </button>
-  </div>
+  @if (!building() && lines.controls.length > 0) {
+    @let s = summary();
+
+    <!-- ======================= PROGRESS ======================= -->
+    <div class="mb-4 rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+      <div class="flex items-end justify-between gap-3">
+        <div>
+          <div class="text-xs font-medium text-slate-500">Progress</div>
+          <div class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+            {{ s.counted }}<span class="text-base font-medium text-slate-400"> / {{ s.total }} counted</span>
+          </div>
+        </div>
+        <div class="text-right text-xs">
+          @if (s.left === 0) {
+            <span class="pop inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 font-medium text-green-700 ring-1 ring-green-200">
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+              All counted
+            </span>
+          } @else {
+            <span class="font-medium text-slate-500">{{ s.left }} left</span>
+          }
+        </div>
+      </div>
+
+      <!-- stacked bar: match / short / over / not counted -->
+      <div class="mt-3 flex h-2 overflow-hidden rounded-full bg-slate-100">
+        <div class="h-full bg-status-delivered transition-[width] duration-500" [style.width.%]="s.total ? (s.match / s.total) * 100 : 0"></div>
+        <div class="h-full bg-status-pending transition-[width] duration-500" [style.width.%]="s.total ? (s.short / s.total) * 100 : 0"></div>
+        <div class="h-full bg-status-approved transition-[width] duration-500" [style.width.%]="s.total ? (s.over / s.total) * 100 : 0"></div>
+      </div>
+
+      <div class="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        <span class="flex items-center gap-1.5 text-slate-600"><span class="h-2 w-2 rounded-full bg-status-delivered"></span>{{ s.match }} match</span>
+        <span class="flex items-center gap-1.5 text-slate-600"><span class="h-2 w-2 rounded-full bg-status-pending"></span>{{ s.short }} short @if (s.netShort) { <span class="tabular-nums text-amber-600">(−{{ s.netShort }})</span> }</span>
+        <span class="flex items-center gap-1.5 text-slate-600"><span class="h-2 w-2 rounded-full bg-status-approved"></span>{{ s.over }} over @if (s.netOver) { <span class="tabular-nums text-blue-600">(+{{ s.netOver }})</span> }</span>
+        <span class="flex items-center gap-1.5 text-slate-400"><span class="h-2 w-2 rounded-full bg-slate-200"></span>{{ s.left }} not counted</span>
+      </div>
+    </div>
+
+    <!-- ======================= TOOLBAR ======================= -->
+    <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 sm:pb-0">
+        <button type="button" (click)="view.set('all')"
+          class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
+          [class]="view() === 'all' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'">
+          All <span class="rounded-full px-1.5 text-[10px] tabular-nums" [class]="view() === 'all' ? 'bg-white/20' : 'bg-slate-100 text-slate-500'">{{ s.total }}</span>
+        </button>
+        <button type="button" (click)="view.set('todo')"
+          class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
+          [class]="view() === 'todo' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'">
+          To count <span class="rounded-full px-1.5 text-[10px] tabular-nums" [class]="view() === 'todo' ? 'bg-white/20' : 'bg-slate-100 text-slate-500'">{{ s.left }}</span>
+        </button>
+        <button type="button" (click)="view.set('diff')"
+          class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
+          [class]="view() === 'diff' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'">
+          Differences <span class="rounded-full px-1.5 text-[10px] tabular-nums" [class]="view() === 'diff' ? 'bg-white/20' : 'bg-slate-100 text-slate-500'">{{ s.discrepancies }}</span>
+        </button>
+      </div>
+
+      <div class="flex gap-2">
+        <div class="relative flex-1 sm:w-60 sm:flex-none">
+          <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" [value]="search()" (input)="search.set($any($event.target).value)"
+            placeholder="Product or SKU"
+            class="h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+        </div>
+        <button type="button" (click)="clearAll()" [disabled]="s.counted === 0"
+          class="h-9 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-40">
+          Clear all
+        </button>
+      </div>
+    </div>
+  }
 
   @if (building()) {
-    <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
-      Loading products to count…
+
+    <!-- ======================= SKELETON ======================= -->
+    <div class="space-y-3">
+      @for (i of [1,2,3,4,5]; track i) {
+        <div class="flex items-center gap-4 rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+          <div class="flex-1 space-y-1.5"><div class="sk h-4 w-1/3"></div><div class="sk h-3 w-20"></div></div>
+          <div class="sk h-10 w-36 rounded-xl"></div>
+          <div class="sk hidden h-6 w-20 rounded-full sm:block"></div>
+        </div>
+      }
     </div>
+
   } @else if (lines.controls.length === 0) {
-    <app-empty-state title="Nothing to count"
-      subtitle="No active products are assigned to this object yet.">
-    </app-empty-state>
+    <app-empty-state title="Nothing to count" subtitle="No active products are assigned to this store yet." />
   } @else {
     <form [formGroup]="form">
-
-      <!-- ===== MOBILE: stacked cards (below lg) ===== -->
-      <div class="space-y-3 lg:hidden" formArrayName="lines">
+      <div class="space-y-2.5" formArrayName="lines">
         @for (row of lines.controls; track $index; let i = $index) {
-          @if (matchesSearch(row)) {
+          @if (visible(row)) {
+            @let st = state(row);
             <div [formGroupName]="i"
-              class="rounded-2xl bg-white p-4 ring-1 ring-slate-200 transition"
-              [class.ring-amber-200]="needsReason(row) && variance(row) < 0"
-              [class.bg-amber-50/40]="needsReason(row) && variance(row) < 0"
-              [class.ring-blue-200]="needsReason(row) && variance(row) > 0"
-              [class.bg-blue-50/40]="needsReason(row) && variance(row) > 0">
-              <!-- product + variance badge -->
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="truncate font-medium text-slate-900">{{ row.get('product_name')?.value }}</div>
-                  <div class="font-mono text-xs text-slate-400">{{ row.get('product_sku')?.value }}</div>
+              class="row-in relative overflow-hidden rounded-2xl bg-white ring-1 transition-colors"
+              [class]="st === 'short' ? 'ring-amber-200 bg-amber-50/30' : st === 'over' ? 'ring-blue-200 bg-blue-50/30' : st === 'match' ? 'ring-green-200' : 'ring-slate-200'"
+              [style.animation-delay.ms]="i < 12 ? i * 30 : 0">
+
+              <span class="absolute inset-y-0 left-0 w-1 transition-colors duration-300" [class]="stateBar(row)"></span>
+
+              <div class="flex flex-col gap-3 p-4 pl-5 sm:flex-row sm:items-center sm:gap-4">
+
+                <!-- product -->
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="truncate font-medium text-slate-900">{{ row.get('product_name')?.value }}</span>
+                    @if (st === 'match') {
+                      <svg class="pop h-4 w-4 shrink-0 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+                    }
+                  </div>
+                  <div class="mt-0.5 text-xs text-slate-400">
+                    <span class="font-mono">{{ row.get('product_sku')?.value }}</span>
+                    · system says <span class="font-semibold tabular-nums text-slate-600">{{ row.get('expected_qty')?.value }}</span>
+                  </div>
                 </div>
-                <app-badge [tone]="varianceTone(row)">{{ varianceLabel(row) }}</app-badge>
+
+                <!-- counter -->
+                <div class="flex items-center justify-between gap-3 sm:justify-end">
+                  <div class="flex items-center rounded-xl bg-slate-100 p-1">
+                    <button type="button" (click)="step(row, -1)" aria-label="Minus one"
+                      class="grid h-10 w-10 place-items-center rounded-lg text-slate-600 transition hover:bg-white hover:shadow-sm active:scale-95 sm:h-9 sm:w-9">
+                      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+                    </button>
+                    <input type="number" min="0" inputmode="numeric" formControlName="counted_qty" data-count
+                      (keydown.enter)="focusNext($event)" placeholder="–"
+                      class="w-16 bg-transparent text-center text-lg font-semibold tabular-nums text-slate-900 outline-none placeholder:text-slate-300" />
+                    <button type="button" (click)="step(row, 1)" aria-label="Plus one"
+                      class="grid h-10 w-10 place-items-center rounded-lg text-slate-600 transition hover:bg-white hover:shadow-sm active:scale-95 sm:h-9 sm:w-9">
+                      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                  </div>
+
+                  @if (st === 'todo') {
+                    <button type="button" (click)="confirmExpected(row)"
+                      class="h-10 whitespace-nowrap rounded-lg px-3 text-xs font-medium text-green-700 ring-1 ring-green-200 transition hover:bg-green-50 sm:h-9">
+                      Matches {{ row.get('expected_qty')?.value }}
+                    </button>
+                  } @else {
+                    <div class="flex items-center gap-1.5">
+                      <span class="pop whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ring-1" [class]="stateChip(row)">{{ stateLabel(row) }}</span>
+                      <button type="button" (click)="clearRow(row)" title="Clear this count" aria-label="Clear this count"
+                        class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                      </button>
+                    </div>
+                  }
+                </div>
               </div>
-              <!-- expected + counted -->
-              <div class="mt-3 flex items-center justify-between gap-3">
-                <div class="text-sm">
-                  <span class="text-xs uppercase tracking-wide text-slate-400">Expected</span>
-                  <span class="ml-2 text-base font-semibold text-slate-400">{{ row.get('expected_qty')?.value }}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <label class="text-xs uppercase tracking-wide text-slate-400">Counted</label>
-                  <input type="number" min="0" formControlName="counted_qty"
-                    class="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-center text-sm font-semibold
-                           outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-                </div>
-              </div>
+
               <!-- reason (only when it differs) -->
               @if (needsReason(row)) {
-                <div class="mt-3 border-t border-slate-100 pt-3">
+                <div class="border-t px-4 pb-4 pl-5 pt-3"
+                     [class]="st === 'short' ? 'border-amber-100' : 'border-blue-100'">
+                  <div class="flex items-center gap-2 text-xs text-slate-500">
+                    <span class="font-mono tabular-nums">{{ row.get('expected_qty')?.value }}</span>
+                    <svg class="h-3 w-3 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    <span class="font-mono font-semibold tabular-nums text-slate-900">{{ row.get('counted_qty')?.value }}</span>
+                    <span class="font-semibold tabular-nums" [class]="st === 'short' ? 'text-amber-600' : 'text-blue-600'">
+                      ({{ variance(row) > 0 ? '+' : '−' }}{{ variance(row) > 0 ? variance(row) : -variance(row) }})
+                    </span>
+                    <span>will be written to the ledger</span>
+                  </div>
                   <input type="text" formControlName="reason"
-                    placeholder="Why the difference? (required)"
-                    class="w-full rounded-lg border px-3 py-2 text-sm outline-none transition
-                           focus:ring-2 focus:ring-brand-500/20"
+                    placeholder="Why the difference? (required) — e.g. damaged, theft, found in back"
+                    class="mt-2 w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-brand-500/20"
                     [class.border-red-300]="row.touched && row.hasError('reasonRequired')"
                     [class.border-slate-300]="!(row.touched && row.hasError('reasonRequired'))" />
                 </div>
@@ -120,100 +218,68 @@
         }
       </div>
 
-      <!-- ===== DESKTOP: table (lg and up) ===== -->
-      <div class="hidden overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200 lg:block">
-        <table class="w-full text-left text-sm">
-          <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-            <tr>
-              <th class="px-5 py-3 font-medium">Product</th>
-              <th class="px-4 py-3 text-center font-medium">Expected</th>
-              <th class="px-4 py-3 text-center font-medium">Counted</th>
-              <th class="px-4 py-3 font-medium">Variance</th>
-              <th class="px-5 py-3 font-medium">Reason</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100" formArrayName="lines">
-            @for (row of lines.controls; track $index; let i = $index) {
-              @if (matchesSearch(row)) {
-                <tr [formGroupName]="i" class="align-top transition hover:bg-slate-50/50"
-                  [class.bg-amber-50/40]="needsReason(row) && variance(row) < 0"
-                  [class.bg-blue-50/40]="needsReason(row) && variance(row) > 0">
-                  <!-- Product -->
-                  <td class="px-5 py-3">
-                    <div class="font-medium text-slate-900">{{ row.get('product_name')?.value }}</div>
-                    <div class="font-mono text-xs text-slate-400">{{ row.get('product_sku')?.value }}</div>
-                  </td>
-                  <!-- Expected -->
-                  <td class="px-4 py-3 text-center">
-                    <span class="text-base font-semibold text-slate-400">{{ row.get('expected_qty')?.value }}</span>
-                  </td>
-                  <!-- Counted input -->
-                  <td class="px-4 py-3 text-center">
-                    <input type="number" min="0" formControlName="counted_qty"
-                      class="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-center text-sm font-semibold
-                             outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-                  </td>
-                  <!-- Variance -->
-                  <td class="px-4 py-3">
-                    <app-badge [tone]="varianceTone(row)">{{ varianceLabel(row) }}</app-badge>
-                  </td>
-                  <!-- Reason (only when it differs) -->
-                  <td class="px-5 py-3">
-                    @if (needsReason(row)) {
-                      <input type="text" formControlName="reason"
-                        placeholder="Why the difference? (required)"
-                        class="w-full min-w-[12rem] rounded-lg border px-3 py-1.5 text-sm outline-none transition
-                               focus:ring-2 focus:ring-brand-500/20"
-                        [class.border-red-300]="row.touched && row.hasError('reasonRequired')"
-                        [class.border-slate-300]="!(row.touched && row.hasError('reasonRequired'))" />
-                    } @else {
-                      <span class="text-xs text-slate-300">—</span>
-                    }
-                  </td>
-                </tr>
-              }
-            }
-          </tbody>
-        </table>
-      </div>
+      @if (visibleCount() === 0) {
+        <div class="rounded-2xl bg-white px-6 py-10 text-center ring-1 ring-slate-200">
+          @if (view() === 'todo') {
+            <p class="text-sm font-medium text-slate-900">Everything is counted</p>
+            <p class="mt-1 text-sm text-slate-500">Review the differences, then submit.</p>
+          } @else if (view() === 'diff') {
+            <p class="text-sm font-medium text-slate-900">No differences so far</p>
+            <p class="mt-1 text-sm text-slate-500">Every counted product matches the system.</p>
+          } @else {
+            <p class="text-sm font-medium text-slate-900">Nothing matches your search</p>
+          }
+          <button type="button" (click)="view.set('all'); search.set('')"
+            class="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Show all</button>
+        </div>
+      }
     </form>
   }
 </div>
 
-<!-- Sticky action bar — tints amber when a count will correct stock -->
-<div class="fixed bottom-0 left-0 right-0 z-40 border-t backdrop-blur transition-colors
-            lg:left-[var(--sidebar-w,16rem)]"
-  [class.border-slate-200]="!hasDiscrepancies()"
-  [class.bg-white/90]="!hasDiscrepancies()"
-  [class.border-amber-200]="hasDiscrepancies()"
-  [class.bg-amber-50/90]="hasDiscrepancies()">
-  <div class="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-      @if (hasDiscrepancies()) {
-        <span class="mr-1 font-medium text-amber-700">⚠️ Submitting will correct stock</span>
-      }
-      <span class="text-slate-400">{{ summary().total }} products:</span>
-      <span class="font-medium text-green-600">{{ summary().match }} match</span>
-      @if (summary().short > 0) {
-        <span class="font-medium text-amber-600">{{ summary().short }} short (−{{ summary().netShort }})</span>
-      }
-      @if (summary().over > 0) {
-        <span class="font-medium text-blue-600">{{ summary().over }} over (+{{ summary().netOver }})</span>
-      }
+<!-- ======================= STICKY ACTION BAR ======================= -->
+@if (!building() && lines.controls.length > 0) {
+  @let f = summary();
+  <div class="fixed bottom-0 left-0 right-0 z-30 border-t backdrop-blur transition-colors lg:left-[var(--sidebar-w,16rem)]"
+    [class]="f.left > 0 ? 'border-slate-200 bg-white/90' : f.discrepancies > 0 ? 'border-amber-200 bg-amber-50/90' : 'border-green-200 bg-green-50/90'">
+
+    <!-- thin progress line on top of the bar -->
+    <div class="h-0.5 bg-slate-100">
+      <div class="h-full bg-brand-600 transition-[width] duration-500" [style.width.%]="f.pct"></div>
     </div>
-    <div class="flex items-center gap-2">
-      <button type="button" (click)="cancel()"
-        class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:flex-none">
-        Cancel
-      </button>
-      <button type="button" (click)="submit()" [disabled]="svc.saving() || form.invalid || lines.controls.length === 0"
-        class="flex-1 rounded-lg px-5 py-2 text-sm font-medium text-white transition disabled:opacity-60 sm:flex-none"
-        [class.bg-brand-600]="!hasDiscrepancies()"
-        [class.hover:bg-brand-700]="!hasDiscrepancies()"
-        [class.bg-amber-600]="hasDiscrepancies()"
-        [class.hover:bg-amber-700]="hasDiscrepancies()">
-        {{ svc.saving() ? 'Submitting…' : 'Submit count' }}
-      </button>
+
+    <div class="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div class="text-xs">
+        @if (f.left > 0) {
+          <div class="font-medium text-slate-700">{{ f.counted }} / {{ f.total }} counted · {{ f.left }} left</div>
+          <div class="text-slate-400">Count every product to submit</div>
+        } @else if (missingReasons() > 0) {
+          <div class="font-medium text-amber-700">{{ missingReasons() }} difference(s) need a reason</div>
+          <div class="text-slate-500">{{ f.short }} short · {{ f.over }} over</div>
+        } @else if (f.discrepancies > 0) {
+          <div class="font-medium text-amber-700">Submitting will correct stock</div>
+          <div class="text-slate-500">
+            {{ f.match }} match ·
+            <span class="text-amber-600">{{ f.short }} short (−{{ f.netShort }})</span> ·
+            <span class="text-blue-600">{{ f.over }} over (+{{ f.netOver }})</span>
+          </div>
+        } @else {
+          <div class="font-medium text-green-700">Everything matches the system</div>
+          <div class="text-slate-500">No stock will change — the count is logged for the audit trail</div>
+        }
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button type="button" (click)="cancel()"
+          class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:flex-none">
+          Cancel
+        </button>
+        <button type="button" (click)="submit()" [disabled]="svc.saving()"
+          class="flex-1 rounded-lg px-5 py-2 text-sm font-medium text-white shadow-sm transition disabled:opacity-60 sm:flex-none"
+          [class]="f.left > 0 || missingReasons() > 0 ? 'bg-slate-400 hover:bg-slate-500' : f.discrepancies > 0 ? 'bg-amber-600 hover:bg-amber-700' : 'bg-brand-600 hover:bg-brand-700'">
+          {{ svc.saving() ? 'Submitting…' : 'Submit count' }}
+        </button>
+      </div>
     </div>
   </div>
-</div>
+}

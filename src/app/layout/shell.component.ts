@@ -19,7 +19,9 @@ export class ShellComponent {
   // Desktop: collapsed to icons.  Mobile: drawer open/closed.
   readonly collapsed = signal(false);
   readonly mobileOpen = signal(false);
-
+  /** ⌘K on Mac, Ctrl K elsewhere — the palette listens for both. */
+readonly shortcut =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
   // Sellers don't see admin-only items
   readonly navItems = computed(() =>
     NAV_ITEMS.filter((item) => !item.adminOnly || this.auth.isAdmin())
