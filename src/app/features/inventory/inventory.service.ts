@@ -1,8 +1,8 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
+import { runway } from '../../core/stock/runway';
 import {
-  InventoryItem, InventoryRow, StockMovement, MovementEvent, Urgency,
-  INSIGHT_DAYS, CRITICAL_DAYS, WARNING_DAYS,
+  InventoryItem, InventoryRow, StockMovement, MovementEvent, INSIGHT_DAYS,
 } from './inventory.model';
 
 export interface MovementsQuery {
@@ -46,7 +46,6 @@ export class InventoryService {
 
   /**
    * Current stock for one object + 30 days of ledger behaviour per product.
-   * Two queries in parallel; everything else is computed client-side.
    * `silent` keeps the table on screen (no skeleton) — used after a write.
    */
   async loadInventory(objectId: string, opts: { silent?: boolean } = {}): Promise<void> {
@@ -249,16 +248,7 @@ function buildItems(rows: InventoryRow[], movs: WindowMovement[], since: Date): 
     series[INSIGHT_DAYS - 1] = r.quantity;
     for (let i = INSIGHT_DAYS - 1; i > 0; i--) series[i - 1] = series[i] - net[i];
 
-    const dailyRate = sold30 / INSIGHT_DAYS;
-    const daysLeft = dailyRate > 0 ? r.quantity / dailyRate : null;
-
-    let urgency: Urgency;
-    if (r.quantity <= 0) urgency = 'out';
-    else if (daysLeft === null) urgency = 'idle';
-    else if (daysLeft <= CRITICAL_DAYS) urgency = 'critical';
-    else if (daysLeft <= WARNING_DAYS) urgency = 'warning';
-    else urgency = 'healthy';
-
+    const rw = runway(r.quantity, sold30, INSIGHT_DAYS);
     const { line, area } = spark(series);
     const top = list[0];
 
@@ -270,9 +260,10 @@ function buildItems(rows: InventoryRow[], movs: WindowMovement[], since: Date): 
       in30,
       out30,
       sold30,
-      dailyRate,
-      daysLeft,
-      urgency,
+      dailyRate: rw.dailyRate,
+      daysLeft: rw.daysLeft,
+      urgency: rw.urgency,
+      lowData: rw.lowData,
       last: top ? { event: top.event, quantity: top.quantity, created_at: top.created_at } : null,
     };
   });

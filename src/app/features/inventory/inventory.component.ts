@@ -17,6 +17,7 @@ import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
 import { DrawerComponent } from '../../shared/ui/drawer.component';
 import { ToastService } from '../../shared/ui/toast.service';
 import { StockHistoryDialogComponent } from './stock-history-dialog.component';
+import { runwayLabel } from '../../core/stock/runway';
 
 type Filter = 'all' | 'reorder' | 'soon' | 'healthy' | 'idle';
 type Sort = 'urgency' | 'days' | 'onhand' | 'sold' | 'name';
@@ -281,17 +282,14 @@ export class InventoryComponent implements OnInit {
   }
 
   runwayText(i: InventoryItem): string {
-    if (i.quantity <= 0) return 'Empty';
-    if (i.daysLeft === null) return 'No sales in 30d';
-    if (i.daysLeft >= 90) return '90+ days';
-    const d = Math.max(0, Math.round(i.daysLeft));
-    return d === 1 ? '1 day left' : `${d} days left`;
+    const l = runwayLabel(i.quantity, i.daysLeft, i.lowData);
+    return /\d/.test(l) ? `${l} left` : l;
   }
 
-  /** "0.3/day", or "1 sold / 30d" when the rate would round to 0. */
+  /** "0.3/day", or the raw count when there are too few sales to trust a rate. */
   rateText(i: InventoryItem): string {
     if (i.sold30 === 0) return '';
-    if (i.dailyRate < 0.1) return `${i.sold30} sold / ${INSIGHT_DAYS}d`;
+    if (i.lowData) return `only ${i.sold30} sold / ${INSIGHT_DAYS}d`;
     return `${i.dailyRate.toFixed(1)}/day`;
   }
 

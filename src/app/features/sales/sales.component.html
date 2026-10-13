@@ -1,210 +1,541 @@
-<!-- Header + filters -->
-<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+<!-- ======================= HEADER ======================= -->
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
   <div>
     <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Sales</h1>
-    <p class="mt-1 text-sm text-slate-500">
-      Read-only sale movements from the ledger, paginated server-side.
-    </p>
+    <p class="mt-1 text-sm text-slate-500">What left the shelf, when, and which products carry the store.</p>
   </div>
 
-  <div class="flex flex-wrap items-end gap-3">
-    <!-- Range segmented control -->
-    <div>
-      <label class="mb-1.5 block text-xs font-medium text-slate-500">Range</label>
-
-      <div class="inline-flex rounded-lg border border-slate-300 bg-white p-0.5">
-        @for (r of ranges; track r.label) {
-        <button type="button" (click)="onRangeChange(r.days)"
-          class="rounded-md px-3 py-1.5 text-sm font-medium transition" [class.bg-brand-600]="rangeDays() === r.days"
-          [class.text-white]="rangeDays() === r.days" [class.text-slate-600]="rangeDays() !== r.days"
-          [class.hover:bg-slate-50]="rangeDays() !== r.days">
-          {{ r.label }}
-        </button>
-        }
-      </div>
-    </div>
-
-    <!-- Object filter -->
-    <div class="w-full max-w-xs">
-      <label class="mb-1.5 block text-xs font-medium text-slate-500">Object</label>
-
-      <select [value]="selectedObjectId()" (change)="onObjectChange($any($event.target).value)"
-        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
-        <option value="">All objects</option>
-
-        @for (o of objects(); track o.id) {
-        <option [value]="o.id">{{ o.name }}</option>
-        }
-      </select>
-    </div>
-
-    <!-- Server-side search -->
-    <div class="w-full max-w-xs">
-      <label class="mb-1.5 block text-xs font-medium text-slate-500">Search</label>
-
-      <input type="text" [value]="search()" (input)="onSearch($any($event.target).value)"
-        placeholder="Product, SKU, object, note..."
-        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-    </div>
-  </div>
+  <button type="button" (click)="openSale()"
+    class="group hidden h-12 shrink-0 items-center gap-3 rounded-xl bg-brand-600 pl-4 pr-3 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 ring-1 ring-brand-700 transition hover:-translate-y-0.5 hover:bg-brand-700 hover:shadow-xl hover:shadow-brand-600/30 active:translate-y-0 sm:inline-flex">
+    <span class="grid h-7 w-7 place-items-center rounded-lg bg-white/15 transition group-hover:bg-white/25">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0"/></svg>
+    </span>
+    Record sale
+    <kbd class="rounded-md bg-white/15 px-1.5 py-0.5 text-[11px] font-medium text-white/80">N</kbd>
+  </button>
 </div>
 
-@if (svc.loading()) {
-<div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
-  Loading sales...
-</div>
-} @else if (svc.error()) {
-<div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">
-  {{ svc.error() }}
-</div>
-} @else {
-<!-- KPI strip -->
-<div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-  <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-    <div class="text-2xl font-semibold text-slate-900">
-      {{ svc.summary().totalUnits }}
-    </div>
-    <div class="text-xs text-slate-500">Total units sold</div>
-  </div>
+<!-- Mobile: floating checkout button -->
+<button type="button" (click)="openSale()" aria-label="Record sale"
+  class="fixed bottom-5 right-5 z-30 inline-flex h-14 items-center gap-2 rounded-full bg-brand-600 pl-5 pr-6 text-sm font-semibold text-white shadow-xl shadow-brand-600/30 transition active:scale-95 sm:hidden"
+  [class.hidden]="saleOpen()">
+  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  Record sale
+</button>
 
-  <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-    <div class="text-2xl font-semibold text-slate-900">
-      {{ svc.summary().saleEvents }}
-    </div>
-    <div class="text-xs text-slate-500">Sale events</div>
-  </div>
-
-  <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-    <div class="text-2xl font-semibold text-slate-900">
-      {{ svc.summary().productsSold }}
-    </div>
-    <div class="text-xs text-slate-500">Different products sold</div>
-  </div>
-</div>
-
-@if (svc.rows().length === 0) {
-<div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
-  No sales match these filters.
-</div>
-} @else {
-<div class="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
-  <!-- Mobile cards -->
-  <div class="space-y-3 p-4 lg:hidden">
-    @for (r of svc.rows(); track r.id) {
-    <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
-      <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <div class="truncate font-medium text-slate-900">
-            {{ r.name }}
-          </div>
-          <div class="font-mono text-xs text-slate-400">
-            {{ r.sku }}
-          </div>
-        </div>
-
-        <div class="text-right">
-          <div class="text-lg font-semibold text-slate-900">
-            {{ r.units }}
-          </div>
-          <div class="text-[10px] uppercase tracking-wide text-slate-400">
-            sold
-          </div>
-        </div>
-      </div>
-
-      <div class="mt-2 flex items-center justify-between gap-3 text-xs text-slate-500">
-        <span class="truncate">{{ r.objectName }}</span>
-        <span class="shrink-0 text-slate-400">
-          {{ r.createdAt | date: 'MMM d, HH:mm' }}
-        </span>
-      </div>
-
-      @if (r.note) {
-      <div class="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-500">
-        {{ r.note }}
-      </div>
-      }
-    </div>
+<!-- ======================= TOOLBAR ======================= -->
+<div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <div class="inline-flex w-fit rounded-lg bg-white p-0.5 ring-1 ring-slate-200">
+    @for (r of ranges; track r.label) {
+      <button type="button" (click)="onRangeChange(r.days)"
+        class="rounded-md px-3 py-1.5 text-xs font-medium transition"
+        [class]="rangeDays() === r.days ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'">
+        {{ r.label }}
+      </button>
     }
   </div>
 
-  <!-- Desktop table -->
-  <div class="hidden overflow-x-auto lg:block">
-    <table class="w-full text-left text-sm">
-      <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-        <tr>
-          <th class="px-5 py-3 font-medium">Product</th>
-          <th class="px-5 py-3 font-medium">Object</th>
-          <th class="px-5 py-3 text-right font-medium">Units sold</th>
-          <th class="px-5 py-3 font-medium">Note</th>
-          <th class="px-5 py-3 font-medium">When</th>
-        </tr>
-      </thead>
-
-      <tbody class="divide-y divide-slate-100">
-        @for (r of svc.rows(); track r.id) {
-        <tr class="transition hover:bg-slate-50/60">
-          <td class="px-5 py-3">
-            <div class="font-medium text-slate-900">
-              {{ r.name }}
-            </div>
-            <div class="font-mono text-xs text-slate-400">
-              {{ r.sku }}
-            </div>
-          </td>
-
-          <td class="px-5 py-3 text-slate-600">
-            {{ r.objectName }}
-          </td>
-
-          <td class="px-5 py-3 text-right">
-            <span class="font-semibold text-slate-900">
-              {{ r.units }}
-            </span>
-          </td>
-
-          <td class="px-5 py-3 text-slate-500">
-            @if (r.note) {
-            {{ r.note }}
-            } @else {
-            <span class="text-slate-300">—</span>
-            }
-          </td>
-
-          <td class="px-5 py-3 text-slate-500">
-            {{ r.createdAt | date: 'MMM d, y, HH:mm' }}
-          </td>
-        </tr>
+  <div class="flex gap-2">
+    <div class="relative flex-1 sm:w-60 sm:flex-none">
+      <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" [value]="search()" (input)="onSearch($any($event.target).value)"
+        placeholder="Product, SKU or note"
+        class="h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+    </div>
+    @if (isAdmin()) {
+      <select [value]="selectedObjectId()" (change)="onObjectChange($any($event.target).value)"
+        class="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+        <option value="">All stores</option>
+        @for (o of objects(); track o.id) {
+          <option [value]="o.id">{{ o.name }}</option>
         }
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Pagination footer -->
-  <div
-    class="flex flex-col gap-3 border-t border-slate-100 px-5 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-    <div class="text-slate-500">
-      Page
-      <span class="font-medium text-slate-700">{{ svc.page() }}</span>
-      of
-      <span class="font-medium text-slate-700">{{ svc.totalPages() }}</span>
-      ·
-      <span class="font-medium text-slate-700">{{ svc.total() }}</span>
-      matching
-    </div>
-
-    <div class="flex gap-2">
-      <button type="button" (click)="previous()" [disabled]="svc.page() <= 1"
-        class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
-        Previous
-      </button>
-
-      <button type="button" (click)="next()" [disabled]="svc.page() >= svc.totalPages()"
-        class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
-        Next
-      </button>
-    </div>
+      </select>
+    }
   </div>
 </div>
+
+@if (svc.loading() && svc.rows().length === 0) {
+
+  <!-- ======================= SKELETON ======================= -->
+  <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    @for (i of [1,2,3,4]; track i) {
+      <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+        <div class="sk h-3 w-20"></div><div class="sk mt-3 h-7 w-14"></div><div class="sk mt-2 h-3 w-24"></div>
+      </div>
+    }
+  </div>
+  <div class="mt-4 grid gap-4 lg:grid-cols-3">
+    <div class="sk h-64 rounded-2xl lg:col-span-2"></div>
+    <div class="sk h-64 rounded-2xl"></div>
+  </div>
+
+} @else if (svc.error()) {
+  <div class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{{ svc.error() }}</div>
+} @else {
+
+  <!-- ======================= KPI STRIP ======================= -->
+  @let k = kpis();
+  <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+      <div class="text-xs font-medium text-slate-500">Units sold</div>
+      <div class="mt-1.5 text-2xl font-semibold tabular-nums text-slate-900">{{ k.units | number }}</div>
+      <div class="mt-0.5 text-xs text-slate-400">{{ k.perDay | number: '1.0-1' }} / day · {{ rangeLabel() }}</div>
+    </div>
+    <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+      <div class="text-xs font-medium text-slate-500">Sales</div>
+      <div class="mt-1.5 text-2xl font-semibold tabular-nums text-slate-900">{{ k.sales | number }}</div>
+      <div class="mt-0.5 text-xs text-slate-400">{{ k.perSale | number: '1.0-1' }} units per sale</div>
+    </div>
+    <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+      <div class="text-xs font-medium text-slate-500">Products sold</div>
+      <div class="mt-1.5 text-2xl font-semibold tabular-nums text-slate-900">{{ topProducts().length ? svc.summary().productsSold : 0 }}</div>
+      <div class="mt-0.5 truncate text-xs text-slate-400">
+        @if (topProducts().length) { top: {{ topProducts()[0].name }} } @else { no sales yet }
+      </div>
+    </div>
+    <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+      <div class="text-xs font-medium text-slate-500">Best day</div>
+      @if (k.best; as b) {
+        <div class="mt-1.5 text-2xl font-semibold tabular-nums text-slate-900">{{ b.units }}</div>
+        <div class="mt-0.5 text-xs text-slate-400">units · {{ b.date | date: 'EEE, MMM d' }}</div>
+      } @else {
+        <div class="mt-1.5 text-2xl font-semibold text-slate-300">—</div>
+        <div class="mt-0.5 text-xs text-slate-400">no sales in range</div>
+      }
+    </div>
+  </div>
+
+  <!-- ======================= CHART + TOP PRODUCTS ======================= -->
+  <div class="mt-4 grid gap-4 lg:grid-cols-3">
+
+    <!-- daily units -->
+    <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200 lg:col-span-2">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="text-sm font-semibold text-slate-900">Units sold per day</div>
+          <div class="text-xs text-slate-400">{{ rangeLabel() }}</div>
+        </div>
+        <div class="h-10 text-right">
+          @if (hovered() !== null) {
+            @let hb = buckets()[hovered()!];
+            <div class="text-sm font-semibold tabular-nums text-slate-900">{{ hb.units }} units</div>
+            <div class="text-xs text-slate-400">{{ hb.date | date: 'EEE, MMM d' }} · {{ hb.sales }} {{ hb.sales === 1 ? 'sale' : 'sales' }}</div>
+          }
+        </div>
+      </div>
+
+      @if (svc.insightsLoading()) {
+        <div class="sk mt-4 h-44 rounded-xl"></div>
+      } @else if (k.units === 0) {
+        <div class="mt-4 grid h-44 place-items-center rounded-xl bg-slate-50 text-sm text-slate-400">No sales in this range</div>
+      } @else {
+        <div class="relative mt-4 h-44" (mouseleave)="hovered.set(null)">
+          <!-- guide lines -->
+          <div class="pointer-events-none absolute inset-0 flex flex-col justify-between">
+            <div class="border-t border-dashed border-slate-100"></div>
+            <div class="border-t border-dashed border-slate-100"></div>
+            <div class="border-t border-dashed border-slate-100"></div>
+            <div class="border-t border-slate-200"></div>
+          </div>
+          <span class="absolute -top-2 right-0 bg-white pl-1 text-[10px] tabular-nums text-slate-300">{{ maxBucket() }}</span>
+
+          <div class="relative flex h-full items-end" [class]="chartDays() > 45 ? 'gap-px' : 'gap-1'">
+            @for (b of buckets(); track b.date.getTime(); let i = $index) {
+              <div class="flex h-full flex-1 cursor-default items-end" (mouseenter)="hovered.set(i)">
+                <div class="bar w-full rounded-t-sm transition-colors"
+                     [class]="hovered() === i ? 'bg-brand-700' : hovered() !== null ? 'bg-brand-200' : 'bg-brand-500'"
+                     [style.height.%]="barHeight(b)"
+                     [style.animation-delay.ms]="barDelay(i)"></div>
+              </div>
+            }
+          </div>
+        </div>
+        <div class="mt-2 flex text-[10px] text-slate-400">
+          @for (b of buckets(); track b.date.getTime(); let i = $index) {
+            <div class="flex-1 overflow-visible whitespace-nowrap"
+                 [class.text-left]="i === 0" [class.text-center]="i > 0 && i < chartDays() - 1" [class.text-right]="i === chartDays() - 1">
+              @if (isTick(i)) { {{ i === chartDays() - 1 ? 'Today' : (b.date | date: 'MMM d') }} }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- top products -->
+    <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+      <div class="text-sm font-semibold text-slate-900">Top products</div>
+      <div class="text-xs text-slate-400">by units · {{ rangeLabel() }}</div>
+
+      @if (svc.insightsLoading()) {
+        <div class="mt-4 space-y-4">
+          @for (i of [1,2,3,4]; track i) { <div class="space-y-1.5"><div class="sk h-3 w-1/2"></div><div class="sk h-2 w-full"></div></div> }
+        </div>
+      } @else if (topProducts().length === 0) {
+        <div class="mt-4 grid h-40 place-items-center rounded-xl bg-slate-50 text-sm text-slate-400">Nothing sold yet</div>
+      } @else {
+        <ol class="mt-4 space-y-4">
+          @for (p of topProducts(); track p.sku; let i = $index) {
+            <li>
+              <div class="flex items-baseline justify-between gap-2 text-sm">
+                <span class="flex min-w-0 items-center gap-2">
+                  <span class="w-4 shrink-0 text-xs font-semibold tabular-nums text-slate-300">{{ i + 1 }}</span>
+                  <span class="truncate font-medium text-slate-900">{{ p.name }}</span>
+                </span>
+                <span class="shrink-0 tabular-nums">
+                  <span class="font-semibold text-slate-900">{{ p.units }}</span>
+                  <span class="ml-1 text-xs text-slate-400">{{ p.share | number: '1.0-0' }}%</span>
+                </span>
+              </div>
+              <div class="ml-6 mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div class="fill h-full rounded-full" [class]="i === 0 ? 'bg-brand-600' : 'bg-brand-300'"
+                     [style.width.%]="p.pct" [style.animation-delay.ms]="120 + i * 80"></div>
+              </div>
+            </li>
+          }
+        </ol>
+      }
+    </div>
+  </div>
+
+  <!-- ======================= SALES LIST ======================= -->
+  <div class="mb-3 mt-6 flex items-baseline justify-between">
+    <h2 class="text-sm font-semibold text-slate-900">Recent sales</h2>
+    <span class="text-xs text-slate-400">{{ svc.total() }} sale lines</span>
+  </div>
+
+  @if (groups().length === 0) {
+    <div class="rounded-2xl bg-white px-6 py-12 text-center ring-1 ring-slate-200">
+      <p class="text-sm font-medium text-slate-900">No sales match these filters</p>
+      <p class="mt-1 text-sm text-slate-500">Try a wider range, or record a sale.</p>
+      <button type="button" (click)="openSale()"
+        class="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">+ Record sale</button>
+    </div>
+  } @else {
+    <div class="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200" [class.opacity-60]="svc.loading()">
+      <ul class="divide-y divide-slate-100">
+        @for (g of groups(); track g.key; let i = $index) {
+          <li class="row-in flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:gap-6"
+              [class.row-flash]="g.ref && flashRef() === g.ref" [style.animation-delay.ms]="delay(i)">
+
+            <!-- when -->
+            <div class="flex shrink-0 items-center gap-3 sm:w-40">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg"
+                    [class]="g.lines.length > 1 ? 'bg-brand-50 text-brand-600' : 'bg-slate-100 text-slate-500'">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 2 3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0"/>
+                </svg>
+              </span>
+              <div class="min-w-0">
+                <div class="text-sm font-medium text-slate-900">{{ ago(g.createdAt) }}</div>
+                <div class="text-[11px] text-slate-400">{{ g.createdAt | date: 'MMM d, HH:mm' }}</div>
+              </div>
+            </div>
+
+            <!-- products -->
+            <div class="min-w-0 flex-1">
+              @if (g.lines.length === 1) {
+                <div class="truncate font-medium text-slate-900">{{ g.lines[0].name }}</div>
+                <div class="font-mono text-xs text-slate-400">{{ g.lines[0].sku }}</div>
+              } @else {
+                <div class="flex flex-wrap gap-1.5">
+                  @for (l of g.lines; track l.id) {
+                    <span class="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+                      <span class="font-semibold tabular-nums">{{ l.units }}×</span> {{ l.name }}
+                    </span>
+                  }
+                </div>
+                <div class="mt-1 text-[11px] text-slate-400">{{ g.lines.length }} products · <span class="font-mono">#{{ shortRef(g.ref) }}</span></div>
+              }
+              @if (g.note) {
+                <div class="mt-1 truncate text-xs italic text-slate-500">"{{ g.note }}"</div>
+              }
+            </div>
+
+            <!-- store -->
+            <div class="text-xs text-slate-500 sm:w-32 sm:truncate">{{ g.objectName }}</div>
+
+            <!-- units -->
+            <div class="flex items-baseline gap-1 sm:w-20 sm:justify-end">
+              <span class="text-lg font-semibold tabular-nums text-red-600">−{{ g.units }}</span>
+              <span class="text-[11px] text-slate-400">{{ g.units === 1 ? 'unit' : 'units' }}</span>
+            </div>
+          </li>
+        }
+      </ul>
+
+      @if (svc.totalPages() > 1) {
+        <div class="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-sm">
+          <span class="text-slate-500">Page {{ svc.page() }} of {{ svc.totalPages() }}</span>
+          <div class="flex gap-2">
+            <button type="button" (click)="previous()" [disabled]="svc.page() <= 1"
+              class="rounded-lg border border-slate-300 px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-40">Previous</button>
+            <button type="button" (click)="next()" [disabled]="svc.page() >= svc.totalPages()"
+              class="rounded-lg border border-slate-300 px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-40">Next</button>
+          </div>
+        </div>
+      }
+    </div>
+  }
 }
-}
+
+<!-- ======================= CHECKOUT ======================= -->
+<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6"
+     [class.pointer-events-none]="!saleOpen()" [attr.inert]="saleOpen() ? null : ''">
+
+  <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity duration-300"
+       [class.opacity-0]="!saleOpen()" (click)="closeSale()"></div>
+
+  <div role="dialog" aria-modal="true" aria-label="Record sale"
+       class="relative flex h-[100dvh] w-full max-w-6xl flex-col overflow-hidden bg-white shadow-2xl transition duration-300 ease-[cubic-bezier(.2,.8,.2,1)] sm:h-[min(760px,92vh)] sm:rounded-3xl"
+       [class]="saleOpen() ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-8 scale-[.98] opacity-0'">
+
+    <!-- top bar -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 px-4 sm:px-6">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-600 text-white">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0"/></svg>
+      </span>
+      <div class="min-w-0">
+        <div class="text-base font-semibold leading-tight text-slate-900">{{ saleStep() === 'done' ? 'Sale recorded' : 'New sale' }}</div>
+        <div class="truncate text-xs text-slate-400">{{ saleObjectName() }}</div>
+      </div>
+
+      @if (isAdmin() && saleStep() === 'basket') {
+        <select [value]="saleObjectId()" (change)="changeSaleObject($any($event.target).value)"
+          class="ml-auto hidden h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 sm:block">
+          @for (o of objects(); track o.id) { <option [value]="o.id">{{ o.name }}</option> }
+        </select>
+      }
+
+      <button type="button" (click)="closeSale()" aria-label="Close"
+        class="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+        [class.ml-auto]="!isAdmin() || saleStep() === 'done'" [class.sm:ml-0]="isAdmin() && saleStep() === 'basket'">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    @if (saleStep() === 'basket') {
+      <div class="grid min-h-0 flex-1 grid-rows-[1fr_auto] lg:grid-cols-[1fr_400px] lg:grid-rows-1">
+
+        <!-- ========== LEFT: product picker ========== -->
+        <section class="flex min-h-0 flex-col">
+          <div class="shrink-0 px-4 pt-4 sm:px-6 sm:pt-5">
+            <div class="relative">
+              <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <input id="sale-search" type="text" autocomplete="off"
+                [value]="productSearch()" (input)="productSearch.set($any($event.target).value)"
+                (keydown.enter)="onSearchEnter($event)"
+                placeholder="Search a product or scan a SKU"
+                class="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 pl-12 pr-24 text-sm outline-none transition focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10" />
+              <kbd class="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-400 sm:block">Enter = add</kbd>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between text-[11px] text-slate-400">
+              <span class="font-semibold uppercase tracking-wide">{{ sellableFiltered().length }} products</span>
+              <span>Best sellers first · tap a tile to add one</span>
+            </div>
+          </div>
+
+          <div class="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-3 sm:px-6">
+            @if (svc.sellableLoading()) {
+              <div class="grid grid-cols-2 gap-3 xl:grid-cols-3">
+                @for (i of [1,2,3,4,5,6]; track i) { <div class="sk h-36 rounded-2xl"></div> }
+              </div>
+            } @else if (svc.sellable().length === 0) {
+              <div class="grid h-full place-items-center text-center text-sm text-slate-400">No products are assigned to this store.</div>
+            } @else if (sellableFiltered().length === 0) {
+              <div class="grid h-full place-items-center text-center text-sm text-slate-400">No product matches "{{ productSearch() }}".</div>
+            } @else {
+              <div class="grid grid-cols-2 gap-3 p-1 xl:grid-cols-3">
+                @for (p of sellableFiltered(); track p.productId; let i = $index) {
+                  @let q = qty(p);
+                  @let left = p.onHand - q;
+                  <button type="button" (click)="addToCart(p, 1)" [disabled]="left <= 0"
+                    class="row-in relative flex flex-col rounded-2xl p-4 text-left transition duration-200 active:scale-[.97] disabled:cursor-not-allowed"
+                    [class]="q > 0 ? 'bg-brand-50 ring-2 ring-brand-500' : p.onHand === 0 ? 'bg-slate-50 opacity-60 ring-1 ring-slate-200' : 'bg-white ring-1 ring-slate-200 hover:-translate-y-0.5 hover:shadow-lg hover:ring-slate-300'"
+                    [style.animation-delay.ms]="i < 12 ? i * 25 : 0">
+
+                    @if (q > 0) {
+                      <span class="pop absolute -right-1.5 -top-1.5 grid h-7 min-w-7 place-items-center rounded-full bg-brand-600 px-2 text-xs font-bold tabular-nums text-white shadow-md ring-2 ring-white"
+                            [class.bump]="bumpId() === p.productId">{{ q }}</span>
+                    }
+
+                    <span class="truncate pr-4 text-sm font-semibold text-slate-900">{{ p.name }}</span>
+                    <span class="truncate font-mono text-[11px] text-slate-400">{{ p.sku }}</span>
+
+                    <span class="mt-4 flex items-end justify-between gap-2">
+                      <span>
+                        <span class="block text-2xl font-semibold leading-none tabular-nums"
+                              [class]="left <= 0 ? 'text-red-500' : 'text-slate-900'">{{ left }}</span>
+                        <span class="mt-1 block text-[11px] text-slate-400">
+                          @if (p.onHand === 0) { out of stock } @else if (left <= 0) { all in basket } @else { on shelf }
+                        </span>
+                      </span>
+                      @if (p.sold30 > 0) {
+                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">{{ p.sold30 }} sold · 30d</span>
+                      }
+                    </span>
+
+                    <span class="mt-3 block h-1 overflow-hidden rounded-full bg-slate-100">
+                      <span class="block h-full rounded-full transition-[width] duration-300"
+                            [class]="left <= 0 ? 'bg-red-400' : 'bg-brand-500'"
+                            [style.width.%]="shelfPct(left)"></span>
+                    </span>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- ========== RIGHT: basket ========== -->
+        <aside class="flex max-h-[48dvh] min-h-0 flex-col border-t border-slate-200 bg-slate-50 lg:max-h-none lg:border-l lg:border-t-0">
+          <div class="flex shrink-0 items-center justify-between px-5 pb-2 pt-4">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-slate-900">Basket</span>
+              @if (cartLines().length) {
+                <span class="rounded-full bg-brand-600 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-white">{{ cartLines().length }}</span>
+              }
+            </div>
+            @if (cartLines().length) {
+              <button type="button" (click)="clearCart()"
+                class="rounded-md px-2 py-1 text-xs font-medium text-slate-500 transition hover:bg-white hover:text-slate-700">Clear</button>
+            }
+          </div>
+
+          <div class="min-h-0 flex-1 overflow-y-auto px-5">
+            @if (cartLines().length === 0) {
+              <div class="flex h-full min-h-32 flex-col items-center justify-center py-8 text-center">
+                <span class="grid h-14 w-14 place-items-center rounded-2xl bg-white text-slate-300 ring-1 ring-slate-200">
+                  <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0"/></svg>
+                </span>
+                <p class="mt-3 text-sm font-medium text-slate-700">Basket is empty</p>
+                <p class="mt-1 text-xs text-slate-400">Tap a product, or type a SKU and press Enter.</p>
+              </div>
+            } @else {
+              <ul class="space-y-2 pb-2">
+                @for (l of cartLines(); track l.productId) {
+                  <li class="row-in rounded-xl bg-white p-3 ring-1 ring-slate-200">
+                    <div class="flex items-center gap-3">
+                      <div class="min-w-0 flex-1">
+                        <div class="truncate text-sm font-medium text-slate-900">{{ l.name }}</div>
+                        <div class="mt-0.5 flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-slate-400">
+                          {{ l.onHand }}
+                          <svg class="h-3 w-3 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                          <span class="font-semibold text-slate-700">{{ l.after }}</span> on shelf
+                        </div>
+                      </div>
+                      <div class="flex shrink-0 items-center rounded-lg bg-slate-100 p-0.5">
+                        <button type="button" (click)="addToCartById(l.productId, -1)" aria-label="Minus one"
+                          class="grid h-8 w-8 place-items-center rounded-md text-slate-600 transition hover:bg-white hover:shadow-sm active:scale-90">
+                          @if (l.qty === 1) {
+                            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+                          } @else {
+                            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg>
+                          }
+                        </button>
+                        <span class="w-8 text-center text-sm font-semibold tabular-nums text-slate-900" [class.bump]="bumpId() === l.productId">{{ l.qty }}</span>
+                        <button type="button" (click)="addToCartById(l.productId, 1)" [disabled]="l.after <= 0" aria-label="Plus one"
+                          class="grid h-8 w-8 place-items-center rounded-md text-slate-600 transition hover:bg-white hover:shadow-sm active:scale-90 disabled:opacity-30">
+                          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                    @if (l.crosses) {
+                      <div class="mt-2 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium ring-1" [class]="toneChip(l.tone)">
+                        <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+                        {{ daysText(l.after, l.daysAfter, l.sold30) }} — {{ toneNote(l.tone) }}
+                      </div>
+                    }
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+
+          <!-- total + pay -->
+          <div class="shrink-0 border-t border-slate-200 bg-white px-5 pb-5 pt-4">
+            @if (cartLines().length) {
+              <input type="text" [value]="saleNote()" (input)="saleNote.set($any($event.target).value)"
+                placeholder="Add a note — receipt no., customer…"
+                class="mb-3 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20" />
+            }
+
+            @if (saleError()) {
+              <div class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">{{ saleError() }}</div>
+            }
+
+            <div class="mb-3 flex items-end justify-between">
+              <span class="text-sm text-slate-500">{{ cartLines().length }} {{ cartLines().length === 1 ? 'product' : 'products' }}</span>
+              <span class="text-right">
+                <span class="text-3xl font-semibold leading-none tabular-nums text-slate-900" [class.bump]="bumpId() !== null">{{ cartUnits() }}</span>
+                <span class="ml-1 text-sm text-slate-400">{{ cartUnits() === 1 ? 'unit' : 'units' }}</span>
+              </span>
+            </div>
+
+            <button type="button" (click)="submitSale()" [disabled]="svc.saving() || cartUnits() === 0"
+              class="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 text-base font-semibold text-white shadow-lg shadow-brand-600/25 transition hover:bg-brand-700 active:scale-[.99] disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
+              @if (svc.saving()) {
+                <svg class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".25" stroke-width="3"/><path d="M21 12a9 9 0 00-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+                Recording…
+              } @else {
+                Record sale
+                @if (cartUnits()) { <kbd class="hidden rounded-md bg-white/15 px-1.5 py-0.5 text-[11px] font-medium text-white/80 sm:inline">{{ shortcut }}</kbd> }
+              }
+            </button>
+          </div>
+        </aside>
+      </div>
+
+    } @else if (lastSale(); as ls) {
+
+      <!-- ========== DONE: receipt ========== -->
+      <div class="min-h-0 flex-1 overflow-y-auto bg-slate-50 px-4 py-8 sm:px-6">
+        <div class="mx-auto max-w-md">
+          <div class="text-center">
+            <div class="pop mx-auto grid h-20 w-20 place-items-center rounded-full bg-green-100 ring-8 ring-green-50">
+              <svg class="check h-10 w-10 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+            </div>
+            <div class="mt-5 text-2xl font-semibold text-slate-900">{{ ls.units }} {{ ls.units === 1 ? 'unit' : 'units' }} sold</div>
+            <div class="mt-1 text-sm text-slate-500">
+              {{ ls.objectName }}@if (ls.ref) { · <span class="font-mono">#{{ shortRef(ls.ref) }}</span> }
+            </div>
+          </div>
+
+          <div class="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+            <div class="border-b border-dashed border-slate-200 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Written to the ledger</div>
+            <ul class="divide-y divide-slate-100">
+              @for (l of ls.lines; track l.productId; let i = $index) {
+                <li class="row-in flex items-center justify-between gap-3 px-4 py-3" [style.animation-delay.ms]="200 + i * 70">
+                  <div class="min-w-0">
+                    <div class="truncate text-sm font-medium text-slate-900">{{ l.name }}</div>
+                    <div class="font-mono text-[11px] tabular-nums text-slate-400">SALE −{{ l.qty }} · shelf now {{ l.after }}</div>
+                  </div>
+                  <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1" [class]="toneChip(l.tone)">{{ daysText(l.after, l.daysAfter, l.sold30) }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+
+          @let rw = reorderCount(ls.lines);
+          @if (rw > 0) {
+            <div class="row-in mt-4 flex items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 ring-1 ring-amber-200"
+                 [style.animation-delay.ms]="200 + ls.lines.length * 70">
+              <span class="text-xs text-amber-800"><b>{{ rw }}</b> {{ rw === 1 ? 'product needs' : 'products need' }} reordering now.</span>
+              <a [routerLink]="['/inventory']" [queryParams]="{ object: ls.objectId }" (click)="closeSale()"
+                class="shrink-0 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-amber-800 ring-1 ring-amber-300 transition hover:bg-amber-100">Open inventory</a>
+            </div>
+          }
+
+          <div class="mt-6 grid grid-cols-2 gap-2">
+            <button type="button" (click)="closeSale()"
+              class="h-11 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-700 transition hover:bg-slate-50">Done</button>
+            <button type="button" (click)="newSale()"
+              class="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-brand-600 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition hover:bg-brand-700">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              New sale
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>

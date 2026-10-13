@@ -1,248 +1,461 @@
-<!-- Header + filters -->
-<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-  <div>
-    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Reports</h1>
-    <p class="mt-1 text-sm text-slate-500">
-      Insights for <span class="font-medium text-slate-700">{{ scopeLabel() }}</span>
-      · <span class="font-medium text-slate-700">{{ rangeLabel() }}</span>.
-    </p>
-  </div>
-
-  <div class="flex flex-wrap items-end gap-3">
-    <!-- Range segmented control -->
-    <div>
-      <label class="mb-1.5 block text-xs font-medium text-slate-500">Range</label>
-      <div class="inline-flex rounded-lg border border-slate-300 bg-white p-0.5">
-        @for (r of ranges; track r.days) {
-          <button (click)="onRangeChange(r.days)"
-            class="rounded-md px-3 py-1.5 text-sm font-medium transition"
-            [class.bg-brand-600]="rangeDays() === r.days"
-            [class.text-white]="rangeDays() === r.days"
-            [class.text-slate-600]="rangeDays() !== r.days"
-            [class.hover:bg-slate-50]="rangeDays() !== r.days">
-            {{ r.label }}
-          </button>
-        }
-      </div>
-    </div>
-
-    <!-- Object filter -->
-    <div class="w-full max-w-xs">
-      <label class="mb-1.5 block text-xs font-medium text-slate-500">Filter by object</label>
-      <select [value]="selectedObjectId()"
-        (change)="onObjectChange($any($event.target).value)"
-        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
-        <option value="">All objects</option>
-        @for (o of objects(); track o.id) {
-          <option [value]="o.id">{{ o.name }}</option>
-        }
-      </select>
-    </div>
-  </div>
+<!-- ======================= HEADER ======================= -->
+<div class="mb-6">
+  <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Reports</h1>
+  <p class="mt-1 text-sm text-slate-500">
+    How stock moved through <span class="font-medium text-slate-700">{{ scopeLabel() }}</span>
+    over the <span class="font-medium text-slate-700">{{ rangeLabel() }}</span> — and what to reorder next.
+  </p>
 </div>
 
-@if (svc.loading()) {
-  <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
-    Crunching numbers…
+<!-- ======================= TOOLBAR ======================= -->
+<div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <div class="inline-flex w-fit rounded-lg bg-white p-0.5 ring-1 ring-slate-200">
+    @for (r of ranges; track r.days) {
+      <button type="button" (click)="onRangeChange(r.days)"
+        class="rounded-md px-3 py-1.5 text-xs font-medium transition"
+        [class]="rangeDays() === r.days ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'">
+        {{ r.label }}
+      </button>
+    }
   </div>
+  <select [value]="selectedObjectId()" (change)="onObjectChange($any($event.target).value)"
+    class="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+    <option value="">All stores</option>
+    @for (o of objects(); track o.id) {
+      <option [value]="o.id">{{ o.name }}</option>
+    }
+  </select>
+</div>
+
+@if (svc.loading() && !svc.loaded()) {
+
+  <!-- ======================= SKELETON ======================= -->
+  <div class="sk mb-4 h-14 rounded-2xl"></div>
+  <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+    @for (i of [1,2,3,4,5]; track i) {
+      <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+        <div class="sk h-3 w-20"></div><div class="sk mt-3 h-7 w-14"></div><div class="sk mt-3 h-6 w-full"></div>
+      </div>
+    }
+  </div>
+  <div class="mt-4 grid gap-4 lg:grid-cols-3">
+    <div class="sk h-80 rounded-2xl lg:col-span-2"></div>
+    <div class="sk h-80 rounded-2xl"></div>
+  </div>
+
 } @else if (svc.error()) {
-  <div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">
-    {{ svc.error() }}
-  </div>
+  <div class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{{ svc.error() }}</div>
 } @else {
+  @let k = svc.kpis();
+  @let s = shown();
+  @let sp = sparks();
 
-  <!-- ===== KPI STRIP ===== -->
-  <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-    <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-      <div class="text-2xl font-semibold text-slate-900">{{ svc.stats().totalUnits }}</div>
-      <div class="mt-0.5 text-xs text-slate-500">Total units in stock</div>
-    </div>
-    <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-      <div class="text-2xl font-semibold text-slate-900">{{ svc.stats().movementsMonth }}</div>
-      <div class="mt-0.5 text-xs text-slate-500">Movements · {{ rangeDays() }}d</div>
-    </div>
-    <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-      <div class="text-2xl font-semibold text-slate-900">{{ svc.stats().ordersMonth }}</div>
-      <div class="mt-0.5 text-xs text-slate-500">Orders · {{ rangeDays() }}d</div>
-    </div>
-    <!-- V7: reorder count — the actionable signal -->
-    <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-      <div class="text-2xl font-semibold"
-        [class.text-red-600]="svc.stats().reorderCount > 0"
-        [class.text-slate-900]="svc.stats().reorderCount === 0">{{ svc.stats().reorderCount }}</div>
-      <div class="mt-0.5 text-xs text-slate-500">Need reordering</div>
-    </div>
-  </div>
+  <div class="transition-opacity duration-300" [class.opacity-60]="svc.loading()">
 
-  <!-- ===== CHARTS ROW ===== -->
-  <div class="mt-6 grid gap-6 lg:grid-cols-5">
+    <!-- ======================= HEADLINE ======================= -->
+    <div class="row-in mb-4 flex flex-col gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-brand-600 to-brand-700 px-5 py-4 text-white shadow-lg shadow-brand-600/20 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-sm leading-relaxed text-white/90">
+        In the {{ rangeLabel() }} <b class="text-white">{{ k.sold }} units</b> were sold
+        @if (k.soldPrev > 0) {
+          ({{ k.sold >= k.soldPrev ? 'up' : 'down' }} {{ delta(k.sold, k.soldPrev).text }})
+        }
+        and <b class="text-white">{{ k.unitsIn }}</b> came in.
+        @if (k.reorder > 0) {
+          <b class="text-white">{{ k.reorder }} {{ k.reorder === 1 ? 'product needs' : 'products need' }}</b> reordering now.
+        } @else if (k.soon > 0) {
+          <b class="text-white">{{ k.soon }}</b> {{ k.soon === 1 ? 'product runs' : 'products run' }} low within two weeks.
+        } @else {
+          Every shelf is covered.
+        }
+      </p>
+      @if (k.reorder > 0 || k.soon > 0) {
+        <button type="button" (click)="scrollToRunway()"
+          class="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-brand-700 shadow-sm transition hover:bg-brand-50 sm:self-auto">
+          See what to reorder
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        </button>
+      }
+    </div>
 
-    <!-- Order throughput — BAR chart (adaptive: daily or weekly) -->
-    <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200 lg:col-span-3">
-      <div class="mb-4 flex items-baseline justify-between">
-        <h2 class="text-sm font-semibold text-slate-900">Order throughput</h2>
-        <span class="text-xs text-slate-400">
-          {{ totalThroughput() }} orders · {{ rangeLabel() }}
-          @if (svc.granularity() === 'week') { <span class="text-slate-300">· weekly</span> }
-        </span>
+    <!-- ======================= KPI STRIP ======================= -->
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+
+      <!-- on hand -->
+      <div class="row-in rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+        <div class="text-xs font-medium text-slate-500">On hand</div>
+        <div class="mt-1.5 text-2xl font-semibold tabular-nums text-slate-900">{{ s.onHand | number }}</div>
+        <div class="mt-1 text-[11px] text-slate-400">
+          <span class="font-medium tabular-nums"
+                [class.text-green-600]="k.onHand > k.onHandStart" [class.text-red-600]="k.onHand < k.onHandStart">{{ signed(k.onHand - k.onHandStart) }}</span>
+          units in range
+        </div>
+        <svg viewBox="0 0 100 28" preserveAspectRatio="none" class="reveal mt-2 h-7 w-full overflow-visible" aria-hidden="true">
+          <path [attr.d]="sp.balance.area" fill="#4f46e5" fill-opacity=".1" />
+          <path [attr.d]="sp.balance.line" fill="none" stroke="#4f46e5" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" />
+        </svg>
       </div>
 
-      @if (totalThroughput() === 0) {
-        <p class="py-12 text-center text-sm text-slate-400">No orders in this range.</p>
-      } @else {
-        <div class="flex h-40 items-end gap-1">
-          @for (b of bars(); track b.date) {
-            <div class="group relative flex flex-1 flex-col items-center justify-end">
-              <div class="pointer-events-none absolute -top-7 z-10 rounded-md bg-slate-900 px-2 py-1
-                          text-[10px] font-medium text-white opacity-0 transition group-hover:opacity-100">
-                {{ b.count }}
-              </div>
-              <div class="w-full rounded-t-md transition-all duration-500"
-                   [class.bg-brand-500]="!b.isLast && b.count > 0"
-                   [class.bg-brand-600]="b.isLast && b.count > 0"
-                   [class.bg-slate-100]="b.count === 0"
-                   [style.height.px]="b.px"></div>
-              <span class="mt-1.5 h-3 text-[10px]"
-                    [class.font-semibold]="b.isLast"
-                    [class.text-brand-600]="b.isLast"
-                    [class.text-slate-400]="!b.isLast">{{ b.label }}</span>
-            </div>
-          }
+      <!-- units sold -->
+      <div class="row-in rounded-2xl bg-white p-4 ring-1 ring-slate-200" style="animation-delay: 40ms">
+        <div class="text-xs font-medium text-slate-500">Units sold</div>
+        <div class="mt-1.5 text-2xl font-semibold tabular-nums text-slate-900">{{ s.sold | number }}</div>
+        @let d1 = delta(k.sold, k.soldPrev);
+        <div class="mt-1 flex items-center gap-1.5">
+          <span class="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium" [class]="d1.cls">
+            @if (d1.up === true) { <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg> }
+            @if (d1.up === false) { <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg> }
+            {{ d1.text }}
+          </span>
+          <span class="text-[11px] text-slate-400">vs prev {{ rangeDays() }}d</span>
         </div>
-      }
-    </div>
-
-    <!-- Top-moving products -->
-    <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200 lg:col-span-2">
-      <h2 class="text-sm font-semibold text-slate-900">Top-moving products</h2>
-      <p class="mt-0.5 text-xs text-slate-400">By units shipped out</p>
-      @if (svc.topProducts().length === 0) {
-        <p class="py-10 text-center text-sm text-slate-400">No sales or outbound stock yet.</p>
-      } @else {
-        <div class="mt-4 space-y-3">
-          @for (p of svc.topProducts(); track p.productId) {
-            <div>
-              <div class="mb-1 flex items-center justify-between text-xs">
-                <span class="truncate pr-2 font-medium text-slate-700">{{ p.name }}</span>
-                <span class="shrink-0 font-semibold text-slate-900">{{ p.unitsOut }}</span>
-              </div>
-              <div class="h-2 overflow-hidden rounded-full bg-slate-100">
-                <div class="h-full rounded-full bg-brand-500 transition-all duration-500"
-                     [style.width.%]="(p.unitsOut / maxUnits()) * 100"></div>
-              </div>
-            </div>
-          }
-        </div>
-      }
-    </div>
-  </div>
-
-  <!-- ===== V7: STOCK RUNWAY / REORDER ===== -->
-  <div class="mt-6 rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-    <div class="mb-4 flex items-baseline justify-between">
-      <div>
-        <h2 class="text-sm font-semibold text-slate-900">Stock runway</h2>
-        <p class="mt-0.5 text-xs text-slate-400">
-          Days of stock left · based on last {{ rangeDays() }}d sales rate
-        </p>
+        <svg viewBox="0 0 100 28" preserveAspectRatio="none" class="reveal mt-2 h-7 w-full overflow-visible" aria-hidden="true">
+          <path [attr.d]="sp.sold.area" fill="#ef4444" fill-opacity=".08" />
+          <path [attr.d]="sp.sold.line" fill="none" stroke="#ef4444" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" />
+        </svg>
       </div>
-      @if (svc.stats().reorderCount > 0) {
-        <span class="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
-          {{ svc.stats().reorderCount }} need reordering
-        </span>
-      }
+
+      <!-- movements -->
+      <div class="row-in rounded-2xl bg-white p-4 ring-1 ring-slate-200" style="animation-delay: 80ms">
+        <div class="text-xs font-medium text-slate-500">Movements</div>
+        <div class="mt-1.5 text-2xl font-semibold tabular-nums text-slate-900">{{ s.movements | number }}</div>
+        @let d2 = delta(k.movements, k.movementsPrev);
+        <div class="mt-1 flex items-center gap-1.5">
+          <span class="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium" [class]="d2.cls">
+            @if (d2.up === true) { <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg> }
+            @if (d2.up === false) { <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg> }
+            {{ d2.text }}
+          </span>
+          <span class="text-[11px] text-slate-400">vs prev</span>
+        </div>
+        <svg viewBox="0 0 100 28" preserveAspectRatio="none" class="reveal mt-2 h-7 w-full overflow-visible" aria-hidden="true">
+          <path [attr.d]="sp.events.area" fill="#64748b" fill-opacity=".08" />
+          <path [attr.d]="sp.events.line" fill="none" stroke="#64748b" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" />
+        </svg>
+      </div>
+
+      <!-- orders -->
+      <div class="row-in rounded-2xl bg-white p-4 ring-1 ring-slate-200" style="animation-delay: 120ms">
+        <div class="text-xs font-medium text-slate-500">Orders</div>
+        <div class="mt-1.5 text-2xl font-semibold tabular-nums text-slate-900">{{ s.orders | number }}</div>
+        @let d3 = delta(k.orders, k.ordersPrev);
+        <div class="mt-1 flex items-center gap-1.5">
+          <span class="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium" [class]="d3.cls">
+            @if (d3.up === true) { <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg> }
+            @if (d3.up === false) { <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg> }
+            {{ d3.text }}
+          </span>
+          <span class="text-[11px] text-slate-400">vs prev</span>
+        </div>
+        <div class="mt-2 flex h-7 items-end gap-1 text-[11px] text-slate-400">
+          <span class="tabular-nums text-green-600">+{{ k.unitsIn }}</span> in ·
+          <span class="tabular-nums text-red-500">−{{ k.unitsOut }}</span> out
+        </div>
+      </div>
+
+      <!-- reorder -->
+      <button type="button" (click)="scrollToRunway()"
+        class="row-in col-span-2 rounded-2xl p-4 text-left ring-1 transition hover:-translate-y-0.5 hover:shadow-md lg:col-span-1"
+        [class]="k.reorder > 0 ? 'bg-red-50 ring-red-200' : 'bg-white ring-slate-200'" style="animation-delay: 160ms">
+        <div class="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+          @if (k.reorder > 0) { <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500"></span> }
+          Reorder now
+        </div>
+        <div class="mt-1.5 text-2xl font-semibold tabular-nums" [class]="k.reorder ? 'text-red-600' : 'text-slate-300'">{{ s.reorder }}</div>
+        <div class="mt-1 truncate text-[11px]" [class]="k.reorder ? 'text-red-700' : 'text-slate-400'">
+          @if (urgentNames().length) { {{ urgentNames().slice(0, 2).join(', ') }}@if (urgentNames().length > 2) { +{{ urgentNames().length - 2 }} } } @else { all shelves covered }
+        </div>
+        <div class="mt-2 h-7 text-[11px] text-slate-400">
+          @if (k.soon > 0) { <span class="font-medium text-amber-600">{{ k.soon }}</span> more within 14 days }
+        </div>
+      </button>
     </div>
 
-    @if (svc.runway().length === 0) {
-      <p class="py-10 text-center text-sm text-slate-400">No inventory to project yet.</p>
-    } @else {
+    <!-- ======================= FLOW + SIDE ======================= -->
+    <div class="mt-4 grid gap-4 lg:grid-cols-3">
 
-      <!-- ===== MOBILE: stacked cards (below lg) ===== -->
-      <div class="space-y-3 lg:hidden">
-        @for (r of svc.runway(); track r.productId) {
-          <div class="rounded-2xl border border-slate-200 p-4">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <div class="truncate font-medium text-slate-900">{{ r.name }}</div>
-                <div class="font-mono text-xs text-slate-400">{{ r.sku }}</div>
+      <!-- stock flow -->
+      <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200 lg:col-span-2">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="text-sm font-semibold text-slate-900">Stock flow</div>
+            <div class="text-xs text-slate-400">Units in vs out per {{ svc.granularity() }} · {{ rangeLabel() }}</div>
+          </div>
+          <div class="h-10 text-right">
+            @if (hovered() !== null) {
+              @let hb = svc.buckets()[hovered()!];
+              <div class="text-sm font-semibold tabular-nums text-slate-900">
+                net <span [class.text-green-600]="hb.net > 0" [class.text-red-600]="hb.net < 0">{{ signed(hb.net) }}</span>
+                · stock {{ hb.balance }}
               </div>
-              <app-badge [tone]="runwayTone(r.urgency)">{{ runwayLabel(r.urgency) }}</app-badge>
-            </div>
-            <div class="mt-3 grid grid-cols-4 gap-2 text-center">
-              <div>
-                <div class="text-sm font-semibold text-slate-900">{{ r.onHand }}</div>
-                <div class="text-[10px] uppercase tracking-wide text-slate-400">On hand</div>
+              <div class="text-xs tabular-nums text-slate-400">
+                {{ svc.granularity() === 'week' ? 'Week of ' : '' }}{{ hb.label }} ·
+                <span class="text-green-600">+{{ hb.inU }}</span> in · <span class="text-red-500">−{{ hb.outU }}</span> out
               </div>
-              <div>
-                <div class="text-sm font-semibold text-slate-700">{{ r.unitsSold }}</div>
-                <div class="text-[10px] uppercase tracking-wide text-slate-400">Sold</div>
+            } @else {
+              <div class="flex items-center justify-end gap-3 text-[11px] text-slate-500">
+                <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-sm bg-status-delivered"></span>In</span>
+                <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-sm bg-red-400"></span>Out</span>
+                <span class="flex items-center gap-1.5"><span class="h-0.5 w-3 rounded bg-brand-600"></span>Stock on hand</span>
               </div>
-              <div>
-                <div class="text-sm font-semibold text-slate-700">{{ r.dailyRate | number: '1.0-1' }}</div>
-                <div class="text-[10px] uppercase tracking-wide text-slate-400">Rate/d</div>
-              </div>
-              <div>
-                @if (r.daysLeft === null) {
-                  <div class="text-sm font-semibold text-slate-400">—</div>
-                } @else {
-                  <div class="text-sm font-semibold"
-                    [class.text-red-600]="r.urgency === 'critical' || r.urgency === 'out'"
-                    [class.text-amber-600]="r.urgency === 'warning'"
-                    [class.text-slate-900]="r.urgency === 'healthy'">
-                    {{ r.daysLeft | number: '1.0-0' }}d
+            }
+          </div>
+        </div>
+
+        @if (!hasFlow()) {
+          <div class="mt-4 grid h-56 place-items-center rounded-xl bg-slate-50 text-sm text-slate-400">No stock moved in this range</div>
+        } @else {
+          <div class="relative mt-4 h-56" (mouseleave)="hovered.set(null)">
+            <div class="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-slate-100"></div>
+            <div class="pointer-events-none absolute inset-x-0 top-1/2 border-t border-slate-300"></div>
+            <div class="pointer-events-none absolute inset-x-0 bottom-0 border-t border-dashed border-slate-100"></div>
+            <span class="absolute -top-2 left-0 bg-white pr-1 text-[10px] tabular-nums text-slate-300">+{{ maxAbs() }}</span>
+            <span class="absolute -bottom-2 left-0 bg-white pr-1 text-[10px] tabular-nums text-slate-300">−{{ maxAbs() }}</span>
+
+            <div class="relative flex h-full pl-6" [class]="svc.buckets().length > 45 ? 'gap-px' : 'gap-1'">
+              @for (b of svc.buckets(); track b.start; let i = $index) {
+                <div class="flex h-full flex-1 cursor-default flex-col transition-opacity"
+                     [class.opacity-35]="hovered() !== null && hovered() !== i"
+                     (mouseenter)="hovered.set(i)">
+                  <div class="flex h-1/2 items-end">
+                    <div class="bar-up w-full rounded-t-sm bg-status-delivered" [style.height.%]="flowPct(b.inU)" [style.animation-delay.ms]="barDelay(i)"></div>
                   </div>
-                }
-                <div class="text-[10px] uppercase tracking-wide text-slate-400">Days left</div>
-              </div>
+                  <div class="flex h-1/2 items-start">
+                    <div class="bar-down w-full rounded-b-sm bg-red-400" [style.height.%]="flowPct(b.outU)" [style.animation-delay.ms]="barDelay(i)"></div>
+                  </div>
+                </div>
+              }
             </div>
+
+            @if (balancePath()) {
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="reveal pointer-events-none absolute inset-y-0 left-6 right-0 h-full w-[calc(100%-1.5rem)] overflow-visible" aria-hidden="true">
+                <path [attr.d]="balancePath()" fill="none" stroke="#4f46e5" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" />
+              </svg>
+              <span class="absolute -top-2 right-0 bg-white pl-1 text-[10px] font-medium tabular-nums text-brand-600">stock {{ maxBalance() }}</span>
+            }
+          </div>
+          <div class="mt-3 flex pl-6 text-[10px] text-slate-400">
+            @for (b of svc.buckets(); track b.start; let i = $index) {
+              <div class="flex-1 overflow-visible whitespace-nowrap"
+                   [class.text-left]="i === 0" [class.text-center]="i > 0 && i < svc.buckets().length - 1" [class.text-right]="i === svc.buckets().length - 1">
+                @if (isTick(i)) { {{ i === svc.buckets().length - 1 && svc.granularity() === 'day' ? 'Today' : b.label }} }
+              </div>
+            }
           </div>
         }
       </div>
 
-      <!-- ===== DESKTOP: table (lg and up) ===== -->
-      <div class="hidden overflow-x-auto lg:block">
-        <table class="w-full text-left text-sm">
-          <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
+      <!-- right column -->
+      <div class="flex flex-col gap-4">
+
+        <!-- movement mix -->
+        <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+          <div class="text-sm font-semibold text-slate-900">Movement mix</div>
+          <div class="text-xs text-slate-400">What moved stock · {{ rangeLabel() }}</div>
+
+          @if (svc.mix().length === 0) {
+            <div class="mt-4 grid h-28 place-items-center rounded-xl bg-slate-50 text-sm text-slate-400">No movements</div>
+          } @else {
+            <div class="mt-4 flex items-center gap-5">
+              <div class="relative h-28 w-28 shrink-0">
+                <svg viewBox="0 0 36 36" class="donut h-full w-full" aria-hidden="true">
+                  <circle cx="18" cy="18" r="15.915" fill="none" stroke="#f1f5f9" stroke-width="4" />
+                  @for (sl of svc.mix(); track sl.event) {
+                    <circle cx="18" cy="18" r="15.915" fill="none" stroke-width="4"
+                            [attr.stroke]="eventMeta[sl.event].hex"
+                            [attr.stroke-dasharray]="dash(sl)"
+                            [attr.stroke-dashoffset]="dashOffset(sl)" />
+                  }
+                </svg>
+                <div class="absolute inset-0 grid place-items-center text-center">
+                  <div>
+                    <div class="text-xl font-semibold leading-none tabular-nums text-slate-900">{{ k.movements }}</div>
+                    <div class="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">events</div>
+                  </div>
+                </div>
+              </div>
+              <ul class="min-w-0 flex-1 space-y-1.5">
+                @for (sl of svc.mix(); track sl.event) {
+                  <li class="flex items-center justify-between gap-2 text-xs">
+                    <span class="flex min-w-0 items-center gap-2">
+                      <span class="h-2 w-2 shrink-0 rounded-full" [style.background]="eventMeta[sl.event].hex"></span>
+                      <span class="truncate text-slate-700">{{ eventMeta[sl.event].label }}</span>
+                    </span>
+                    <span class="shrink-0 tabular-nums text-slate-500">
+                      <span class="font-semibold text-slate-900">{{ sl.count }}</span>
+                      <span class="ml-1 text-slate-400">{{ sl.pct | number: '1.0-0' }}%</span>
+                    </span>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+
+        <!-- top movers -->
+        <div class="flex-1 rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+          <div class="text-sm font-semibold text-slate-900">Top movers</div>
+          <div class="text-xs text-slate-400">By units out · share of all outbound</div>
+
+          @if (svc.topProducts().length === 0) {
+            <div class="mt-4 grid h-24 place-items-center rounded-xl bg-slate-50 text-sm text-slate-400">Nothing left the shelf</div>
+          } @else {
+            <ol class="mt-4 space-y-3.5">
+              @for (p of svc.topProducts(); track p.productId; let i = $index) {
+                <li>
+                  <div class="flex items-baseline justify-between gap-2 text-sm">
+                    <span class="flex min-w-0 items-center gap-2">
+                      <span class="w-4 shrink-0 text-xs font-semibold tabular-nums text-slate-300">{{ i + 1 }}</span>
+                      <span class="truncate font-medium text-slate-900">{{ p.name }}</span>
+                    </span>
+                    <span class="shrink-0 text-xs tabular-nums">
+                      <span class="font-semibold text-red-600">−{{ p.unitsOut }}</span>
+                      @if (p.unitsIn) { <span class="ml-1 text-green-600">+{{ p.unitsIn }}</span> }
+                      <span class="ml-1 text-slate-400">{{ p.share | number: '1.0-0' }}%</span>
+                    </span>
+                  </div>
+                  <div class="ml-6 mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div class="fill h-full rounded-full" [class]="i === 0 ? 'bg-brand-600' : 'bg-brand-300'"
+                         [style.width.%]="p.share" [style.animation-delay.ms]="150 + i * 80"></div>
+                  </div>
+                </li>
+              }
+            </ol>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================= RUNWAY + REORDER ======================= -->
+    <div id="runway" class="mt-4 scroll-mt-20 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+      <div class="flex flex-col gap-2 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div class="text-sm font-semibold text-slate-900">Stock runway &amp; reorder plan</div>
+          <div class="text-xs text-slate-400">
+            Days left at the {{ rangeDays() }}-day sales pace · suggestions cover {{ targetDays }} days and count open orders · ~ = few sales, rough guess
+          </div>
+        </div>
+        <div class="flex gap-1.5">
+          @if (k.reorder > 0) {
+            <span class="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200">{{ k.reorder }} now</span>
+          }
+          @if (k.soon > 0) {
+            <span class="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">{{ k.soon }} soon</span>
+          }
+        </div>
+      </div>
+
+      @if (svc.runway().length === 0) {
+        <p class="py-12 text-center text-sm text-slate-400">No inventory to project yet.</p>
+      } @else {
+
+        <!-- mobile -->
+        <ul class="divide-y divide-slate-100 lg:hidden">
+          @for (r of svc.runway(); track r.productId; let i = $index) {
+            @let t = tone(r.urgency);
+            <li class="row-in p-4" [style.animation-delay.ms]="delay(i)">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="truncate font-medium text-slate-900">{{ r.name }}</div>
+                  <div class="text-xs text-slate-400">
+                    <span class="font-mono">{{ r.sku }}</span> · {{ r.dailyRate | number: '1.0-1' }}/day
+                  </div>
+                </div>
+                <div class="shrink-0 text-right">
+                  <div class="text-xl font-semibold leading-none tabular-nums" [class]="t.text">{{ r.onHand }}</div>
+                  <div class="mt-1 text-[10px] uppercase tracking-wide text-slate-400">on hand</div>
+                </div>
+              </div>
+              <div class="mt-3 flex items-center justify-between text-xs">
+                <span class="rounded-full px-2 py-0.5 font-medium ring-1" [class]="t.chip">{{ t.label }}</span>
+                <span class="font-medium" [class]="t.text">{{ runwayText(r) }}</span>
+              </div>
+              <div class="relative mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div class="fill h-full rounded-full" [style.width.%]="runwayPct(r)" [style.background]="t.hex"></div>
+                <span class="absolute inset-y-0 w-px bg-white" style="left: 23.33%"></span>
+                <span class="absolute inset-y-0 w-px bg-white" style="left: 46.67%"></span>
+              </div>
+              @if (r.suggestQty > 0) {
+                <a [routerLink]="['/orders/new']" [queryParams]="reorderParams(r)"
+                  class="mt-3 flex items-center justify-between rounded-xl bg-brand-50 px-3 py-2.5 text-sm ring-1 ring-brand-200 transition active:bg-brand-100">
+                  <span class="text-brand-800">Reorder <b class="tabular-nums">{{ r.suggestQty }}</b> units</span>
+                  <svg class="h-4 w-4 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </a>
+              }
+            </li>
+          }
+        </ul>
+
+        <!-- desktop -->
+        <table class="hidden w-full text-left text-sm lg:table">
+          <thead class="border-b border-slate-200 bg-slate-50/60 text-[11px] uppercase tracking-wide text-slate-400">
             <tr>
-              <th class="px-3 py-2 font-medium">Product</th>
-              <th class="px-3 py-2 text-right font-medium">On hand</th>
-              <th class="px-3 py-2 text-right font-medium">Sold ({{ rangeDays() }}d)</th>
-              <th class="px-3 py-2 text-right font-medium">Rate/day</th>
-              <th class="px-3 py-2 text-right font-medium">Days left</th>
-              <th class="px-3 py-2 font-medium">Status</th>
+              <th class="px-5 py-3 font-medium">Product</th>
+              <th class="px-4 py-3 text-right font-medium">On hand</th>
+              <th class="px-4 py-3 text-right font-medium">Pace</th>
+              <th class="w-[28%] px-4 py-3 font-medium">Runway</th>
+              <th class="px-4 py-3 text-right font-medium">Suggested</th>
+              <th class="px-5 py-3"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            @for (r of svc.runway(); track r.productId) {
-              <tr class="transition hover:bg-slate-50/60">
-                <td class="px-3 py-2.5">
-                  <div class="font-medium text-slate-900">{{ r.name }}</div>
-                  <div class="font-mono text-xs text-slate-400">{{ r.sku }}</div>
+            @for (r of svc.runway(); track r.productId; let i = $index) {
+              @let t = tone(r.urgency);
+              <tr class="row-in transition hover:bg-slate-50/70" [style.animation-delay.ms]="delay(i)">
+                <td class="px-5 py-3.5">
+                  <div class="flex items-center gap-3">
+                    <span class="h-8 w-1 shrink-0 rounded-full" [style.background]="t.hex"></span>
+                    <div class="min-w-0">
+                      <div class="truncate font-medium text-slate-900">{{ r.name }}</div>
+                      <div class="font-mono text-xs text-slate-400">{{ r.sku }}</div>
+                    </div>
+                  </div>
                 </td>
-                <td class="px-3 py-2.5 text-right font-semibold text-slate-900">{{ r.onHand }}</td>
-                <td class="px-3 py-2.5 text-right text-slate-600">{{ r.unitsSold }}</td>
-                <td class="px-3 py-2.5 text-right text-slate-600">{{ r.dailyRate | number: '1.0-1' }}</td>
-                <td class="px-3 py-2.5 text-right">
-                  @if (r.daysLeft === null) {
-                    <span class="text-slate-400">—</span>
+                <td class="px-4 py-3.5 text-right">
+                  <span class="text-lg font-semibold tabular-nums" [class]="t.text">{{ r.onHand }}</span>
+                </td>
+                <td class="px-4 py-3.5 text-right">
+                  <div class="tabular-nums text-slate-700">{{ r.dailyRate | number: '1.0-1' }}<span class="text-slate-400">/day</span></div>
+                  <div class="text-[11px] tabular-nums" [class]="r.lowData ? 'text-amber-600' : 'text-slate-400'"
+                       [attr.title]="r.lowData ? 'Too few sales for a reliable forecast' : null">
+                    {{ r.unitsSold }} sold@if (r.lowData) { · low data }
+                  </div>
+                </td>
+                <td class="px-4 py-3.5">
+                  <div class="flex items-center justify-between gap-2 text-xs">
+                    <span class="font-semibold" [class]="t.text">{{ runwayText(r) }}</span>
+                    <span class="rounded-full px-2 py-0.5 text-[10px] font-medium ring-1" [class]="t.chip">{{ t.label }}</span>
+                  </div>
+                  <div class="relative mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div class="fill h-full rounded-full" [style.width.%]="runwayPct(r)" [style.background]="t.hex" [style.animation-delay.ms]="delay(i) + 100"></div>
+                    <span class="absolute inset-y-0 w-px bg-white" style="left: 23.33%"></span>
+                    <span class="absolute inset-y-0 w-px bg-white" style="left: 46.67%"></span>
+                  </div>
+                </td>
+                <td class="px-4 py-3.5 text-right">
+                  @if (r.suggestQty > 0) {
+                    <div class="text-base font-semibold tabular-nums text-brand-700">+{{ r.suggestQty }}</div>
+                    <div class="text-[11px] text-slate-400">covers {{ targetDays }}d</div>
+                  } @else if (r.incoming > 0 && r.urgency !== 'healthy' && r.urgency !== 'idle') {
+                    <div class="text-xs font-medium text-green-700">{{ r.incoming }} on the way</div>
+                    <div class="text-[11px] text-slate-400">already covered</div>
                   } @else {
-                    <span class="font-semibold"
-                      [class.text-red-600]="r.urgency === 'critical' || r.urgency === 'out'"
-                      [class.text-amber-600]="r.urgency === 'warning'"
-                      [class.text-slate-900]="r.urgency === 'healthy'">
-                      {{ r.daysLeft | number: '1.0-0' }}d
-                    </span>
+                    <span class="text-slate-300">—</span>
                   }
                 </td>
-                <td class="px-3 py-2.5">
-                  <app-badge [tone]="runwayTone(r.urgency)">{{ runwayLabel(r.urgency) }}</app-badge>
+                <td class="px-5 py-3.5 text-right">
+                  @if (r.suggestQty > 0) {
+                    <a [routerLink]="['/orders/new']" [queryParams]="reorderParams(r)"
+                      class="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700">
+                      Reorder
+                      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </a>
+                  }
                 </td>
               </tr>
             }
           </tbody>
         </table>
-      </div>
-    }
+      }
+    </div>
   </div>
 }
