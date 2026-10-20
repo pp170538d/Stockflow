@@ -5,14 +5,12 @@
 #
 # Run manually: GitHub repo -> Actions -> "Dump Supabase schema" -> Run workflow
 #
-# Required repo secrets (Settings -> Secrets and variables -> Actions):
-#   SUPABASE_ACCESS_TOKEN  - supabase.com/dashboard/account/tokens
-#   SUPABASE_DB_PASSWORD   - database password (Database -> Settings)
-#   SUPABASE_PROJECT_REF   - e.g. hjxdntwjjkiqlqadhdbt
+# Required repo secret (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_DB_URL  - Session pooler connection string WITH the password, e.g.
+#   postgresql://postgres.hjxdntwjjkiqlqadhdbt:PASSWORD@aws-1-eu-west-1.pooler.supabase.com:5432/postgres
 #
-# The CLI is installed from npm (npx supabase), not via supabase/setup-cli,
-# because setup-cli asks the GitHub API for the "latest" release and can hit
-# "rate limit exceeded". Docker is already available on ubuntu runners.
+# No access token / "supabase link" needed: the CLI connects straight to the
+# database with --db-url (pg_dump runs in Docker, which GitHub runners have).
 
 name: Dump Supabase schema
 
@@ -36,14 +34,17 @@ jobs:
 
       - name: Dump schema
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          npx --yes supabase --version
-          [ -f supabase/config.toml ] || npx --yes supabase init
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "Secret SUPABASE_DB_URL is missing." && exit 1
+          fi
           mkdir -p supabase/migrations
-          npx --yes supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
-          npx --yes supabase db dump --linked -f supabase/migrations/20261001000000_baseline.sql
+          npx --yes supabase db dump \
+            --db-url "$SUPABASE_DB_URL" \
+            -f supabase/migrations/20261001000000_baseline.sql
+          echo "--- dump size ---"
+          wc -l supabase/migrations/20261001000000_baseline.sql
 
       - name: Commit dump
         run: |
