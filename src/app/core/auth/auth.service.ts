@@ -1,68 +1,152 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
+import { Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase/supabase.client';
 import { UserProfile } from './user-profile.model';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  // --- Reactive state (Signals) ---
+  private readonly _session = signal<Session | null>(null);
   private readonly _profile = signal<UserProfile | null>(null);
   private readonly _loading = signal<boolean>(true);
 
+  private readonly initialization: Promise<void>;
+
+  readonly session = this._session.asReadonly();
   readonly profile = this._profile.asReadonly();
   readonly loading = this._loading.asReadonly();
 
-  // Convenience computed signals
-  readonly isLoggedIn = computed(() => this._profile() !== null);
+  readonly isLoggedIn = computed(() => this._session() !== null);
   readonly isAdmin = computed(() => this._profile()?.role === 'ADMIN');
-  readonly isDemo = computed(() => this._profile()?.email === 'demo@stockflow.com'); 
-  
-  constructor() {
-    this.restoreSession();
+  readonly isDemo = computed(
+    () => this._profile()?.email === 'demo@stockflow.com'
+  );
 
-    // Keep state in sync if the session changes in another tab / on refresh
-    supabase.auth.onAuthStateChange((_event, session) => {
+  constructor() {
+    /*
+     * Register the listener synchronously, but do not run database
+     * queries directly inside the callback.
+     */
+    supabase.auth.onAuthStateChange((event, session) => {
+      this._session.set(session);
+
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        this._profile.set(null);
+        return;
+      }
+
+      /*
+       * Defer the profile query until the auth callback finishes.
+       */
+      setTimeout(() => {
+        void this.loadProfile(session.user.id);
+      }, 0);
+    });
+
+    this.initialization = this.restoreSession();
+  }
+
+  async waitUntilReady(): Promise<void> {
+    await this.initialization;
+  }
+
+  private async restoreSession(): Promise<void> {
+    this._loading.set(true);
+
+    try {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error('Failed to restore session:', error.message);
+        this._session.set(null);
+        this._profile.set(null);
+        return;
+      }
+
+      this._session.set(session);
+
       if (session?.user) {
-        this.loadProfile(session.user.id);
+        await this.loadProfile(session.user.id);
       } else {
         this._profile.set(null);
       }
-    });
-  }
-
-  /** On app start, check if a session already exists. */
-  private async restoreSession(): Promise<void> {
-    this._loading.set(true);
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.user) {
-      await this.loadProfile(data.session.user.id);
+    } finally {
+      this._loading.set(false);
     }
-    this._loading.set(false);
   }
 
-  /** Fetch the profiles row for the logged-in user. */
   private async loadProfile(userId: string): Promise<void> {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, email, full_name, role, object_id, created_at')
       .eq('id', userId)
       .single();
 
-    if (!error && data) {
-      this._profile.set(data as UserProfile);
+    if (error || !data) {
+      console.error(
+        'Failed to load user profile:',
+        error?.message ?? 'Profile not found'
+      );
+
+      this._profile.set(null);
+      return;
+    }
+
+    this._profile.set(data as UserProfile);
+  }
+
+  async login(email: string, password: string): Promise<string | null> {
+    this._loading.set(true);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        this._session.set(null);
+        this._profile.set(null);
+        return error.message;
+      }
+
+      if (!data.session || !data.user) {
+        this._session.set(null);
+        this._profile.set(null);
+        return 'Login succeeded, but no session was returned.';
+      }
+
+      this._session.set(data.session);
+      await this.loadProfile(data.user.id);
+
+      if (!this._profile()) {
+        await supabase.auth.signOut();
+        this._session.set(null);
+        return 'No application profile exists for this user.';
+      }
+
+      return null;
+    } finally {
+      this._loading.set(false);
     }
   }
 
-  /** Email + password login. Returns an error message or null on success. */
-  async login(email: string, password: string): Promise<string | null> {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return error.message;
-    if (data.user) await this.loadProfile(data.user.id);
-    return null;
-  }
-
-  /** Sign out and clear state. */
   async logout(): Promise<void> {
-    await supabase.auth.signOut();
-    this._profile.set(null);
+    this._loading.set(true);
+
+    try {
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        console.error('Sign out failed:', error.message);
+      }
+
+      this._session.set(null);
+      this._profile.set(null);
+    } finally {
+      this._loading.set(false);
+    }
   }
 }
