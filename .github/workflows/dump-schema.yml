@@ -1,0 +1,50 @@
+# .github/workflows/dump-schema.yml
+#
+# Dumps the Supabase schema on GitHub's servers (no VPN / firewall issues)
+# and commits it to the repo as the baseline migration.
+#
+# Run manually: GitHub repo -> Actions -> "Dump Supabase schema" -> Run workflow
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_ACCESS_TOKEN  - supabase.com/dashboard/account/tokens
+#   SUPABASE_DB_PASSWORD   - database password (Project Settings -> Database)
+#   SUPABASE_PROJECT_REF   - e.g. hjxdntwjjkiqlqadhdbt
+
+name: Dump Supabase schema
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Dump schema
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          [ -f supabase/config.toml ] || supabase init
+          mkdir -p supabase/migrations
+          supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+          supabase db dump --linked -f supabase/migrations/20261001000000_baseline.sql
+
+      - name: Commit dump
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "chore(db): dump baseline schema"
+          git push
