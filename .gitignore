@@ -5,6 +5,7 @@
 /tmp
 /out-tsc
 /bazel-out
+supabase/.temp/
 
 # Secrets
 /src/environments/environment.ts
