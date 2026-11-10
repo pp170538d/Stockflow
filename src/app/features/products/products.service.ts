@@ -85,12 +85,26 @@ export class ProductsService {
 
   /** Turn Postgres errors into human messages. */
   private friendly(msg: string): string {
-    if (msg.includes('DEMO_READONLY') || msg.includes('row-level security')) {
-      return this.BLOCKED;
-    }
-    if (msg.includes('duplicate key') || msg.includes('products_sku_key')) {
-      return 'A product with this SKU already exists. SKUs must be unique.';
-    }
-    return msg;
+  if (msg.includes('DEMO_READONLY') || msg.includes('row-level security')) {
+    return this.BLOCKED;
   }
+
+  if (msg.includes('products_barcode_key')) {
+    return 'A product with this barcode already exists. Barcodes must be unique.';
+  }
+
+  if (msg.includes('products_sku_key')) {
+    return 'A product with this SKU already exists. SKUs must be unique.';
+  }
+
+  if (msg.includes('products_barcode_format')) {
+    return 'Barcode must contain 8–14 digits.';
+  }
+
+  if (msg.includes('duplicate key')) {
+    return 'A product with the same unique identifier already exists.';
+  }
+
+  return msg;
+}
 }

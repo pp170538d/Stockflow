@@ -178,7 +178,9 @@ export class InventoryComponent implements OnInit {
   readonly assignableProducts = signal<Product[]>([]);
   readonly saving = signal(false);
   readonly formError = signal<string | null>(null);
-  readonly manualEvents = MANUAL_EVENTS;
+  readonly manualEvents = computed(() =>
+  this.isAdmin() ? MANUAL_EVENTS : MANUAL_EVENTS.filter((e) => e !== 'ADJUSTMENT')
+);
 
   readonly form = this.fb.nonNullable.group({
     product_id: ['', [Validators.required]],
@@ -389,6 +391,11 @@ export class InventoryComponent implements OnInit {
     const signed = this.signedQty(v.event, v.quantity);
     if (signed === 0) {
       this.formError.set('Quantity cannot be zero.');
+      return;
+    }
+
+        if (v.event === 'ADJUSTMENT' && !v.note?.trim()) {
+      this.formError.set('A reason is required for an adjustment.');
       return;
     }
 

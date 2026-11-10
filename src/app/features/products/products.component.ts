@@ -34,6 +34,7 @@ export class ProductsComponent implements OnInit {
 
   readonly form = this.fb.nonNullable.group({
     sku: ['', [Validators.required]],
+    barcode: ['', [Validators.pattern(/^[0-9]{8,14}$/)]],
     name: ['', [Validators.required]],
     category: [''],
     active: [true],
@@ -56,6 +57,7 @@ export class ProductsComponent implements OnInit {
         !q ||
         p.name.toLowerCase().includes(q) ||
         p.sku.toLowerCase().includes(q) ||
+        (p.barcode ?? '').includes(q) ||
         (p.category ?? '').toLowerCase().includes(q);
       const matchesCat = !cat || p.category === cat;
       return matchesText && matchesCat;
@@ -72,7 +74,7 @@ export class ProductsComponent implements OnInit {
 
     this.editingId.set(null);
     this.formError.set(null);
-    this.form.reset({ sku: '', name: '', category: '', active: true });
+    this.form.reset({ sku: '', barcode: '', name: '', category: '', active: true });
     this.drawerOpen.set(true);
   }
 
@@ -81,8 +83,9 @@ export class ProductsComponent implements OnInit {
 
     this.editingId.set(p.id);
     this.formError.set(null);
-    this.form.reset({
+        this.form.reset({
       sku: p.sku,
+      barcode: p.barcode ?? '',
       name: p.name,
       category: p.category ?? '',
       active: p.active,
@@ -108,6 +111,7 @@ export class ProductsComponent implements OnInit {
     const v = this.form.getRawValue();
     const input = {
       sku: v.sku.trim(),
+      barcode: v.barcode.trim() || null,
       name: v.name.trim(),
       category: v.category.trim() || null,
       active: v.active,

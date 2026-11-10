@@ -32,13 +32,13 @@ export interface SellableProduct {
   productId: string;
   name: string;
   sku: string;
+  barcode: string | null;
   onHand: number;
   /** Units sold in the last 30 days at this store. */
   sold30: number;
   /** Average units per day over the last 30 days. */
   dailyRate: number;
 }
-
 export interface SaleLineInput {
   productId: string;
   qty: number;
@@ -254,7 +254,7 @@ export class SalesService {
     const [inv, mov] = await Promise.all([
       supabase
         .from('inventory')
-        .select('product_id, quantity, product:products ( name, sku, active )')
+        .select('product_id, quantity, product:products ( name, sku, barcode, active )')
         .eq('object_id', objectId),
       supabase
         .from('stock_movements')
@@ -278,6 +278,7 @@ export class SalesService {
           productId: r.product_id,
           name: r.product.name ?? 'Product',
           sku: r.product.sku ?? '—',
+          barcode: r.product.barcode ?? null,
           onHand: Number(r.quantity) || 0,
           sold30,
           dailyRate: sold30 / 30,
@@ -299,7 +300,9 @@ export class SalesService {
     note: string | null,
     createdBy: string
   ): Promise<{ reference: string | null; error: string | null }> {
-    const clean = lines.filter((l) => l.qty > 0);
+    const clean = lines
+  .filter((l) => l.qty > 0)
+  .sort((a, b) => a.productId.localeCompare(b.productId));
     if (!clean.length) return { reference: null, error: 'Add at least one product.' };
 
     const reference = `sale:${newId()}`;

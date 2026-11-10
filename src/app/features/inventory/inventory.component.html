@@ -339,7 +339,7 @@
     <div>
       <label class="mb-1.5 block text-sm font-medium text-slate-700">Event</label>
       <div class="grid grid-cols-2 gap-2">
-        @for (ev of manualEvents; track ev) {
+        @for (ev of manualEvents(); track ev) {
           <label class="cursor-pointer rounded-xl border px-3 py-2.5 text-sm transition"
                  [class]="form.controls.event.value === ev ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500/20' : 'border-slate-200 hover:bg-slate-50'">
             <input type="radio" formControlName="event" [value]="ev" class="sr-only" />
@@ -383,10 +383,19 @@
     }
 
     <div>
-      <label class="mb-1.5 block text-sm font-medium text-slate-700">Note</label>
-      <input type="text" formControlName="note" placeholder="Optional — reason or reference"
+      <label class="mb-1.5 block text-sm font-medium text-slate-700">
+        {{ form.controls.event.value === 'ADJUSTMENT' ? 'Reason' : 'Note' }}
+        @if (form.controls.event.value === 'ADJUSTMENT') {
+          <span class="text-red-500">*</span>
+        }
+      </label>
+      <input type="text" formControlName="note"
+        [placeholder]="form.controls.event.value === 'ADJUSTMENT'
+          ? 'Required — e.g. found in back room, miscount'
+          : 'Optional — reason or reference'"
         class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
     </div>
+
 
     @if (formError()) {
       <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">{{ formError() }}</div>

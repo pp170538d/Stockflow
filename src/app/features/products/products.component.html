@@ -26,7 +26,7 @@
 <div class="mb-4 flex flex-wrap items-center gap-3">
   <input type="text" [value]="search()"
     (input)="search.set($any($event.target).value)"
-    placeholder="Search products…"
+    placeholder="Search name, SKU or barcode…"
     class="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
            transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 
@@ -70,7 +70,9 @@
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <div class="truncate font-medium text-slate-900">{{ p.name }}</div>
-            <div class="font-mono text-xs text-slate-400">{{ p.sku }}</div>
+            <div class="font-mono text-xs text-slate-400">
+              {{ p.sku }}@if (p.barcode) { · {{ p.barcode }} }
+            </div>
           </div>
           @if (p.active) {
             <app-badge tone="success">Active</app-badge>
@@ -121,7 +123,12 @@
       <tbody class="divide-y divide-slate-100">
         @for (p of filtered(); track p.id) {
           <tr class="group transition hover:bg-slate-50/60">
-            <td class="px-5 py-3 font-mono text-xs text-slate-500">{{ p.sku }}</td>
+            <td class="px-5 py-3 font-mono text-xs text-slate-500">
+              {{ p.sku }}
+              @if (p.barcode) {
+                <div class="text-[11px] text-slate-400">{{ p.barcode }}</div>
+              }
+            </td>
             <td class="px-5 py-3 font-medium text-slate-900">{{ p.name }}</td>
             <td class="px-5 py-3 text-slate-600">{{ p.category || '—' }}</td>
             <td class="px-5 py-3">
@@ -165,6 +172,17 @@
                transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
       @if (form.controls.sku.touched && form.controls.sku.invalid) {
         <p class="mt-1 text-xs text-red-500">SKU is required.</p>
+      }
+    </div>
+
+    <div>
+      <label class="mb-1.5 block text-sm font-medium text-slate-700">Barcode</label>
+      <input type="text" formControlName="barcode" inputmode="numeric"
+        placeholder="Optional — EAN, e.g. 8600123456789"
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none
+               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+      @if (form.controls.barcode.touched && form.controls.barcode.invalid) {
+        <p class="mt-1 text-xs text-red-500">Barcode must be 8–14 digits.</p>
       }
     </div>
 
