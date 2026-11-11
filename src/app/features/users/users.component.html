@@ -8,58 +8,120 @@
 
 <!-- Info banner -->
 @if (auth.isDemo()) {
-  <div class="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700 ring-1 ring-amber-200">
-    <div class="font-medium text-amber-800">Read-only in the demo</div>
-    <p class="mt-1">
-      You can browse users, roles and locations assignments here. Editing is
-      disabled so the demo stays usable for everyone.
-    </p>
-  </div>
+<div class="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700 ring-1 ring-amber-200">
+  <div class="font-medium text-amber-800">Read-only in the demo</div>
+  <p class="mt-1">
+    You can browse users, roles and locations assignments here. Editing is
+    disabled so the demo stays usable for everyone.
+  </p>
+</div>
 } @else {
-  <div class="mb-4 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700 ring-1 ring-blue-100">
-    <div class="font-medium text-blue-800">How users are created</div>
-    <p class="mt-1">
-      New users are created when they sign up or via Supabase Authentication.
-      Use this page to assign their <strong>role</strong> and <strong>location</strong>.
-    </p>
-  </div>
+<div class="mb-4 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700 ring-1 ring-blue-100">
+  <div class="font-medium text-blue-800">How users are created</div>
+  <p class="mt-1">
+    New users are created when they sign up or via Supabase Authentication.
+    Use this page to assign their <strong>role</strong> and <strong>location</strong>.
+  </p>
+</div>
 }
 
 <!-- Filters -->
 <div class="mb-4 flex flex-wrap items-center gap-3">
-  <input
-    type="text"
-    [value]="search()"
-    (input)="search.set($any($event.target).value)"
-    placeholder="Search users…"
+  <input type="text" [value]="search()" (input)="search.set($any($event.target).value)" placeholder="Search users…"
     class="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
            transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 </div>
 
 @if (svc.loading()) {
-  <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
-    Loading users…
-  </div>
+<div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
+  Loading users…
+</div>
 } @else if (svc.error()) {
-  <div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">
-    {{ svc.error() }}
-  </div>
+<div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">
+  {{ svc.error() }}
+</div>
 } @else if (filtered().length === 0) {
-  <app-empty-state
-    title="No users found"
-    subtitle="Users will appear here once they sign up.">
-  </app-empty-state>
+<app-empty-state title="No users found" subtitle="Users will appear here once they sign up.">
+</app-empty-state>
 } @else {
 
-  <!-- ===== MOBILE: stacked cards (below lg) ===== -->
-  <div class="space-y-3 lg:hidden">
-    @for (u of filtered(); track u.id) {
-      <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+<!-- ===== MOBILE: stacked cards (below lg) ===== -->
+<div class="space-y-3 lg:hidden">
+  @for (u of filtered(); track u.id) {
+  <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
 
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0 flex items-center gap-3">
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0 flex items-center gap-3">
 
-            <div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-600 text-xs font-semibold text-white">
+        <div
+          class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-600 text-xs font-semibold text-white">
+          {{ (u.full_name || u.email || '?').substring(0, 2).toUpperCase() }}
+        </div>
+
+        <div class="min-w-0">
+          <div class="truncate font-medium text-slate-900">
+            {{ u.full_name || 'Unnamed User' }}
+          </div>
+          <div class="truncate text-xs text-slate-400">
+            {{ u.email }}
+          </div>
+        </div>
+
+      </div>
+
+      @if (u.role === 'ADMIN') {
+      <app-badge tone="info">ADMIN</app-badge>
+      } @else {
+      <app-badge tone="success">SELLER</app-badge>
+      }
+    </div>
+
+    <div class="mt-3 flex items-center justify-between gap-3 text-xs text-slate-500">
+      <span class="truncate">
+        {{ u.object?.name || 'No location assigned' }}
+      </span>
+      <span class="shrink-0 text-slate-400">
+        {{ u.created_at | date: 'mediumDate' }}
+      </span>
+    </div>
+
+    <!-- actions: always visible on mobile, hidden for the demo account -->
+    @if (!auth.isDemo()) {
+    <div class="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
+      <button (click)="openEdit(u)" class="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600">
+        Manage
+      </button>
+    </div>
+    }
+
+  </div>
+  }
+</div>
+
+<!-- ===== DESKTOP: table (lg and up) ===== -->
+<div class="hidden overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200 lg:block">
+  <table class="w-full min-w-[720px] text-left text-sm">
+    <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
+      <tr>
+        <th class="px-5 py-3 font-medium">User</th>
+        <th class="px-5 py-3 font-medium">Role</th>
+        <th class="px-5 py-3 font-medium">Locations</th>
+        <th class="px-5 py-3 font-medium">Joined</th>
+        @if (!auth.isDemo()) {
+        <th class="px-5 py-3 text-right font-medium">Actions</th>
+        }
+      </tr>
+    </thead>
+
+    <tbody class="divide-y divide-slate-100">
+      @for (u of filtered(); track u.id) {
+      <tr class="group transition hover:bg-slate-50/60">
+
+        <td class="px-5 py-3">
+          <div class="flex items-center gap-3">
+
+            <div
+              class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-600 text-xs font-semibold text-white">
               {{ (u.full_name || u.email || '?').substring(0, 2).toUpperCase() }}
             </div>
 
@@ -73,116 +135,45 @@
             </div>
 
           </div>
+        </td>
 
+        <td class="px-5 py-3">
           @if (u.role === 'ADMIN') {
-            <app-badge tone="info">ADMIN</app-badge>
+          <app-badge tone="info">ADMIN</app-badge>
           } @else {
-            <app-badge tone="success">SELLER</app-badge>
+          <app-badge tone="success">SELLER</app-badge>
           }
-        </div>
+        </td>
 
-        <div class="mt-3 flex items-center justify-between gap-3 text-xs text-slate-500">
-          <span class="truncate">
-            {{ u.object?.name || 'No location assigned' }}
-          </span>
-          <span class="shrink-0 text-slate-400">
-            {{ u.created_at | date: 'mediumDate' }}
-          </span>
-        </div>
+        <td class="px-5 py-3 text-slate-600">
+          {{ u.object?.name || '—' }}
+        </td>
 
-        <!-- actions: always visible on mobile, hidden for the demo account -->
+        <td class="px-5 py-3 text-slate-500">
+          {{ u.created_at | date: 'mediumDate' }}
+        </td>
+
         @if (!auth.isDemo()) {
-          <div class="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
-            <button
-              (click)="openEdit(u)"
-              class="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600">
+        <td class="px-5 py-3">
+          <div
+            class="flex items-center justify-end gap-2 opacity-100 transition lg:opacity-0 lg:group-hover:opacity-100">
+            <button (click)="openEdit(u)"
+              class="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100">
               Manage
             </button>
           </div>
+        </td>
         }
 
-      </div>
-    }
-  </div>
-
-  <!-- ===== DESKTOP: table (lg and up) ===== -->
-  <div class="hidden overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200 lg:block">
-    <table class="w-full min-w-[720px] text-left text-sm">
-      <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-        <tr>
-          <th class="px-5 py-3 font-medium">User</th>
-          <th class="px-5 py-3 font-medium">Role</th>
-          <th class="px-5 py-3 font-medium">Locations</th>
-          <th class="px-5 py-3 font-medium">Joined</th>
-          @if (!auth.isDemo()) {
-            <th class="px-5 py-3 text-right font-medium">Actions</th>
-          }
-        </tr>
-      </thead>
-
-      <tbody class="divide-y divide-slate-100">
-        @for (u of filtered(); track u.id) {
-          <tr class="group transition hover:bg-slate-50/60">
-
-            <td class="px-5 py-3">
-              <div class="flex items-center gap-3">
-
-                <div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-600 text-xs font-semibold text-white">
-                  {{ (u.full_name || u.email || '?').substring(0, 2).toUpperCase() }}
-                </div>
-
-                <div class="min-w-0">
-                  <div class="truncate font-medium text-slate-900">
-                    {{ u.full_name || 'Unnamed User' }}
-                  </div>
-                  <div class="truncate text-xs text-slate-400">
-                    {{ u.email }}
-                  </div>
-                </div>
-
-              </div>
-            </td>
-
-            <td class="px-5 py-3">
-              @if (u.role === 'ADMIN') {
-                <app-badge tone="info">ADMIN</app-badge>
-              } @else {
-                <app-badge tone="success">SELLER</app-badge>
-              }
-            </td>
-
-            <td class="px-5 py-3 text-slate-600">
-              {{ u.object?.name || '—' }}
-            </td>
-
-            <td class="px-5 py-3 text-slate-500">
-              {{ u.created_at | date: 'mediumDate' }}
-            </td>
-
-            @if (!auth.isDemo()) {
-              <td class="px-5 py-3">
-                <div class="flex items-center justify-end gap-2 opacity-100 transition lg:opacity-0 lg:group-hover:opacity-100">
-                  <button
-                    (click)="openEdit(u)"
-                    class="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100">
-                    Manage
-                  </button>
-                </div>
-              </td>
-            }
-
-          </tr>
-        }
-      </tbody>
-    </table>
-  </div>
+      </tr>
+      }
+    </tbody>
+  </table>
+</div>
 }
 
 <!-- ===== MANAGE USER DRAWER ===== -->
-<app-drawer
-  [open]="drawerOpen()"
-  [title]="'Manage · ' + (editingUser()?.email || '')"
-  (close)="closeDrawer()">
+<app-drawer [open]="drawerOpen()" [title]="'Manage · ' + (editingUser()?.email || '')" (close)="closeDrawer()">
 
   <div class="space-y-4">
 
@@ -190,7 +181,8 @@
     <div class="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200">
       <div class="flex items-center gap-3">
 
-        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-600 text-xs font-semibold text-white">
+        <div
+          class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-600 text-xs font-semibold text-white">
           {{ (editingUser()?.full_name || editingUser()?.email || '?').substring(0, 2).toUpperCase() }}
         </div>
 
@@ -212,67 +204,61 @@
         Role
       </label>
 
-      <select
-        [value]="draftRole()"
-        (change)="draftRole.set($any($event.target).value)"
-        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+      <select [value]="draftRole()" (change)="draftRole.set($any($event.target).value)"
+        [disabled]="!!editingUser() && isSelf(editingUser()!)" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20
+               disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500">
         <option value="SELLER">SELLER</option>
         <option value="ADMIN">ADMIN</option>
       </select>
+      @if (editingUser() && isSelf(editingUser()!)) {
+      <p class="mt-1 text-xs text-slate-400">You can't change your own role.</p>
+      }
     </div>
 
     <!-- Locations, only relevant for sellers -->
     @if (draftRole() === 'SELLER') {
-      <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">
-          Assigned location
-        </label>
+    <div>
+      <label class="mb-1.5 block text-sm font-medium text-slate-700">
+        Assigned location
+      </label>
 
-        <select
-          [value]="draftObjectId()"
-          (change)="draftObjectId.set($any($event.target).value)"
-          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
+      <select [value]="draftObjectId()" (change)="draftObjectId.set($any($event.target).value)" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
                  transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
-          <option value="">— None —</option>
+        <option value="">— None —</option>
 
-          @for (o of objects(); track o.id) {
-            <option [value]="o.id">
-              {{ o.name }}
-            </option>
-          }
-        </select>
+        @for (o of objects(); track o.id) {
+        <option [value]="o.id">
+          {{ o.name }}
+        </option>
+        }
+      </select>
 
-        <p class="mt-1 text-xs text-slate-400">
-          The seller will only see products assigned to this location.
-        </p>
-      </div>
+      <p class="mt-1 text-xs text-slate-400">
+        The seller will only see products assigned to this location.
+      </p>
+    </div>
     } @else {
-      <div class="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 ring-1 ring-slate-200">
-        Admins have access to all locations. No location assignment is needed.
-      </div>
+    <div class="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 ring-1 ring-slate-200">
+      Admins have access to all locations. No location assignment is needed.
+    </div>
     }
 
     @if (formError()) {
-      <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
-        {{ formError() }}
-      </div>
+    <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
+      {{ formError() }}
+    </div>
     }
 
   </div>
 
   <div drawer-footer class="flex justify-end gap-2">
-    <button
-      type="button"
-      (click)="closeDrawer()"
+    <button type="button" (click)="closeDrawer()"
       class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
       Cancel
     </button>
 
-    <button
-      type="button"
-      (click)="save()"
-      [disabled]="saving()"
+    <button type="button" (click)="save()" [disabled]="saving()"
       class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60">
       {{ saving() ? 'Saving…' : 'Save' }}
     </button>

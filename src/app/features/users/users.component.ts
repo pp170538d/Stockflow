@@ -78,6 +78,11 @@ export class UsersComponent implements OnInit {
     const u = this.editingUser();
     if (!u) return;
 
+        if (this.isSelf(u) && u.role === 'ADMIN' && this.draftRole() !== 'ADMIN') {
+      this.formError.set("You can't remove your own admin role.");
+      return;
+    }
+
     // Elevating someone to ADMIN is privileged — confirm it explicitly.
     if (this.draftRole() === 'ADMIN' && u.role !== 'ADMIN') {
       const ok = await this.confirm.ask({

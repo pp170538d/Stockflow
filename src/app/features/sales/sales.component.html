@@ -538,30 +538,30 @@
          lg:static lg:z-auto lg:max-h-none lg:translate-y-0 lg:rounded-none
          lg:border-l lg:border-t-0 lg:shadow-none" [class.translate-y-full]="!mobileBasketOpen()">
         <div class="flex shrink-0 items-center justify-between px-5 pb-2 pt-4">
-          <div class="flex items-center gap-2">
+  <div class="flex items-center gap-2">
+    <span class="text-sm font-semibold text-slate-900">Basket</span>
+    @if (cartUnits()) {
+      <span class="rounded-full bg-brand-600 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-white">
+        {{ cartUnits() }}
+      </span>
+    }
+  </div>
 
-            @if (cartLines().length) {
-            <button type="button" (click)="clearCart()"
-              class="rounded-md px-2 py-1 text-xs font-medium text-slate-500 transition hover:bg-white">
-              Clear
-            </button>
-            }
-
-            <button type="button" (click)="mobileBasketOpen.set(false)" aria-label="Close basket"
-              class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-white lg:hidden">
-
-              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M6 6l12 12M18 6L6 18" />
-              </svg>
-
-            </button>
-
-          </div>
-          @if (cartLines().length) {
-          <button type="button" (click)="clearCart()"
-            class="rounded-md px-2 py-1 text-xs font-medium text-slate-500 transition hover:bg-white hover:text-slate-700">Clear</button>
-          }
-        </div>
+  <div class="flex items-center gap-1">
+    @if (cartLines().length) {
+      <button type="button" (click)="clearCart()"
+        class="rounded-md px-2 py-1 text-xs font-medium text-slate-500 transition hover:bg-white hover:text-slate-700">
+        Clear
+      </button>
+    }
+    <button type="button" (click)="mobileBasketOpen.set(false)" aria-label="Close basket"
+      class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-white lg:hidden">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 6l12 12M18 6L6 18" />
+      </svg>
+    </button>
+  </div>
+</div>
 
         <div class="min-h-0 flex-1 overflow-y-auto px-5">
           @if (cartLines().length === 0) {
