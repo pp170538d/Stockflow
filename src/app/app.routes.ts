@@ -63,21 +63,33 @@ export const routes: Routes = [
                     import('./features/inventory/inventory.component').then((m) => m.InventoryComponent),
             },
             {
+                path: 'inventory/transfer',
+                loadComponent: () =>
+                    import('./features/stock-transfer/stock-transfer.component').then((m) => m.StockTransferComponent),
+                canActivate: [authGuard],
+            },
+            {
                 path: 'users', canActivate: [adminGuard],
                 loadComponent: () =>
                     import('./features/users/users.component').then((m) => m.UsersComponent),
             },
             {
-                path: 'inventory/count',
+                path: 'stock-count',
                 loadComponent: () =>
-                    import('./features/stock-count/stock-count.component').then((m) => m.StockCountComponent),
-                canActivate: [authGuard],
+                    import('./features/stock-count/stock-count-hub.component')
+                        .then((m) => m.StockCountHubComponent),
             },
             {
-                path: 'inventory/counts',
+                path: 'stock-count/new',
                 loadComponent: () =>
-                    import('./features/stock-count/count-history.component').then((m) => m.CountHistoryComponent),
-                canActivate: [authGuard],
+                    import('./features/stock-count/stock-count.component')
+                        .then((m) => m.StockCountComponent),
+            },
+            {
+                path: 'stock-count/history',
+                loadComponent: () =>
+                    import('./features/stock-count/count-history.component')
+                        .then((m) => m.CountHistoryComponent),
             },
             {
                 path: 'sales',

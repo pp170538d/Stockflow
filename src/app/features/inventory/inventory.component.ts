@@ -18,6 +18,7 @@ import { DrawerComponent } from '../../shared/ui/drawer.component';
 import { ToastService } from '../../shared/ui/toast.service';
 import { StockHistoryDialogComponent } from './stock-history-dialog.component';
 import { runwayLabel } from '../../core/stock/runway';
+import { LocationPickerComponent } from '../../shared/ui/location-picker.component';
 
 type Filter = 'all' | 'reorder' | 'soon' | 'healthy' | 'idle';
 type Sort = 'urgency' | 'days' | 'onhand' | 'sold' | 'name';
@@ -41,6 +42,7 @@ function notZero(control: AbstractControl): ValidationErrors | null {
     EmptyStateComponent,
     DrawerComponent,
     StockHistoryDialogComponent,
+    LocationPickerComponent,
   ],
   templateUrl: './inventory.component.html',
   styles: [`

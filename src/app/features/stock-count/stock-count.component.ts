@@ -13,6 +13,7 @@ import { BusinessObject } from '../objects/object.model';
 import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
 import { ToastService } from '../../shared/ui/toast.service';
 import { ConfirmService } from '../../shared/ui/confirm.service';
+import { LocationPickerComponent } from '../../shared/ui/location-picker.component';
 
 type View = 'all' | 'todo' | 'diff';
 
@@ -35,7 +36,7 @@ function reasonRequiredOnVariance(group: AbstractControl): ValidationErrors | nu
 @Component({
   selector: 'app-stock-count',
   standalone: true,
-  imports: [ReactiveFormsModule, EmptyStateComponent],
+  imports: [ReactiveFormsModule, EmptyStateComponent, LocationPickerComponent,],
   templateUrl: './stock-count.component.html',
   styles: [`
     @keyframes rowIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -75,6 +76,9 @@ export class StockCountComponent implements OnInit {
   readonly search = signal('');
   readonly view = signal<View>('all');
   readonly building = signal(false);
+  readonly scanValue = signal('');
+  readonly scanError = signal<string | null>(null);
+  readonly lastScannedProductId = signal<string | null>(null);
 
   readonly isAdmin = computed(() => this.auth.isAdmin());
 
@@ -129,6 +133,11 @@ export class StockCountComponent implements OnInit {
   /** Every line starts EMPTY — nothing counts until someone actually counts it. */
   private async build(objectId: string): Promise<void> {
     this.building.set(true);
+
+    this.scanValue.set('');
+    this.scanError.set(null);
+    this.lastScannedProductId.set(null);
+
     await this.svc.loadCountable(objectId);
     this.lines.clear();
     for (const r of this.svc.countable()) {
@@ -138,6 +147,7 @@ export class StockCountComponent implements OnInit {
             product_id: [r.product_id],
             product_name: [r.name],
             product_sku: [r.sku],
+            product_barcode: [r.barcode ?? null],
             category: [(r as any).category ?? ''],
             expected_qty: [r.expected_qty],
             counted_qty: [null as number | null, [Validators.required, Validators.min(0)]],
@@ -200,6 +210,77 @@ export class StockCountComponent implements OnInit {
     }[this.state(row)];
   }
 
+  // ---------- barcode / SKU scanner ----------
+
+  onScanInput(value: string): void {
+    this.scanValue.set(value);
+    this.scanError.set(null);
+  }
+
+  /**
+   * A physical scanner types the barcode and sends Enter.
+   * Exact barcode or exact SKU increments the counted quantity by one.
+   */
+  onScanEnter(event: Event): void {
+    event.preventDefault();
+
+    const raw = this.scanValue().trim();
+    const normalized = raw.toLowerCase();
+
+    if (!raw) return;
+
+    const row = this.lines.controls.find((candidate) => {
+      const barcode = String(
+        candidate.get('product_barcode')?.value ?? ''
+      ).trim();
+
+      const sku = String(
+        candidate.get('product_sku')?.value ?? ''
+      ).trim().toLowerCase();
+
+      return barcode === raw || sku === normalized;
+    });
+
+    if (!row) {
+      this.scanError.set(`No product found for "${raw}".`);
+      this.scanValue.set('');
+      this.focusScanner();
+      return;
+    }
+
+    this.view.set('all');
+this.search.set('');
+
+    const productId = String(row.get('product_id')?.value ?? '');
+
+    this.step(row, 1);
+    this.scanError.set(null);
+    this.scanValue.set('');
+
+    this.lastScannedProductId.set(null);
+
+    setTimeout(() => {
+      this.lastScannedProductId.set(productId);
+
+      document
+        .getElementById(`count-row-${productId}`)
+        ?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+
+      this.focusScanner();
+    });
+  }
+
+  private focusScanner(): void {
+    setTimeout(() => {
+      document
+        .getElementById('count-scan')
+        ?.focus();
+    });
+  }
+
   // ---------- counting actions ----------
   step(row: AbstractControl, delta: number): void {
     const ctrl = row.get('counted_qty');
@@ -239,9 +320,23 @@ export class StockCountComponent implements OnInit {
 
     const q = this.search().trim().toLowerCase();
     if (!q) return true;
-    const name = (row.get('product_name')?.value ?? '').toLowerCase();
-    const sku = (row.get('product_sku')?.value ?? '').toLowerCase();
-    return name.includes(q) || sku.includes(q);
+    const name = String(
+      row.get('product_name')?.value ?? ''
+    ).toLowerCase();
+
+    const sku = String(
+      row.get('product_sku')?.value ?? ''
+    ).toLowerCase();
+
+    const barcode = String(
+      row.get('product_barcode')?.value ?? ''
+    ).toLowerCase();
+
+    return (
+      name.includes(q) ||
+      sku.includes(q) ||
+      barcode.includes(q)
+    );
   }
 
   readonly visibleCount = computed(() => {
@@ -292,7 +387,7 @@ export class StockCountComponent implements OnInit {
   });
 
   cancel(): void {
-    this.router.navigate(['/inventory'], {
+    this.router.navigate(['/stock-count'], {
       queryParams: this.objectId() ? { object: this.objectId() } : {},
     });
   }

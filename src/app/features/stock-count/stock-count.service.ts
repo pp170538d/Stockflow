@@ -9,6 +9,7 @@ export interface CountableRow {
   product_id: string;
   name: string;
   sku: string;
+  barcode: string | null;
   expected_qty: number;
 }
 
@@ -33,7 +34,7 @@ export class StockCountService {
     // Assigned products for this object
     const { data: assigned, error: aErr } = await supabase
       .from('object_products')
-      .select('product:products ( id, sku, name, active )')
+      .select('product:products ( id, sku, name, barcode, active )')
       .eq('object_id', objectId);
     if (aErr) { this.error.set(this.friendly(aErr.message)); this.loading.set(false); return; }
 
@@ -54,6 +55,7 @@ export class StockCountService {
         product_id: p.id,
         name: p.name,
         sku: p.sku,
+        barcode: p.barcode ?? null,
         expected_qty: expected.get(p.id) ?? 0,
       }))
       .sort((a: CountableRow, b: CountableRow) => a.name.localeCompare(b.name));
@@ -111,7 +113,7 @@ export class StockCountService {
 
   private friendly(msg: string): string {
     if (msg.includes('DEMO_READONLY'))
-        return 'This action is disabled in the demo account.';
+      return 'This action is disabled in the demo account.';
     if (msg.includes('A reason is required'))
       if (msg.includes('A reason is required'))
         return 'Add a reason for every product whose counted quantity differs from the expected.';

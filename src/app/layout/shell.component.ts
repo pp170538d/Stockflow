@@ -5,11 +5,12 @@ import { NAV_ITEMS } from './nav-items';
 import { CommandPaletteComponent } from '../shared/ui/command-palette.component';
 import { ToastHostComponent } from '../shared/ui/toast-host.component';
 import { ConfirmHostComponent } from '../shared/ui/confirm-host.component';
+import { NavSection } from './nav-items';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommandPaletteComponent, ToastHostComponent, ConfirmHostComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommandPaletteComponent, ToastHostComponent, ConfirmHostComponent,],
   templateUrl: './shell.component.html',
 })
 export class ShellComponent {
@@ -26,6 +27,17 @@ readonly shortcut =
   readonly navItems = computed(() =>
     NAV_ITEMS.filter((item) => !item.adminOnly || this.auth.isAdmin())
   );
+
+  readonly navSections: NavSection[] = [
+  'OVERVIEW',
+  'OPERATIONS',
+  'MANAGE',
+  'ADMIN',
+];
+
+itemsFor(section: NavSection) {
+  return this.navItems().filter((item) => item.section === section);
+}
 
   readonly initials = computed(() => {
     const p = this.auth.profile();

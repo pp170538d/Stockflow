@@ -1,0 +1,952 @@
+<div class="mx-auto max-w-6xl pb-10">
+
+    <!-- ======================= HEADER ======================= -->
+    <div class="mb-6">
+        <button type="button" (click)="cancel()"
+            class="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 transition hover:text-slate-700">
+
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 18l-6-6 6-6" />
+            </svg>
+
+            Back to inventory
+        </button>
+
+        <h1 class="text-2xl font-semibold tracking-tight text-slate-900">
+            Transfer stock
+        </h1>
+
+        <p class="mt-1 text-sm text-slate-500">
+            Move stock between locations. Every transfer is written to the stock ledger.
+        </p>
+    </div>
+
+    @if (step() === 'basket') {
+
+    <!-- ======================= ROUTE ======================= -->
+    <div class="mb-5">
+        <div class="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            Transfer route
+        </div>
+
+        <div class="grid gap-3 md:grid-cols-[1fr_76px_1fr] md:items-stretch">
+
+            <!-- FROM -->
+            <div class="rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 to-white p-4">
+                <div class="flex items-center gap-3">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 21V9l9-5 9 5v12M2 21h20M8 21v-7h8v7" />
+                        </svg>
+                    </span>
+
+                    <div class="min-w-0 flex-1">
+                        <div class="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-500">
+                            From
+                        </div>
+
+                        <div class="mt-0.5 text-xs text-slate-400">
+                            Stock leaves this location
+                        </div>
+                    </div>
+
+                    <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-rose-400 ring-4 ring-rose-100"></span>
+                </div>
+
+                <div class="mt-4">
+                    @if (isAdmin()) {
+                    <app-location-picker [locations]="objects()" [selectedId]="sourceObjectId()"
+                        [excludeId]="destinationObjectId()" tone="source" (selected)="changeSource($event)" />
+                    } @else {
+                    <div class="flex h-11 items-center gap-3 rounded-xl border border-rose-200 bg-white px-3">
+                        <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-rose-50 text-rose-500">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 21V9l9-5 9 5v12M2 21h20M8 21v-7h8v7" />
+                            </svg>
+                        </span>
+
+                        <span class="truncate text-sm font-semibold text-slate-900">
+                            {{ sourceName() }}
+                        </span>
+                    </div>
+                    }
+                </div>
+            </div>
+
+
+            <!-- BIG DIRECTION ARROW -->
+            <!-- SWAP DIRECTION -->
+            <div class="flex items-center justify-center py-1 md:py-0">
+
+                @if (isAdmin()) {
+                <button type="button" (click)="swapLocations()" title="Swap locations"
+                    aria-label="Swap source and destination locations"
+                    class="group flex h-12 w-12 rotate-90 items-center justify-center rounded-full bg-sky-600 text-white shadow-lg shadow-sky-600/20 transition hover:scale-105 hover:bg-sky-700 hover:shadow-xl active:scale-95 md:rotate-0">
+
+                    <svg class="h-6 w-6 transition-transform duration-300 group-hover:rotate-180" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M7 7h11l-3-3" />
+                        <path d="m18 7-3 3" />
+                        <path d="M17 17H6l3 3" />
+                        <path d="m6 17 3-3" />
+                    </svg>
+
+                </button>
+                } @else {
+                <div
+                    class="flex h-12 w-12 rotate-90 items-center justify-center rounded-full bg-sky-600 text-white shadow-lg shadow-sky-600/20 md:rotate-0">
+
+                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <path d="M5 12h14" />
+                        <path d="m15 8 4 4-4 4" />
+                    </svg>
+
+                </div>
+                }
+
+            </div>
+
+
+            <!-- TO -->
+            <div class="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-4">
+                <div class="flex items-center gap-3">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-600">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 21V9l9-5 9 5v12M2 21h20M8 21v-7h8v7" />
+                        </svg>
+                    </span>
+
+                    <div class="min-w-0 flex-1">
+                        <div class="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-600">
+                            To
+                        </div>
+
+                        <div class="mt-0.5 text-xs text-slate-400">
+                            Stock arrives at this location
+                        </div>
+                    </div>
+
+                    <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 ring-4 ring-emerald-100"></span>
+                </div>
+
+                <div class="mt-4">
+                    <app-location-picker [locations]="objects()" [selectedId]="destinationObjectId()"
+                        [excludeId]="sourceObjectId()" tone="destination" (selected)="changeDestination($event)" />
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- ======================= BARCODE ======================= -->
+    @if (sourceObjectId() && destinationObjectId()) {
+    <div class="mb-5 rounded-2xl bg-slate-900 p-4 text-white shadow-lg shadow-slate-900/10">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+
+            <div class="flex min-w-0 flex-1 items-center gap-3">
+                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 5v4M3 15v4M21 5v4M21 15v4" />
+                        <path d="M7 7v10M10 7v10M14 7v10M17 7v10" />
+                    </svg>
+                </span>
+
+                <div class="min-w-0">
+                    <div class="text-sm font-semibold">
+                        Barcode transfer
+                    </div>
+                    <div class="mt-0.5 text-xs text-slate-300">
+                        Each scan adds one unit to the transfer.
+                    </div>
+                </div>
+            </div>
+
+            <div class="relative w-full sm:w-96">
+                <input id="transfer-scan" type="text" autocomplete="off" inputmode="numeric" [value]="productSearch()"
+                    (input)="onProductSearch($any($event.target).value)" (keydown.enter)="onProductEnter($event)"
+                    placeholder="Scan barcode or enter SKU"
+                    class="h-11 w-full rounded-xl border border-white/20 bg-white pl-4 pr-20 font-mono text-sm text-slate-900 outline-none transition placeholder:font-sans placeholder:text-slate-400 focus:border-sky-400 focus:ring-4 focus:ring-sky-400/20" />
+
+                <kbd
+                    class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+                    Enter
+                </kbd>
+            </div>
+
+        </div>
+    </div>
+    }
+
+
+    <!-- ======================= ERROR ======================= -->
+    @if (transferError()) {
+    <div class="mb-4 flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">
+        <svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 8v5M12 17h.01" />
+        </svg>
+
+        <span>{{ transferError() }}</span>
+    </div>
+    }
+
+
+    <!-- ======================= MAIN ======================= -->
+    <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+
+        <!-- ======================= PRODUCTS ======================= -->
+        <section class="min-w-0">
+
+            <div class="mb-3 flex items-end justify-between gap-3">
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-900">
+                        Products
+                    </h2>
+                    <p class="mt-0.5 text-xs text-slate-400">
+                        Available at {{ sourceName() }} and assigned to both locations.
+                    </p>
+                </div>
+
+                @if (!svc.loading()) {
+                <span class="text-xs text-slate-400">
+                    {{ filteredProducts().length }} available
+                </span>
+                }
+            </div>
+
+
+            @if (svc.loading()) {
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                @for (i of [1,2,3,4,5,6]; track i) {
+                <div class="sk h-36 rounded-2xl"></div>
+                }
+            </div>
+
+            } @else if (svc.error()) {
+
+            <div class="rounded-2xl bg-red-50 px-5 py-8 text-center ring-1 ring-red-200">
+                <p class="text-sm font-medium text-red-700">
+                    {{ svc.error() }}
+                </p>
+            </div>
+
+            } @else if (svc.products().length === 0) {
+
+            <div class="rounded-2xl bg-white px-6 py-12 text-center ring-1 ring-slate-200">
+                <div class="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-slate-100 text-slate-400">
+                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M7 7h11l-3-3" />
+                        <path d="m18 7-3 3" />
+                        <path d="M17 17H6l3 3" />
+                        <path d="m6 17 3-3" />
+                    </svg>
+                </div>
+
+                <p class="mt-3 text-sm font-medium text-slate-900">
+                    No products can be transferred
+                </p>
+
+                <p class="mx-auto mt-1 max-w-sm text-sm text-slate-500">
+                    There are no active products assigned to both locations.
+                </p>
+            </div>
+
+            } @else if (filteredProducts().length === 0) {
+
+            <div class="rounded-2xl bg-white px-6 py-12 text-center ring-1 ring-slate-200">
+                <p class="text-sm font-medium text-slate-900">
+                    Nothing matches "{{ productSearch() }}"
+                </p>
+
+                <button type="button" (click)="onProductSearch('')"
+                    class="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                    Show all
+                </button>
+            </div>
+
+            } @else {
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+                @for (p of filteredProducts(); track p.productId; let i = $index) {
+
+                @let q = quantity(p);
+                @let sourceAfter = p.sourceQty - q;
+                @let destinationAfter = p.destinationQty + q;
+
+                <article class="row-in relative overflow-hidden rounded-2xl bg-white p-4 ring-1 transition" [class]="q > 0
+                ? 'ring-2 ring-sky-400 shadow-sm'
+                : p.sourceQty <= 0
+                  ? 'ring-slate-200 opacity-55'
+                  : 'ring-slate-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-slate-300'"
+                    [style.animation-delay.ms]="i < 12 ? i * 30 : 0">
+
+                    <!-- identity -->
+                    <div class="flex items-start justify-between gap-3">
+
+                        <div class="min-w-0">
+                            <div class="truncate text-sm font-semibold text-slate-900">
+                                {{ p.name }}
+                            </div>
+
+                            <div class="mt-0.5 truncate font-mono text-[11px] text-slate-400">
+                                {{ p.sku }}
+                                @if (p.barcode) {
+                                · {{ p.barcode }}
+                                }
+                            </div>
+                        </div>
+
+                        @if (q > 0) {
+                        <span class="rounded-full bg-sky-600 px-2.5 py-1 text-xs font-bold tabular-nums text-white">
+                            ×{{ q }}
+                        </span>
+                        }
+
+                    </div>
+
+
+                    <!-- quantity control -->
+                    <div class="mt-4 flex items-center justify-between gap-3">
+
+                        <div>
+                            <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                Available
+                            </div>
+
+                            <div class="mt-0.5 text-xl font-semibold tabular-nums"
+                                [class]="p.sourceQty > 0 ? 'text-slate-900' : 'text-red-500'">
+                                {{ p.sourceQty }}
+                            </div>
+                        </div>
+
+
+                        <div class="flex items-center rounded-xl bg-slate-100 p-1">
+
+                            <button type="button" (click)="addProduct(p, -1)" [disabled]="q <= 0"
+                                aria-label="Remove one unit"
+                                class="grid h-10 w-10 place-items-center rounded-lg text-slate-600 transition hover:bg-white hover:shadow-sm active:scale-95 disabled:opacity-25">
+                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.2" stroke-linecap="round">
+                                    <path d="M5 12h14" />
+                                </svg>
+                            </button>
+
+                            <span class="w-12 text-center text-lg font-semibold tabular-nums text-slate-900"
+                                [class.bump]="bumpId() === p.productId">
+                                {{ q }}
+                            </span>
+
+                            <button type="button" (click)="addProduct(p, 1)" [disabled]="q >= p.sourceQty"
+                                aria-label="Add one unit"
+                                class="grid h-10 w-10 place-items-center rounded-lg text-slate-600 transition hover:bg-white hover:shadow-sm active:scale-95 disabled:opacity-25">
+                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.2" stroke-linecap="round">
+                                    <path d="M12 5v14M5 12h14" />
+                                </svg>
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- SIMPLE AFTER PREVIEW -->
+                    @if (q > 0) {
+                    <div class="mt-4 border-t border-slate-100 pt-3">
+
+                        <div class="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                            After transfer
+                        </div>
+
+                        <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+
+                            <div>
+                                <div class="truncate text-[10px] text-rose-500">
+                                    {{ sourceName() }}
+                                </div>
+
+                                <div class="mt-0.5 text-lg font-semibold tabular-nums"
+                                    [class]="sourceAfter <= 0 ? 'text-red-600' : 'text-slate-900'">
+                                    {{ sourceAfter }}
+                                </div>
+                            </div>
+
+
+                            <div class="flex items-center text-sky-500">
+                                <span class="mr-2 h-px w-5 bg-sky-200"></span>
+
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round">
+                                    <path d="M5 12h14M13 6l6 6-6 6" />
+                                </svg>
+
+                                <span class="ml-2 h-px w-5 bg-sky-200"></span>
+                            </div>
+
+
+                            <div class="text-right">
+                                <div class="truncate text-[10px] text-emerald-600">
+                                    {{ destinationName() }}
+                                </div>
+
+                                <div class="mt-0.5 text-lg font-semibold tabular-nums text-emerald-700">
+                                    {{ destinationAfter }}
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                    }
+
+                </article>
+                }
+
+            </div>
+            }
+
+        </section>
+
+
+        <!-- ======================= BASKET ======================= -->
+        <aside class="min-w-0">
+
+            <div class="sticky top-4 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+
+                <!-- header -->
+                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+
+                    <div>
+                        <div class="text-sm font-semibold text-slate-900">
+                            Transfer summary
+                        </div>
+
+                        <div class="mt-0.5 text-xs text-slate-400">
+                            {{ sourceName() }} → {{ destinationName() }}
+                        </div>
+                    </div>
+
+                    @if (totalProducts() > 0) {
+                    <button type="button" (click)="clearBasket()"
+                        class="rounded-md px-2 py-1 text-xs font-medium text-slate-500 transition hover:bg-slate-100">
+                        Clear
+                    </button>
+                    }
+
+                </div>
+
+
+                <!-- lines -->
+                @if (basketLines().length === 0) {
+
+                <div class="flex min-h-44 flex-col items-center justify-center px-6 py-8 text-center">
+
+                    <span
+                        class="grid h-12 w-12 place-items-center rounded-xl bg-slate-50 text-slate-300 ring-1 ring-slate-200">
+                        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M7 7h11l-3-3" />
+                            <path d="m18 7-3 3" />
+                            <path d="M17 17H6l3 3" />
+                            <path d="m6 17 3-3" />
+                        </svg>
+                    </span>
+
+                    <p class="mt-3 text-sm font-medium text-slate-700">
+                        Nothing selected yet
+                    </p>
+
+                    <p class="mt-1 text-xs text-slate-400">
+                        Scan a product or use + to add units.
+                    </p>
+
+                </div>
+
+                } @else {
+
+                <ul class="max-h-[300px] divide-y divide-slate-100 overflow-y-auto">
+
+                    @for (line of basketLines(); track line.productId) {
+
+                    <li class="flex items-center gap-3 px-5 py-3">
+
+                        <span
+                            class="grid h-8 min-w-8 shrink-0 place-items-center rounded-lg bg-sky-50 px-2 text-xs font-bold tabular-nums text-sky-700">
+                            ×{{ line.quantity }}
+                        </span>
+
+                        <div class="min-w-0 flex-1">
+                            <div class="truncate text-sm font-medium text-slate-900">
+                                {{ line.name }}
+                            </div>
+
+                            <div class="font-mono text-[11px] text-slate-400">
+                                {{ line.sku }}
+                            </div>
+                        </div>
+
+                        <button type="button" (click)="removeProduct(line.productId)" aria-label="Remove product"
+                            class="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-slate-300 transition hover:bg-slate-100 hover:text-slate-600">
+                            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.8" stroke-linecap="round">
+                                <path d="M6 6l12 12M18 6L6 18" />
+                            </svg>
+                        </button>
+
+                    </li>
+                    }
+
+                </ul>
+
+                }
+
+
+                <!-- reason -->
+                <div class="border-t border-slate-100 p-5">
+
+                    <label class="mb-1.5 block text-sm font-medium text-slate-700">
+                        Reason
+                        <span class="text-red-500">*</span>
+                    </label>
+
+                    <input type="text" [value]="reason()"
+                        (input)="reason.set($any($event.target).value); transferError.set(null)"
+                        placeholder="e.g. Rebalance stock between stores"
+                        class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+
+                </div>
+
+
+                <!-- CTA -->
+                <div class="border-t border-slate-100 bg-slate-50 p-5">
+
+                    <div class="mb-3 flex items-end justify-between">
+
+                        <div class="text-xs text-slate-500">
+                            <span class="font-semibold text-slate-900">
+                                {{ totalProducts() }}
+                            </span>
+                            {{ totalProducts() === 1 ? 'product' : 'products' }}
+                        </div>
+
+                        <div class="text-right">
+                            <span class="text-2xl font-semibold tabular-nums text-sky-700">
+                                {{ totalUnits() }}
+                            </span>
+                            <span class="ml-1 text-xs text-slate-400">
+                                {{ totalUnits() === 1 ? 'unit' : 'units' }}
+                            </span>
+                        </div>
+
+                    </div>
+
+
+                    <button type="button" (click)="submit()" [disabled]="!canSubmit()"
+                        class="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-sky-600 text-sm font-semibold text-white shadow-lg shadow-sky-600/20 transition hover:bg-sky-700 active:scale-[.99] disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
+
+                        @if (svc.saving()) {
+
+                        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".25" stroke-width="3" />
+                            <path d="M21 12a9 9 0 00-9-9" stroke="currentColor" stroke-width="3"
+                                stroke-linecap="round" />
+                        </svg>
+
+                        Transferring…
+
+                        } @else {
+
+                        Transfer {{ totalUnits() }}
+                        {{ totalUnits() === 1 ? 'unit' : 'units' }}
+
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round">
+                            <path d="M5 12h14M13 6l6 6-6 6" />
+                        </svg>
+
+                        }
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </aside>
+
+    </div>
+
+
+    } @else if (completedTransfer(); as done) {
+
+    <!-- ======================= SUCCESS ======================= -->
+    <div class="mx-auto max-w-xl">
+
+        <div class="text-center">
+
+            <div class="pop mx-auto grid h-20 w-20 place-items-center rounded-full bg-green-100 ring-8 ring-green-50">
+                <svg class="h-10 w-10 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12l5 5L20 7" />
+                </svg>
+            </div>
+
+            <h2 class="mt-5 text-2xl font-semibold text-slate-900">
+                Transfer completed
+            </h2>
+
+            <p class="mt-1 text-sm text-slate-500">
+                <span class="font-semibold text-slate-900">{{ done.units }}</span>
+                {{ done.units === 1 ? 'unit' : 'units' }}
+                moved successfully.
+            </p>
+
+            @if (done.reference) {
+            <div class="mt-2 font-mono text-xs text-slate-400">
+                #{{ referenceLabel(done.reference) }}
+            </div>
+            }
+
+        </div>
+
+
+        <!-- route receipt -->
+        <div class="mt-7 grid grid-cols-[1fr_56px_1fr] items-center">
+
+            <div class="rounded-xl bg-rose-50 p-3 text-center ring-1 ring-rose-200">
+                <div class="text-[10px] font-bold uppercase tracking-wide text-rose-500">
+                    From
+                </div>
+                <div class="mt-1 truncate text-sm font-semibold text-slate-900">
+                    {{ done.sourceName }}
+                </div>
+            </div>
+
+            <div class="flex justify-center text-sky-500">
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+            </div>
+
+            <div class="rounded-xl bg-emerald-50 p-3 text-center ring-1 ring-emerald-200">
+                <div class="text-[10px] font-bold uppercase tracking-wide text-emerald-600">
+                    To
+                </div>
+                <div class="mt-1 truncate text-sm font-semibold text-slate-900">
+                    {{ done.destinationName }}
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- receipt -->
+        <div class="mt-4 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+
+            <div class="flex items-center justify-between border-b border-dashed border-slate-200 px-5 py-3">
+                <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    Written to the ledger
+                </span>
+
+                <span class="text-xs text-slate-400">
+                    {{ done.lines.length }}
+                    {{ done.lines.length === 1 ? 'product' : 'products' }}
+                </span>
+            </div>
+
+
+            <ul class="divide-y divide-slate-100">
+
+                @for (line of done.lines; track line.productId) {
+
+                <li class="flex items-center gap-3 px-5 py-3.5">
+
+                    <span
+                        class="grid h-9 min-w-9 shrink-0 place-items-center rounded-lg bg-sky-50 px-2 text-xs font-bold tabular-nums text-sky-700">
+                        ×{{ line.quantity }}
+                    </span>
+
+                    <div class="min-w-0 flex-1">
+                        <div class="truncate text-sm font-medium text-slate-900">
+                            {{ line.name }}
+                        </div>
+
+                        <div class="font-mono text-[11px] text-slate-400">
+                            {{ line.sku }}
+                        </div>
+                    </div>
+
+
+                    <div class="shrink-0 text-right text-[11px]">
+
+                        <div class="text-slate-400">
+                            {{ line.sourceQty }}
+                            <span class="mx-0.5">→</span>
+                            <span class="font-semibold text-rose-600">
+                                {{ line.sourceAfter }}
+                            </span>
+                        </div>
+
+                        <div class="mt-0.5 text-slate-400">
+                            {{ line.destinationQty }}
+                            <span class="mx-0.5">→</span>
+                            <span class="font-semibold text-emerald-600">
+                                {{ line.destinationAfter }}
+                            </span>
+                        </div>
+
+                    </div>
+
+                </li>
+
+                }
+
+            </ul>
+
+
+            <div class="border-t border-dashed border-slate-200 bg-slate-50 px-5 py-3">
+                <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    Reason
+                </div>
+
+                <div class="mt-1 text-sm text-slate-700">
+                    {{ done.reason }}
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- actions -->
+        <div class="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-3">
+
+            <button type="button" (click)="cancel()"
+                class="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                Source inventory
+            </button>
+
+            <button type="button" (click)="openDestinationInventory()"
+                class="h-11 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100">
+                Destination
+            </button>
+
+            <button type="button" (click)="newTransfer()"
+                class="h-11 rounded-xl bg-brand-600 px-3 text-sm font-semibold text-white shadow-lg shadow-brand-600/20 transition hover:bg-brand-700">
+                New transfer
+            </button>
+
+        </div>
+
+    </div>
+
+    }
+
+    @else if (completedTransfer(); as done) {
+
+    <!-- ======================= SUCCESS ======================= -->
+    <div class="mx-auto max-w-xl">
+
+        <div class="text-center">
+
+            <div class="pop mx-auto grid h-20 w-20 place-items-center rounded-full bg-green-100 ring-8 ring-green-50">
+
+                <svg class="h-10 w-10 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12l5 5L20 7" />
+                </svg>
+
+            </div>
+
+            <h2 class="mt-5 text-2xl font-semibold text-slate-900">
+                Transfer completed
+            </h2>
+
+            <p class="mt-1 text-sm text-slate-500">
+                {{ done.units }}
+                {{ done.units === 1 ? 'unit' : 'units' }}
+                moved from
+                <span class="font-medium text-slate-700">
+                    {{ done.sourceName }}
+                </span>
+                to
+                <span class="font-medium text-sky-700">
+                    {{ done.destinationName }}
+                </span>
+            </p>
+
+            @if (done.reference) {
+            <div class="mt-2 font-mono text-xs text-slate-400">
+                #{{ referenceLabel(done.reference) }}
+            </div>
+            }
+
+        </div>
+
+
+        <!-- receipt -->
+        <div class="mt-7 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+
+            <div class="flex items-center justify-between border-b border-dashed border-slate-200 px-5 py-3">
+
+                <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    Written to the ledger
+                </span>
+
+                <span class="text-xs text-slate-400">
+                    {{ done.lines.length }}
+                    {{ done.lines.length === 1 ? 'product' : 'products' }}
+                </span>
+
+            </div>
+
+
+            <ul class="divide-y divide-slate-100">
+
+                @for (line of done.lines; track line.productId; let i = $index) {
+
+                <li class="row-in px-5 py-4" [style.animation-delay.ms]="160 + i * 70">
+
+                    <div class="flex items-start justify-between gap-4">
+
+                        <div class="min-w-0">
+
+                            <div class="truncate text-sm font-medium text-slate-900">
+                                {{ line.name }}
+                            </div>
+
+                            <div class="mt-0.5 font-mono text-[11px] text-slate-400">
+                                {{ line.sku }}
+                            </div>
+
+                        </div>
+
+                        <span
+                            class="shrink-0 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold tabular-nums text-sky-700 ring-1 ring-sky-200">
+                            {{ line.quantity }} moved
+                        </span>
+
+                    </div>
+
+
+                    <div class="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-xl bg-slate-50 p-3">
+
+                        <div>
+
+                            <div class="truncate text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                {{ done.sourceName }}
+                            </div>
+
+                            <div class="mt-1 font-mono text-sm tabular-nums">
+
+                                <span class="text-slate-500">
+                                    {{ line.sourceQty }}
+                                </span>
+
+                                <span class="mx-1 text-slate-300">→</span>
+
+                                <span class="font-semibold text-slate-900">
+                                    {{ line.sourceAfter }}
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <svg class="h-4 w-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 12h14M13 6l6 6-6 6" />
+                        </svg>
+
+
+                        <div class="text-right">
+
+                            <div class="truncate text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                {{ done.destinationName }}
+                            </div>
+
+                            <div class="mt-1 font-mono text-sm tabular-nums">
+
+                                <span class="text-slate-500">
+                                    {{ line.destinationQty }}
+                                </span>
+
+                                <span class="mx-1 text-slate-300">→</span>
+
+                                <span class="font-semibold text-sky-700">
+                                    {{ line.destinationAfter }}
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </li>
+
+                }
+
+            </ul>
+
+
+            <!-- reason -->
+            <div class="border-t border-dashed border-slate-200 bg-slate-50 px-5 py-3">
+
+                <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    Reason
+                </div>
+
+                <div class="mt-1 text-sm text-slate-700">
+                    {{ done.reason }}
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- done actions -->
+        <div class="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-3">
+
+            <button type="button" (click)="cancel()"
+                class="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                Source inventory
+            </button>
+
+            <button type="button" (click)="openDestinationInventory()"
+                class="h-11 rounded-xl border border-sky-200 bg-sky-50 px-3 text-sm font-medium text-sky-700 transition hover:bg-sky-100">
+                Destination inventory
+            </button>
+
+            <button type="button" (click)="newTransfer()"
+                class="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-3 text-sm font-semibold text-white shadow-lg shadow-brand-600/20 transition hover:bg-brand-700">
+
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                </svg>
+
+                New transfer
+            </button>
+
+        </div>
+
+    </div>
+
+    }
+
+</div>

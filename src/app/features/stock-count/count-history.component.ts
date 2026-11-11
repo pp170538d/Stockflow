@@ -67,6 +67,6 @@ export class CountHistoryComponent implements OnInit {
   }
 
   back(): void {
-    this.router.navigate(['/inventory']);
+    this.router.navigate(['/stock-count']);
   }
 }

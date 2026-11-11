@@ -7,6 +7,7 @@ import { SalesService, SaleRow, SellableProduct } from './sales.service';
 import { BusinessObject } from '../objects/object.model';
 import { ToastService } from '../../shared/ui/toast.service';
 import { CRITICAL_DAYS, WARNING_DAYS, MIN_SALES, runwayLabel } from '../../core/stock/runway';
+import { LocationPickerComponent } from '../../shared/ui/location-picker.component';
 
 interface RangeOption {
   label: string;
@@ -63,7 +64,7 @@ const DAY = 86_400_000;
 @Component({
   selector: 'app-sales',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, RouterLink],
+  imports: [DatePipe, DecimalPipe, RouterLink, LocationPickerComponent,],
   templateUrl: './sales.component.html',
   styles: [`
     @keyframes rowIn {
@@ -171,6 +172,11 @@ export class SalesComponent implements OnInit {
   readonly search = signal<string>('');
   readonly hovered = signal<number | null>(null);
   readonly flashRef = signal<string | null>(null);
+  
+readonly reportLocations = computed(() => [
+  { id: '', name: 'All stores' },
+  ...this.objects(),
+]);
 
   readonly ranges: RangeOption[] = [
     { label: '7d', days: 7 },
