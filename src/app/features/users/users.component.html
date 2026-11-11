@@ -2,7 +2,7 @@
 <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
   <div>
     <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Users</h1>
-    <p class="mt-1 text-sm text-slate-500">Manage roles and object assignments.</p>
+    <p class="mt-1 text-sm text-slate-500">Manage roles and locations assignments.</p>
   </div>
 </div>
 
@@ -11,7 +11,7 @@
   <div class="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700 ring-1 ring-amber-200">
     <div class="font-medium text-amber-800">Read-only in the demo</div>
     <p class="mt-1">
-      You can browse users, roles and object assignments here. Editing is
+      You can browse users, roles and locations assignments here. Editing is
       disabled so the demo stays usable for everyone.
     </p>
   </div>
@@ -20,7 +20,7 @@
     <div class="font-medium text-blue-800">How users are created</div>
     <p class="mt-1">
       New users are created when they sign up or via Supabase Authentication.
-      Use this page to assign their <strong>role</strong> and <strong>object</strong>.
+      Use this page to assign their <strong>role</strong> and <strong>location</strong>.
     </p>
   </div>
 }
@@ -83,7 +83,7 @@
 
         <div class="mt-3 flex items-center justify-between gap-3 text-xs text-slate-500">
           <span class="truncate">
-            {{ u.object?.name || 'No object assigned' }}
+            {{ u.object?.name || 'No location assigned' }}
           </span>
           <span class="shrink-0 text-slate-400">
             {{ u.created_at | date: 'mediumDate' }}
@@ -112,7 +112,7 @@
         <tr>
           <th class="px-5 py-3 font-medium">User</th>
           <th class="px-5 py-3 font-medium">Role</th>
-          <th class="px-5 py-3 font-medium">Object</th>
+          <th class="px-5 py-3 font-medium">Locations</th>
           <th class="px-5 py-3 font-medium">Joined</th>
           @if (!auth.isDemo()) {
             <th class="px-5 py-3 text-right font-medium">Actions</th>
@@ -222,11 +222,11 @@
       </select>
     </div>
 
-    <!-- Object, only relevant for sellers -->
+    <!-- Locations, only relevant for sellers -->
     @if (draftRole() === 'SELLER') {
       <div>
         <label class="mb-1.5 block text-sm font-medium text-slate-700">
-          Assigned object
+          Assigned location
         </label>
 
         <select
@@ -244,12 +244,12 @@
         </select>
 
         <p class="mt-1 text-xs text-slate-400">
-          The seller will only see products assigned to this object.
+          The seller will only see products assigned to this location.
         </p>
       </div>
     } @else {
       <div class="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 ring-1 ring-slate-200">
-        Admins have access to all objects. No object assignment is needed.
+        Admins have access to all locations. No location assignment is needed.
       </div>
     }
 

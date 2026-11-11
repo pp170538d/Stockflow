@@ -8,6 +8,7 @@ import {
   ReportsService, RunwayRow, MixSlice, MovementEvent, Urgency, ReportKpis, TARGET_DAYS,
 } from './reports.service';
 import { BusinessObject } from '../objects/object.model';
+import { LocationPickerComponent } from '../../shared/ui/location-picker.component';
 import { runwayLabel } from '../../core/stock/runway';
 
 export interface RangeOption {
@@ -26,7 +27,7 @@ type Shown = Pick<ReportKpis, 'onHand' | 'sold' | 'movements' | 'orders' | 'reor
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [DecimalPipe, RouterLink],
+  imports: [DecimalPipe, RouterLink, LocationPickerComponent,],
   templateUrl: './reports.component.html',
   styles: [`
     @keyframes rowIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -66,7 +67,10 @@ export class ReportsComponent implements OnInit, OnDestroy {
 
   readonly objects = signal<BusinessObject[]>([]);
   readonly selectedObjectId = signal<string>(''); // '' = all stores
-
+  readonly reportLocations = computed(() => [
+  { id: '', name: 'All locations' },
+  ...this.objects(),
+]);
   readonly ranges: RangeOption[] = [
     { label: '7d', days: 7 },
     { label: '30d', days: 30 },
@@ -136,10 +140,14 @@ export class ReportsComponent implements OnInit, OnDestroy {
 
   // ---------- labels ----------
   readonly scopeLabel = computed(() => {
-    const id = this.selectedObjectId();
-    if (!id) return 'All stores';
-    return this.objects().find((o) => o.id === id)?.name ?? 'Store';
-  });
+  const id = this.selectedObjectId();
+
+  if (!id) return 'All locations';
+
+  return this.objects().find(
+    (o) => o.id === id
+  )?.name ?? 'Location';
+});
 
   readonly rangeLabel = computed(() => `last ${this.rangeDays()} days`);
 

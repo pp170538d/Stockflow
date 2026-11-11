@@ -172,7 +172,8 @@ export class SalesComponent implements OnInit {
   readonly search = signal<string>('');
   readonly hovered = signal<number | null>(null);
   readonly flashRef = signal<string | null>(null);
-  
+  readonly mobileBasketOpen = signal(false);
+
 readonly reportLocations = computed(() => [
   { id: '', name: 'All stores' },
   ...this.objects(),
@@ -662,6 +663,7 @@ readonly reportLocations = computed(() => [
   }
 
   private resetBasket(): void {
+    this.mobileBasketOpen.set(false);
     this.cart.set({});
     this.saleNote.set('');
     this.saleError.set(null);

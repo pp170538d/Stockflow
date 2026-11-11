@@ -1,13 +1,13 @@
 <!-- Header -->
 <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Objects</h1>
+    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Locations</h1>
     <p class="mt-1 text-sm text-slate-500">Manage your business locations.</p>
   </div>
   <button (click)="openCreate()"
     class="inline-flex shrink-0 items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
            transition hover:bg-brand-700">
-    + New object
+    + New location
   </button>
 </div>
 
@@ -15,26 +15,26 @@
 <div class="mb-4 max-w-xs">
   <input type="text" [value]="search()"
     (input)="search.set($any($event.target).value)"
-    placeholder="Search objects…"
+    placeholder="Search locations…"
     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
            transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
 </div>
 
 @if (svc.loading()) {
   <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
-    Loading objects…
+    Loading locations...
   </div>
 } @else if (svc.error()) {
   <div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">
     {{ svc.error() }}
   </div>
 } @else if (filtered().length === 0) {
-  <app-empty-state title="No objects yet"
+  <app-empty-state title="No locations yet"
     subtitle="Create your first business location to get started.">
     <button (click)="openCreate()"
       class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
              transition hover:bg-brand-700">
-      + New object
+      + New location
     </button>
   </app-empty-state>
 } @else {

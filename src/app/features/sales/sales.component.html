@@ -47,8 +47,8 @@
         <path d="m21 21-4.3-4.3" />
       </svg>
       <input type="text" [value]="search()" (input)="onSearch($any($event.target).value)"
-  placeholder="Product, SKU or note"
-  class="h-11 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10" />
+        placeholder="Product, SKU or note"
+        class="h-11 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10" />
     </div>
     @if (isAdmin()) {
     <div class="w-full sm:w-56">
@@ -337,7 +337,7 @@
     </div>
 
     @if (saleStep() === 'basket') {
-    <div class="grid min-h-0 flex-1 grid-rows-[1fr_auto] lg:grid-cols-[1fr_400px] lg:grid-rows-1">
+    <div class="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_400px]">
 
       <!-- ========== LEFT: product picker ========== -->
       <!-- ========== LEFT: product picker ========== -->
@@ -494,16 +494,68 @@
 
       </section>
 
+      <div class="shrink-0 border-t border-slate-200 bg-white p-3 lg:hidden">
+
+        <button type="button" (click)="mobileBasketOpen.set(true)"
+          class="flex h-14 w-full items-center justify-between rounded-xl bg-slate-900 px-4 text-white">
+
+          <span class="flex items-center gap-3">
+
+            <span
+              class="grid h-8 min-w-8 place-items-center rounded-lg bg-white/10 px-2 text-xs font-bold tabular-nums">
+              {{ cartUnits() }}
+            </span>
+
+            <span class="text-left">
+              <span class="block text-sm font-semibold">
+                Basket
+              </span>
+
+              <span class="block text-[11px] text-slate-300">
+                {{ cartLines().length }}
+                {{ cartLines().length === 1 ? 'product' : 'products' }}
+              </span>
+            </span>
+
+          </span>
+
+          <span class="flex items-center gap-2 text-sm font-semibold">
+            Review
+
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round">
+              <path d="m6 15 6-6 6 6" />
+            </svg>
+          </span>
+
+        </button>
+
+      </div>
       <!-- ========== RIGHT: basket ========== -->
-      <aside
-        class="flex max-h-[48dvh] min-h-0 flex-col border-t border-slate-200 bg-slate-50 lg:max-h-none lg:border-l lg:border-t-0">
+      <aside class="fixed inset-x-0 bottom-0 z-20 flex max-h-[78dvh] min-h-0 flex-col
+         rounded-t-3xl border-t border-slate-200 bg-slate-50 shadow-2xl
+         transition-transform duration-300 ease-[cubic-bezier(.2,.8,.2,1)]
+         lg:static lg:z-auto lg:max-h-none lg:translate-y-0 lg:rounded-none
+         lg:border-l lg:border-t-0 lg:shadow-none" [class.translate-y-full]="!mobileBasketOpen()">
         <div class="flex shrink-0 items-center justify-between px-5 pb-2 pt-4">
           <div class="flex items-center gap-2">
-            <span class="text-sm font-semibold text-slate-900">Basket</span>
+
             @if (cartLines().length) {
-            <span class="rounded-full bg-brand-600 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-white">{{
-              cartLines().length }}</span>
+            <button type="button" (click)="clearCart()"
+              class="rounded-md px-2 py-1 text-xs font-medium text-slate-500 transition hover:bg-white">
+              Clear
+            </button>
             }
+
+            <button type="button" (click)="mobileBasketOpen.set(false)" aria-label="Close basket"
+              class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-white lg:hidden">
+
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+
+            </button>
+
           </div>
           @if (cartLines().length) {
           <button type="button" (click)="clearCart()"

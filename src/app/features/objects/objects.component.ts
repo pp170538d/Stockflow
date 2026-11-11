@@ -37,7 +37,7 @@ export class ObjectsComponent implements OnInit {
   readonly productSearch = signal('');
 
   readonly drawerTitle = computed(() =>
-    this.editingId() ? 'Edit object' : 'New object'
+    this.editingId() ? 'Edit location' : 'New location'
   );
 
   readonly form = this.fb.nonNullable.group({

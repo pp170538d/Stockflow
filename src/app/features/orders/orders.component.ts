@@ -1,7 +1,7 @@
 import { Component, inject, signal, effect, computed, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-
+import { LocationPickerComponent } from '../../shared/ui/location-picker.component';
 import { supabase } from '../../core/supabase/supabase.client';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrdersService } from './orders.service';
@@ -35,6 +35,7 @@ interface StatusMeta {
     EmptyStateComponent,
     ConfirmDeliveryComponent,
     DeliverySummaryComponent,
+    LocationPickerComponent,
   ],
   templateUrl: './orders.component.html',
   styles: [`
@@ -68,6 +69,10 @@ export class OrdersComponent implements OnInit {
 
   readonly objects = signal<BusinessObject[]>([]);
   readonly selectedObjectId = signal<string>('');
+  readonly filterLocations = computed(() => [
+  { id: '', name: 'All locations' },
+  ...this.objects(),
+]);
   readonly statusFilter = signal<OrderStatus | ''>('');
   readonly search = signal('');
 

@@ -9,11 +9,12 @@ import { BusinessObject } from '../objects/object.model';
 import { BadgeComponent } from '../../shared/ui/badge.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
 import { CountSummaryComponent } from './count-summary.component';
+import { LocationPickerComponent } from '../../shared/ui/location-picker.component';
 
 @Component({
   selector: 'app-count-history',
   standalone: true,
-  imports: [DatePipe, RouterLink, BadgeComponent, EmptyStateComponent, CountSummaryComponent],
+  imports: [DatePipe, RouterLink, BadgeComponent, EmptyStateComponent, CountSummaryComponent, LocationPickerComponent,],
   templateUrl: './count-history.component.html',
 })
 export class CountHistoryComponent implements OnInit {
