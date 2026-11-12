@@ -4,9 +4,12 @@ import {
   ImportBatch, ImportResult, ImportRow, ParsedFile, ProductColumn, ProductSnapshot,
   downloadProductTemplate, exportProducts, importProducts, loadImportHistory, parseProductFile,
 } from '../../core/data/product-io';
+import { AssignmentsImportComponent } from './assignments-import.component';
+import { OpeningImportComponent } from './opening-import.component';
 
 type Step = 'idle' | 'reading' | 'preview' | 'importing' | 'done';
 type Filter = 'all' | 'new' | 'update' | 'unchanged' | 'error';
+type Tab = 'products' | 'assignments' | 'stock';
 
 const MAX_SHOWN = 300;
 const OPTIONAL: { col: ProductColumn; label: string }[] = [
@@ -18,10 +21,12 @@ const OPTIONAL: { col: ProductColumn; label: string }[] = [
 @Component({
   selector: 'app-data',
   standalone: true,
-  imports: [DatePipe],
+  imports: [DatePipe, AssignmentsImportComponent, OpeningImportComponent,],
   templateUrl: './data.component.html',
 })
 export class DataComponent implements OnInit {
+  readonly tab = signal<Tab>('products');
+
   readonly step = signal<Step>('idle');
   readonly file = signal<ParsedFile | null>(null);
   readonly result = signal<ImportResult | null>(null);
@@ -30,9 +35,7 @@ export class DataComponent implements OnInit {
   readonly exporting = signal(false);
   readonly dragOver = signal(false);
   readonly history = signal<ImportBatch[]>([]);
-
   readonly changes = computed(() => (this.result()?.new ?? 0) + (this.result()?.updated ?? 0));
-
   readonly canImport = computed(
     () => this.step() === 'preview' && !!this.result()?.ok && this.changes() > 0
   );
@@ -70,7 +73,7 @@ export class DataComponent implements OnInit {
   onFileInput(ev: Event): void {
     const input = ev.target as HTMLInputElement;
     const f = input.files?.[0];
-    input.value = ''; // same file can be picked again after a fix
+    input.value = '';
     if (f) void this.read(f);
   }
 
@@ -121,7 +124,6 @@ export class DataComponent implements OnInit {
       return;
     }
 
-    // Someone changed products between preview and import
     if (!result.applied) {
       this.result.set(result);
       this.filter.set('error');

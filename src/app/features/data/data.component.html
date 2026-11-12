@@ -1,21 +1,34 @@
+<!-- ======================= TABS ======================= -->
+<div class="mb-5 inline-flex rounded-xl bg-slate-100 p-1">
+    @for (t of [{ key: 'products', label: 'Products' }, { key: 'assignments', label: 'Assignments' }, { key: 'stock',
+    label: 'Opening stock' }]; track t.key) {
+    <button type="button" (click)="tab.set($any(t.key))" class="h-9 rounded-lg px-4 text-sm font-medium transition"
+        [class]="tab() === t.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'">
+        {{ t.label }}
+    </button>
+    }
+</div>
+
+@if (tab() === 'products') {
+
 <!-- ======================= HEADER ======================= -->
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-  <div>
-    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Data</h1>
-    <p class="mt-1 text-sm text-slate-500">
-      Import and export your product catalog. Every import is previewed first. Nothing is saved until you confirm.
-    </p>
-  </div>
-  <div class="flex gap-2">
-    <button type="button" (click)="downloadTemplate()"
-      class="h-10 flex-1 rounded-xl bg-white px-4 text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 sm:flex-none">
-      Template
-    </button>
-    <button type="button" (click)="exportAll()" [disabled]="exporting()"
-      class="h-10 flex-1 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 sm:flex-none">
-      {{ exporting() ? 'Exporting…' : 'Export products' }}
-    </button>
-  </div>
+    <div>
+        <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Data</h1>
+        <p class="mt-1 text-sm text-slate-500">
+            Import and export your product catalog. Every import is previewed first. Nothing is saved until you confirm.
+        </p>
+    </div>
+    <div class="flex gap-2">
+        <button type="button" (click)="downloadTemplate()"
+            class="h-10 flex-1 rounded-xl bg-white px-4 text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 sm:flex-none">
+            Template
+        </button>
+        <button type="button" (click)="exportAll()" [disabled]="exporting()"
+            class="h-10 flex-1 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 sm:flex-none">
+            {{ exporting() ? 'Exporting…' : 'Export products' }}
+        </button>
+    </div>
 </div>
 
 @if (error()) {
@@ -27,36 +40,37 @@
 <!-- ======================= UPLOAD ======================= -->
 @case ('idle') {
 <label (dragover)="onDragOver($event)" (dragleave)="dragOver.set(false)" (drop)="onDrop($event)"
-  class="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-12 text-center transition"
-  [class]="dragOver() ? 'border-brand-500 bg-brand-50' : 'border-slate-300 bg-white hover:border-brand-400 hover:bg-slate-50'">
-  <input type="file" class="sr-only" accept=".xlsx,.xls,.csv" (change)="onFileInput($event)" />
-  <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
-    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 16V4M7 9l5-5 5 5M4 20h16" />
-    </svg>
-  </div>
-  <p class="mt-4 text-sm font-semibold text-slate-900">Drop a product file here or tap to choose</p>
-  <p class="mt-1 text-xs text-slate-500">.xlsx, .xls or .csv · up to 5,000 rows · SKU and Name required</p>
+    class="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-12 text-center transition"
+    [class]="dragOver() ? 'border-brand-500 bg-brand-50' : 'border-slate-300 bg-white hover:border-brand-400 hover:bg-slate-50'">
+    <input type="file" class="sr-only" accept=".xlsx,.xls,.csv" (change)="onFileInput($event)" />
+    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 16V4M7 9l5-5 5 5M4 20h16" />
+        </svg>
+    </div>
+    <p class="mt-4 text-sm font-semibold text-slate-900">Drop a product file here or tap to choose</p>
+    <p class="mt-1 text-xs text-slate-500">.xlsx, .xls or .csv · up to 5,000 rows · SKU and Name required</p>
 </label>
 
 <ul class="mt-4 grid gap-2 text-xs text-slate-500 sm:grid-cols-3">
-  <li class="rounded-xl bg-white px-4 py-3 ring-1 ring-slate-200">
-    <b class="text-slate-700">Matched by SKU.</b> Existing products are updated, new ones are added.
-  </li>
-  <li class="rounded-xl bg-white px-4 py-3 ring-1 ring-slate-200">
-    <b class="text-slate-700">Nothing is deleted.</b> To retire a product, set Active to "no".
-  </li>
-  <li class="rounded-xl bg-white px-4 py-3 ring-1 ring-slate-200">
-    <b class="text-slate-700">All or nothing.</b> If one row has an error, no row is saved.
-  </li>
+    <li class="rounded-xl bg-white px-4 py-3 ring-1 ring-slate-200">
+        <b class="text-slate-700">Matched by SKU.</b> Existing products are updated, new ones are added.
+    </li>
+    <li class="rounded-xl bg-white px-4 py-3 ring-1 ring-slate-200">
+        <b class="text-slate-700">Nothing is deleted.</b> To retire a product, set Active to "no".
+    </li>
+    <li class="rounded-xl bg-white px-4 py-3 ring-1 ring-slate-200">
+        <b class="text-slate-700">All or nothing.</b> If one row has an error, no row is saved.
+    </li>
 </ul>
 }
 
 <!-- ======================= READING ======================= -->
 @case ('reading') {
 <div class="flex flex-col items-center justify-center rounded-2xl bg-white px-6 py-14 ring-1 ring-slate-200">
-  <div class="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-brand-600"></div>
-  <p class="mt-4 text-sm text-slate-600">Reading the file and checking every row…</p>
+    <div class="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-brand-600"></div>
+    <p class="mt-4 text-sm text-slate-600">Reading the file and checking every row…</p>
 </div>
 }
 
@@ -64,20 +78,21 @@
 @case ('done') {
 @let d = result()!;
 <div class="rounded-2xl bg-white px-6 py-10 text-center ring-1 ring-slate-200">
-  <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M5 12l5 5L20 7" />
-    </svg>
-  </div>
-  <p class="mt-4 text-lg font-semibold text-slate-900">Import complete</p>
-  <p class="mt-1 text-sm text-slate-500">
-    <b class="text-slate-700">{{ d.new }}</b> added · <b class="text-slate-700">{{ d.updated }}</b> updated ·
-    {{ d.unchanged }} unchanged
-  </p>
-  <button type="button" (click)="reset()"
-    class="mt-6 h-10 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
-    Import another file
-  </button>
+    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12l5 5L20 7" />
+        </svg>
+    </div>
+    <p class="mt-4 text-lg font-semibold text-slate-900">Import complete</p>
+    <p class="mt-1 text-sm text-slate-500">
+        <b class="text-slate-700">{{ d.new }}</b> added · <b class="text-slate-700">{{ d.updated }}</b> updated ·
+        {{ d.unchanged }} unchanged
+    </p>
+    <button type="button" (click)="reset()"
+        class="mt-6 h-10 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">
+        Import another file
+    </button>
 </div>
 }
 
@@ -88,157 +103,177 @@
 
 <!-- file + summary -->
 <div class="mb-4 rounded-2xl bg-white p-4 ring-1 ring-slate-200">
-  <div class="flex items-start justify-between gap-3">
-    <div class="min-w-0">
-      <p class="truncate text-sm font-semibold text-slate-900">{{ f.fileName }}</p>
-      <p class="mt-0.5 text-xs text-slate-500">{{ r.total }} rows checked</p>
+    <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+            <p class="truncate text-sm font-semibold text-slate-900">{{ f.fileName }}</p>
+            <p class="mt-0.5 text-xs text-slate-500">{{ r.total }} rows checked</p>
+        </div>
+        <button type="button" (click)="reset()"
+            class="shrink-0 text-xs font-medium text-slate-500 hover:text-slate-800">
+            Choose another file
+        </button>
     </div>
-    <button type="button" (click)="reset()" class="shrink-0 text-xs font-medium text-slate-500 hover:text-slate-800">
-      Choose another file
-    </button>
-  </div>
 
-  <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
-    @for (c of [
-      { key: 'all', label: 'All rows', n: r.total, tone: 'text-slate-900' },
-      { key: 'new', label: 'New', n: r.new, tone: 'text-emerald-700' },
-      { key: 'update', label: 'Updated', n: r.updated, tone: 'text-amber-700' },
-      { key: 'unchanged', label: 'Unchanged', n: r.unchanged, tone: 'text-slate-500' },
-      { key: 'error', label: 'Errors', n: r.invalid, tone: 'text-red-700' }
-    ]; track c.key) {
-    <button type="button" (click)="filter.set($any(c.key))"
-      class="rounded-xl px-3 py-2.5 text-left ring-1 transition"
-      [class]="filter() === c.key ? 'bg-slate-900 ring-slate-900' : 'bg-white ring-slate-200 hover:bg-slate-50'">
-      <div class="text-[11px] font-medium" [class]="filter() === c.key ? 'text-white/70' : 'text-slate-500'">{{ c.label }}</div>
-      <div class="text-xl font-semibold tabular-nums" [class]="filter() === c.key ? 'text-white' : c.tone">{{ c.n }}</div>
-    </button>
+    <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+        @for (c of [
+        { key: 'all', label: 'All rows', n: r.total, tone: 'text-slate-900' },
+        { key: 'new', label: 'New', n: r.new, tone: 'text-emerald-700' },
+        { key: 'update', label: 'Updated', n: r.updated, tone: 'text-amber-700' },
+        { key: 'unchanged', label: 'Unchanged', n: r.unchanged, tone: 'text-slate-500' },
+        { key: 'error', label: 'Errors', n: r.invalid, tone: 'text-red-700' }
+        ]; track c.key) {
+        <button type="button" (click)="filter.set($any(c.key))"
+            class="rounded-xl px-3 py-2.5 text-left ring-1 transition"
+            [class]="filter() === c.key ? 'bg-slate-900 ring-slate-900' : 'bg-white ring-slate-200 hover:bg-slate-50'">
+            <div class="text-[11px] font-medium" [class]="filter() === c.key ? 'text-white/70' : 'text-slate-500'">{{
+                c.label }}</div>
+            <div class="text-xl font-semibold tabular-nums" [class]="filter() === c.key ? 'text-white' : c.tone">{{ c.n
+                }}</div>
+        </button>
+        }
+    </div>
+
+    @if (keptColumns().length) {
+    <p class="mt-3 text-xs text-slate-500">
+        Not in this file, kept as they are: <b class="text-slate-700">{{ keptColumns().join(', ') }}</b>
+    </p>
     }
-  </div>
-
-  @if (keptColumns().length) {
-  <p class="mt-3 text-xs text-slate-500">
-    Not in this file, kept as they are: <b class="text-slate-700">{{ keptColumns().join(', ') }}</b>
-  </p>
-  }
 </div>
 
 @if (!r.ok) {
 <div class="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">
-  <b>{{ r.invalid }} {{ r.invalid === 1 ? 'row has' : 'rows have' }} errors.</b>
-  Fix them in the file and upload it again. Nothing was imported.
+    <b>{{ r.invalid }} {{ r.invalid === 1 ? 'row has' : 'rows have' }} errors.</b>
+    Fix them in the file and upload it again. Nothing was imported.
 </div>
 } @else if (changes() === 0) {
 <div class="mb-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-200">
-  Everything in this file already matches your catalog. There is nothing to import.
+    Everything in this file already matches your catalog. There is nothing to import.
 </div>
 }
 
 <!-- rows: desktop table -->
 <div class="hidden overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200 md:block">
-  <table class="w-full text-sm">
-    <thead class="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-      <tr>
-        <th class="px-4 py-3">Row</th>
-        <th class="px-4 py-3">SKU</th>
-        <th class="px-4 py-3">Name</th>
-        <th class="px-4 py-3">Category</th>
-        <th class="px-4 py-3">Barcode</th>
-        <th class="px-4 py-3">Active</th>
-        <th class="px-4 py-3 text-right">Result</th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-slate-100">
-      @for (row of shownRows(); track row.row) {
-      <tr [class.bg-red-50/40]="row.action === 'error'">
-        <td class="px-4 py-3 align-top text-xs tabular-nums text-slate-400">{{ row.row }}</td>
-        <td class="px-4 py-3 align-top font-mono text-xs text-slate-700">{{ row.sku || '—' }}</td>
-        <td class="px-4 py-3 align-top">
-          @if (changed(row, 'name')) { <div class="text-[11px] text-slate-400 line-through">{{ row.before?.name }}</div> }
-          <div class="text-slate-900" [class.font-semibold]="changed(row, 'name')">{{ row.name || '—' }}</div>
-          @for (m of rowErrors(row); track m) {
-          <div class="mt-1 text-xs text-red-600">{{ m }}</div>
-          }
-        </td>
-        <td class="px-4 py-3 align-top">
-          @if (changed(row, 'category')) { <div class="text-[11px] text-slate-400 line-through">{{ row.before?.category || '—' }}</div> }
-          <div class="text-slate-700" [class.font-semibold]="changed(row, 'category')">{{ row.category || '—' }}</div>
-        </td>
-        <td class="px-4 py-3 align-top font-mono text-xs">
-          @if (changed(row, 'barcode')) { <div class="text-[11px] text-slate-400 line-through">{{ row.before?.barcode || '—' }}</div> }
-          <div class="text-slate-700" [class.font-semibold]="changed(row, 'barcode')">{{ row.barcode || '—' }}</div>
-        </td>
-        <td class="px-4 py-3 align-top text-xs">
-          @if (changed(row, 'active')) { <div class="text-[11px] text-slate-400 line-through">{{ row.before?.active ? 'yes' : 'no' }}</div> }
-          <div class="text-slate-700" [class.font-semibold]="changed(row, 'active')">{{ row.active ? 'yes' : 'no' }}</div>
-        </td>
-        <td class="px-4 py-3 text-right align-top">
-          <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ring-1" [class]="badge(row.action)">
-            {{ row.action }}
-          </span>
-        </td>
-      </tr>
-      } @empty {
-      <tr><td colspan="7" class="px-4 py-10 text-center text-sm text-slate-400">No rows in this view.</td></tr>
-      }
-    </tbody>
-  </table>
+    <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <tr>
+                <th class="px-4 py-3">Row</th>
+                <th class="px-4 py-3">SKU</th>
+                <th class="px-4 py-3">Name</th>
+                <th class="px-4 py-3">Category</th>
+                <th class="px-4 py-3">Barcode</th>
+                <th class="px-4 py-3">Active</th>
+                <th class="px-4 py-3 text-right">Result</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            @for (row of shownRows(); track row.row) {
+            <tr [class.bg-red-50/40]="row.action === 'error'">
+                <td class="px-4 py-3 align-top text-xs tabular-nums text-slate-400">{{ row.row }}</td>
+                <td class="px-4 py-3 align-top font-mono text-xs text-slate-700">{{ row.sku || '—' }}</td>
+                <td class="px-4 py-3 align-top">
+                    @if (changed(row, 'name')) { <div class="text-[11px] text-slate-400 line-through">{{
+                        row.before?.name }}</div> }
+                    <div class="text-slate-900" [class.font-semibold]="changed(row, 'name')">{{ row.name || '—' }}</div>
+                    @for (m of rowErrors(row); track m) {
+                    <div class="mt-1 text-xs text-red-600">{{ m }}</div>
+                    }
+                </td>
+                <td class="px-4 py-3 align-top">
+                    @if (changed(row, 'category')) { <div class="text-[11px] text-slate-400 line-through">{{
+                        row.before?.category || '—' }}</div> }
+                    <div class="text-slate-700" [class.font-semibold]="changed(row, 'category')">{{ row.category || '—'
+                        }}</div>
+                </td>
+                <td class="px-4 py-3 align-top font-mono text-xs">
+                    @if (changed(row, 'barcode')) { <div class="text-[11px] text-slate-400 line-through">{{
+                        row.before?.barcode || '—' }}</div> }
+                    <div class="text-slate-700" [class.font-semibold]="changed(row, 'barcode')">{{ row.barcode || '—' }}
+                    </div>
+                </td>
+                <td class="px-4 py-3 align-top text-xs">
+                    @if (changed(row, 'active')) { <div class="text-[11px] text-slate-400 line-through">{{
+                        row.before?.active ? 'yes' : 'no' }}</div> }
+                    <div class="text-slate-700" [class.font-semibold]="changed(row, 'active')">{{ row.active ? 'yes' :
+                        'no' }}</div>
+                </td>
+                <td class="px-4 py-3 text-right align-top">
+                    <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ring-1"
+                        [class]="badge(row.action)">
+                        {{ row.action }}
+                    </span>
+                </td>
+            </tr>
+            } @empty {
+            <tr>
+                <td colspan="7" class="px-4 py-10 text-center text-sm text-slate-400">No rows in this view.</td>
+            </tr>
+            }
+        </tbody>
+    </table>
 </div>
 
 <!-- rows: mobile cards -->
 <div class="space-y-2 md:hidden">
-  @for (row of shownRows(); track row.row) {
-  <div class="rounded-xl bg-white p-3.5 ring-1" [class]="row.action === 'error' ? 'ring-red-200' : 'ring-slate-200'">
-    <div class="flex items-start justify-between gap-2">
-      <div class="min-w-0">
-        <p class="truncate text-sm font-semibold text-slate-900">{{ row.name || '—' }}</p>
-        <p class="mt-0.5 font-mono text-[11px] text-slate-500">Row {{ row.row }} · {{ row.sku || 'no SKU' }}</p>
-      </div>
-      <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ring-1" [class]="badge(row.action)">
-        {{ row.action }}
-      </span>
-    </div>
+    @for (row of shownRows(); track row.row) {
+    <div class="rounded-xl bg-white p-3.5 ring-1" [class]="row.action === 'error' ? 'ring-red-200' : 'ring-slate-200'">
+        <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-slate-900">{{ row.name || '—' }}</p>
+                <p class="mt-0.5 font-mono text-[11px] text-slate-500">Row {{ row.row }} · {{ row.sku || 'no SKU' }}</p>
+            </div>
+            <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ring-1"
+                [class]="badge(row.action)">
+                {{ row.action }}
+            </span>
+        </div>
 
-    @if (row.action === 'update') {
-    <div class="mt-2 space-y-1 text-xs">
-      @if (changed(row, 'name')) { <p><span class="text-slate-400">Name:</span> <s class="text-slate-400">{{ row.before?.name }}</s> → <b>{{ row.name }}</b></p> }
-      @if (changed(row, 'category')) { <p><span class="text-slate-400">Category:</span> <s class="text-slate-400">{{ row.before?.category || '—' }}</s> → <b>{{ row.category || '—' }}</b></p> }
-      @if (changed(row, 'barcode')) { <p><span class="text-slate-400">Barcode:</span> <s class="text-slate-400">{{ row.before?.barcode || '—' }}</s> → <b>{{ row.barcode || '—' }}</b></p> }
-      @if (changed(row, 'active')) { <p><span class="text-slate-400">Active:</span> <s class="text-slate-400">{{ row.before?.active ? 'yes' : 'no' }}</s> → <b>{{ row.active ? 'yes' : 'no' }}</b></p> }
-    </div>
-    }
+        @if (row.action === 'update') {
+        <div class="mt-2 space-y-1 text-xs">
+            @if (changed(row, 'name')) { <p><span class="text-slate-400">Name:</span> <s class="text-slate-400">{{
+                    row.before?.name }}</s> → <b>{{ row.name }}</b></p> }
+            @if (changed(row, 'category')) { <p><span class="text-slate-400">Category:</span> <s
+                    class="text-slate-400">{{ row.before?.category || '—' }}</s> → <b>{{ row.category || '—' }}</b></p>
+            }
+            @if (changed(row, 'barcode')) { <p><span class="text-slate-400">Barcode:</span> <s class="text-slate-400">{{
+                    row.before?.barcode || '—' }}</s> → <b>{{ row.barcode || '—' }}</b></p> }
+            @if (changed(row, 'active')) { <p><span class="text-slate-400">Active:</span> <s class="text-slate-400">{{
+                    row.before?.active ? 'yes' : 'no' }}</s> → <b>{{ row.active ? 'yes' : 'no' }}</b></p> }
+        </div>
+        }
 
-    @for (m of rowErrors(row); track m) {
-    <p class="mt-1.5 text-xs text-red-600">{{ m }}</p>
+        @for (m of rowErrors(row); track m) {
+        <p class="mt-1.5 text-xs text-red-600">{{ m }}</p>
+        }
+    </div>
+    } @empty {
+    <p class="py-8 text-center text-sm text-slate-400">No rows in this view.</p>
     }
-  </div>
-  } @empty {
-  <p class="py-8 text-center text-sm text-slate-400">No rows in this view.</p>
-  }
 </div>
 
 @if (filteredRows().length > maxShown) {
 <p class="mt-3 text-center text-xs text-slate-500">
-  Showing the first {{ maxShown }} of {{ filteredRows().length }} rows. All rows are checked and imported.
+    Showing the first {{ maxShown }} of {{ filteredRows().length }} rows. All rows are checked and imported.
 </p>
 }
 
 <!-- sticky action bar -->
-<div class="sticky bottom-0 -mx-1 mt-4 flex items-center justify-between gap-3 rounded-2xl bg-white/95 px-4 py-3 shadow-lg ring-1 ring-slate-200 backdrop-blur">
-  <p class="text-xs text-slate-500">
-    @if (r.ok) {
-    <b class="text-slate-800">{{ r.new }}</b> new · <b class="text-slate-800">{{ r.updated }}</b> updated
-    } @else {
-    <span class="text-red-600">Fix errors to continue</span>
-    }
-  </p>
-  <div class="flex gap-2">
-    <button type="button" (click)="reset()"
-      class="h-10 rounded-xl px-4 text-sm font-medium text-slate-600 hover:bg-slate-100">Cancel</button>
-    <button type="button" (click)="apply()" [disabled]="!canImport()"
-      class="h-10 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
-      {{ step() === 'importing' ? 'Importing…' : 'Import ' + changes() + ' changes' }}
-    </button>
-  </div>
+<div
+    class="sticky bottom-0 -mx-1 mt-4 flex items-center justify-between gap-3 rounded-2xl bg-white/95 px-4 py-3 shadow-lg ring-1 ring-slate-200 backdrop-blur">
+    <p class="text-xs text-slate-500">
+        @if (r.ok) {
+        <b class="text-slate-800">{{ r.new }}</b> new · <b class="text-slate-800">{{ r.updated }}</b> updated
+        } @else {
+        <span class="text-red-600">Fix errors to continue</span>
+        }
+    </p>
+    <div class="flex gap-2">
+        <button type="button" (click)="reset()"
+            class="h-10 rounded-xl px-4 text-sm font-medium text-slate-600 hover:bg-slate-100">Cancel</button>
+        <button type="button" (click)="apply()" [disabled]="!canImport()"
+            class="h-10 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+            {{ step() === 'importing' ? 'Importing…' : 'Import ' + changes() + ' changes' }}
+        </button>
+    </div>
 </div>
 }
 }
@@ -246,21 +281,27 @@
 <!-- ======================= HISTORY ======================= -->
 @if (history().length) {
 <div class="mt-8">
-  <h2 class="mb-3 text-sm font-semibold text-slate-900">Recent imports</h2>
-  <div class="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
-    @for (b of history(); track b.id) {
-    <div class="flex items-center justify-between gap-3 px-4 py-3">
-      <div class="min-w-0">
-        <p class="truncate text-sm font-medium text-slate-800">{{ b.file_name }}</p>
-        <p class="text-xs text-slate-500">{{ b.created_at | date: 'dd.MM.yyyy HH:mm' }}</p>
-      </div>
-      <p class="shrink-0 text-right text-xs text-slate-500">
-        <span class="text-emerald-700">+{{ b.inserted_count }}</span> ·
-        <span class="text-amber-700">{{ b.updated_count }} upd</span>
-        <span class="hidden sm:inline"> · {{ b.row_count }} rows</span>
-      </p>
+    <h2 class="mb-3 text-sm font-semibold text-slate-900">Recent imports</h2>
+    <div class="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+        @for (b of history(); track b.id) {
+        <div class="flex items-center justify-between gap-3 px-4 py-3">
+            <div class="min-w-0">
+                <p class="truncate text-sm font-medium text-slate-800">{{ b.file_name }}</p>
+                <p class="text-xs text-slate-500">{{ b.created_at | date: 'dd.MM.yyyy HH:mm' }}</p>
+            </div>
+            <p class="shrink-0 text-right text-xs text-slate-500">
+                <span class="text-emerald-700">+{{ b.inserted_count }}</span> ·
+                <span class="text-amber-700">{{ b.updated_count }} upd</span>
+                <span class="hidden sm:inline"> · {{ b.row_count }} rows</span>
+            </p>
+        </div>
+        }
     </div>
-    }
-  </div>
 </div>
+}
+
+} @else if (tab() === 'assignments') {
+<app-assignments-import />
+} @else {
+<app-opening-import />
 }
