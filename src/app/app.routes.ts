@@ -15,6 +15,11 @@ export const routes: Routes = [
             import('./features/landing/landing.component').then((m) => m.LandingComponent),
     },
     {
+        path: 'contact',
+        loadComponent: () =>
+            import('./features/contact/contact.component').then((m) => m.ContactComponent),
+    },
+    {
         path: 'login',
         loadComponent: () =>
             import('./features/auth/login.component').then((m) => m.LoginComponent),

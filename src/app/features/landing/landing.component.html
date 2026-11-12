@@ -19,6 +19,7 @@
       <nav class="flex items-center gap-1 sm:gap-2">
         <a href="#story" (click)="scrollTo($event, 'story')" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-slate-900 sm:block">The flow</a>
         <a routerLink="/login" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-slate-900">Sign in</a>
+        <a routerLink="/contact" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-50 sm:inline-flex">Request a demo</a>
         <a routerLink="/login" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700">Live demo</a>
       </nav>
     </div>
@@ -48,6 +49,10 @@
           <a routerLink="/login"
              class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
             Open the live demo
+          </a>
+          <a routerLink="/contact"
+             class="inline-flex items-center justify-center px-2 py-3 text-sm font-medium text-brand-700 transition hover:text-brand-800">
+            Request a focused demo →
           </a>
         </div>
       </div>
@@ -730,10 +735,13 @@
           <div class="text-lg font-semibold tracking-tight">The demo runs on the same database.</div>
           <p class="mt-1 text-sm text-slate-500">Head-office account, sample stores, read-only. No sign-up.</p>
         </div>
-        <a routerLink="/login" class="group inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-brand-700">
-          Open the live demo
-          <svg class="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </a>
+        <div class="flex shrink-0 flex-col gap-2 sm:flex-row">
+          <a routerLink="/contact" class="group inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-brand-700">
+            Request a demo
+            <svg class="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <a routerLink="/login" class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Live demo</a>
+        </div>
       </div>
     </div>
   </section>
@@ -741,7 +749,7 @@
   <footer class="border-t border-slate-200 bg-slate-50">
     <div class="mx-auto flex max-w-4xl flex-col gap-2 px-5 py-8 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-8">
       <span><span class="font-semibold text-slate-700">Stock<span class="text-brand-600">flow</span></span> &middot; designed &amp; built by Petar, Belgrade &middot; &copy; {{ year }}</span>
-      <span>Angular &middot; Supabase &middot; PostgreSQL</span>
+      <span class="flex items-center gap-4"><a routerLink="/contact" class="font-medium text-slate-600 transition hover:text-brand-600">Request a demo</a><span>Angular &middot; Supabase &middot; PostgreSQL</span></span>
     </div>
   </footer>
 </div>

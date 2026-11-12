@@ -1,0 +1,166 @@
+<div class="min-h-[100svh] bg-slate-50 text-slate-900">
+  <header class="h-16 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <div class="mx-auto flex h-full max-w-7xl items-center justify-between px-5 sm:px-8">
+      <a routerLink="/" class="flex items-center gap-2">
+        <span class="grid h-8 w-8 place-items-center rounded-lg bg-brand-600">
+          <svg class="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8h11M4 16h7"/><path d="m16 5 4 3-4 3"/></svg>
+        </span>
+        <span class="text-lg font-semibold tracking-tight">Stock<span class="text-brand-600">flow</span></span>
+      </a>
+      <div class="flex items-center gap-1 sm:gap-2">
+        <a routerLink="/" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900">Back home</a>
+        <a routerLink="/login" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700">Live demo</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto grid max-w-7xl gap-10 px-5 py-10 sm:px-8 sm:py-16 lg:grid-cols-[minmax(0,0.88fr)_minmax(520px,1.12fr)] lg:gap-16 lg:py-20">
+    <section class="lg:pt-8">
+      <span class="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 ring-1 ring-brand-200">
+        <span class="h-1.5 w-1.5 rounded-full bg-brand-500"></span>
+        Talk directly with the creator
+      </span>
+      <h1 class="mt-6 max-w-xl text-[40px] font-semibold leading-[1.06] tracking-tight sm:text-5xl">
+        Let’s look at how your stock actually moves.
+      </h1>
+      <p class="mt-5 max-w-xl text-lg leading-relaxed text-slate-600">
+        Tell me how you handle products, orders, deliveries, sales and stock counts today. I’ll review the workflow personally and show you where Stockflow could simplify it.
+      </p>
+
+      <div class="mt-9 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+        <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+          <div class="font-mono text-xs font-semibold text-brand-600">01</div>
+          <div class="mt-2 text-sm font-semibold">You describe the flow</div>
+          <p class="mt-1 text-xs leading-relaxed text-slate-500">Even if it currently lives in Excel, paper or a POS export.</p>
+        </div>
+        <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+          <div class="font-mono text-xs font-semibold text-brand-600">02</div>
+          <div class="mt-2 text-sm font-semibold">I map it to Stockflow</div>
+          <p class="mt-1 text-xs leading-relaxed text-slate-500">Orders, receipts, stock movements, counts and replenishment.</p>
+        </div>
+        <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+          <div class="font-mono text-xs font-semibold text-brand-600">03</div>
+          <div class="mt-2 text-sm font-semibold">We review a focused demo</div>
+          <p class="mt-1 text-xs leading-relaxed text-slate-500">No generic sales presentation and no obligation.</p>
+        </div>
+      </div>
+
+      <div class="mt-8 flex items-center gap-3 border-t border-slate-200 pt-6">
+        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-900 text-sm font-semibold text-white">P</span>
+        <div>
+          <div class="text-sm font-semibold">Petar, creator of Stockflow</div>
+          <div class="text-xs text-slate-500">Belgrade, Serbia · Replies personally</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="self-start overflow-hidden rounded-3xl bg-white shadow-xl shadow-slate-900/5 ring-1 ring-slate-200">
+      @if (submittedEmail(); as email) {
+        <div class="px-6 py-12 text-center sm:px-10 sm:py-16">
+          <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-green-50 text-green-600 ring-1 ring-green-200">
+            <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </span>
+          <h2 class="mt-5 text-2xl font-semibold tracking-tight">Request received.</h2>
+          <p class="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-600">
+            Thanks. I’ll review your workflow and reply to <strong class="text-slate-900">{{ email }}</strong> within one business day.
+          </p>
+          <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <a routerLink="/login" class="rounded-lg bg-brand-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-brand-700">Explore the live demo</a>
+            <a routerLink="/" class="rounded-lg border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Back to home</a>
+          </div>
+        </div>
+      } @else {
+        <div class="border-b border-slate-100 px-6 py-5 sm:px-8">
+          <h2 class="text-lg font-semibold tracking-tight">Request a focused demo</h2>
+          <p class="mt-1 text-sm text-slate-500">A few useful details, not a long qualification form.</p>
+        </div>
+
+        <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5 p-6 sm:p-8">
+          <div class="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label for="contact-name" class="mb-1.5 block text-sm font-medium text-slate-700">Name</label>
+              <input id="contact-name" type="text" formControlName="name" autocomplete="name" placeholder="Your name"
+                class="h-12 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 sm:text-sm" />
+              @if (form.controls.name.touched && form.controls.name.invalid) { <p class="mt-1.5 text-xs text-red-600">Enter your name.</p> }
+            </div>
+            <div>
+              <label for="contact-email" class="mb-1.5 block text-sm font-medium text-slate-700">Work email</label>
+              <input id="contact-email" type="email" inputmode="email" formControlName="email" autocomplete="email" placeholder="you@company.com"
+                class="h-12 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 sm:text-sm" />
+              @if (form.controls.email.touched && form.controls.email.invalid) { <p class="mt-1.5 text-xs text-red-600">Enter a valid email address.</p> }
+            </div>
+          </div>
+
+          <div>
+            <label for="contact-company" class="mb-1.5 block text-sm font-medium text-slate-700">Company</label>
+            <input id="contact-company" type="text" formControlName="company" autocomplete="organization" placeholder="Company or operation name"
+              class="h-12 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 sm:text-sm" />
+            @if (form.controls.company.touched && form.controls.company.invalid) { <p class="mt-1.5 text-xs text-red-600">Enter the company name.</p> }
+          </div>
+
+          <fieldset>
+            <legend class="mb-2 block text-sm font-medium text-slate-700">Number of locations <span class="font-normal text-slate-400">· optional</span></legend>
+            <div class="grid grid-cols-4 gap-2">
+              @for (option of locationOptions; track option) {
+                <label class="cursor-pointer">
+                  <input type="radio" formControlName="locations" [value]="option" class="peer sr-only" />
+                  <span class="flex h-11 items-center justify-center rounded-xl border border-slate-300 text-sm font-medium text-slate-600 transition hover:bg-slate-50 peer-checked:border-brand-500 peer-checked:bg-brand-50 peer-checked:text-brand-700 peer-checked:ring-2 peer-checked:ring-brand-500/15">{{ option }}</span>
+                </label>
+              }
+            </div>
+          </fieldset>
+
+          <div>
+            <label for="contact-workflow" class="mb-1.5 block text-sm font-medium text-slate-700">How do you manage stock today?</label>
+            <textarea id="contact-workflow" formControlName="workflow" rows="4" maxlength="1200"
+              placeholder="For example: 3 stores, orders by email, deliveries checked on paper, daily POS export and stock counts in Excel."
+              class="w-full resize-y rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-base leading-relaxed text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 sm:text-sm"></textarea>
+            <div class="mt-1 flex justify-between gap-3">
+              @if (form.controls.workflow.touched && form.controls.workflow.invalid) { <p class="text-xs text-red-600">Add a short description of the current workflow.</p> } @else { <span></span> }
+              <span class="text-[11px] text-slate-400">{{ form.controls.workflow.value.length }}/1200</span>
+            </div>
+          </div>
+
+          <div>
+            <label for="contact-message" class="mb-1.5 block text-sm font-medium text-slate-700">Anything specific you want to see? <span class="font-normal text-slate-400">· optional</span></label>
+            <textarea id="contact-message" formControlName="message" rows="3" maxlength="1200" placeholder="A problem, integration or workflow you care about most."
+              class="w-full resize-y rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-base leading-relaxed text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 sm:text-sm"></textarea>
+          </div>
+
+          <div class="absolute -left-[10000px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
+            <label for="contact-website">Website</label>
+            <input id="contact-website" type="text" formControlName="website" tabindex="-1" autocomplete="off" />
+          </div>
+
+          <label class="flex cursor-pointer items-start gap-3 rounded-xl bg-slate-50 p-3.5 ring-1 ring-slate-100">
+            <input type="checkbox" formControlName="consent" class="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+            <span class="text-xs leading-relaxed text-slate-600">I agree that Stockflow may use these details to respond to this request. The information will not be used for unrelated marketing.</span>
+          </label>
+
+          @if (error()) {
+            <div role="alert" class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{{ error() }}</div>
+          }
+
+          <button type="submit" [disabled]="sending()"
+            class="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white shadow-lg shadow-brand-600/20 transition hover:bg-brand-700 active:scale-[.99] disabled:cursor-wait disabled:opacity-70">
+            @if (sending()) {
+              <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4Z"/></svg>
+              Sending request…
+            } @else {
+              Request a demo
+              <svg class="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            }
+          </button>
+          <p class="text-center text-[11px] leading-relaxed text-slate-400">Your request is sent securely. Expect a personal reply within one business day.</p>
+        </form>
+      }
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-7 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+      <span><span class="font-semibold text-slate-700">Stock<span class="text-brand-600">flow</span></span> · designed &amp; built by Petar, Belgrade · © {{ year }}</span>
+      <span>Angular · Supabase · PostgreSQL</span>
+    </div>
+  </footer>
+</div>
