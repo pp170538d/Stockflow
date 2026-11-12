@@ -176,9 +176,43 @@ export function printPurchaseOrder(order: Order): string | null {
       .no-print { display: none !important; }
       .page { width: auto; max-width: none; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
       .top { flex-direction: row; }
+      * {
+  animation: none !important;
+  transition: none !important;
+}
+
+.toolbar-shell,
+.preview-note {
+  display: none !important;
+}
+
+.table-wrap {
+  overflow: visible !important;
+}
+
+.page,
+.top,
+.parties,
+.party,
+.table-wrap,
+table,
+tbody,
+tr,
+td {
+  transform: none !important;
+}
       .doc-meta { text-align: right; }
-      .parties { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .party { min-height: 130px; }
+      .parties {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+      .party {
+  min-height: 0;
+  height: auto;
+  align-self: start;
+}
       table { display: table; }
       thead { position: static; display: table-header-group; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
       tbody { display: table-row-group; }
@@ -205,7 +239,13 @@ export function printPurchaseOrder(order: Order): string | null {
       </div>
       <div class="toolbar-actions">
         <button class="action action-secondary" type="button" onclick="window.close()">Close</button>
-        <button class="action action-primary" type="button" onclick="window.print()">Print / Save PDF</button>
+        <button
+  class="action action-primary"
+  type="button"
+  onclick="printDocument()"
+>
+  Print / Save PDF
+</button>
       </div>
     </div>
   </div>
@@ -262,6 +302,29 @@ export function printPurchaseOrder(order: Order): string | null {
 
     <div class="generated">Generated from Stockflow on ${esc(formatDate(new Date().toISOString()))}</div>
   </main>
+  <script>
+  async function printDocument() {
+    document.documentElement.classList.add('preparing-print');
+
+    if (document.fonts && document.fonts.ready) {
+      try {
+        await document.fonts.ready;
+      } catch (_) {}
+    }
+
+    void document.body.offsetHeight;
+
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        window.print();
+      });
+    });
+  }
+
+  window.addEventListener('afterprint', function () {
+    document.documentElement.classList.remove('preparing-print');
+  });
+</script>
 </body>
 </html>`);
   popup.document.close();
