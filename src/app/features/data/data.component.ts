@@ -6,10 +6,13 @@ import {
 } from '../../core/data/product-io';
 import { AssignmentsImportComponent } from './assignments-import.component';
 import { OpeningImportComponent } from './opening-import.component';
+import { ExportsComponent } from './exports.component';
+import { ActivatedRoute } from '@angular/router';
+import { inject } from '@angular/core';
 
 type Step = 'idle' | 'reading' | 'preview' | 'importing' | 'done';
 type Filter = 'all' | 'new' | 'update' | 'unchanged' | 'error';
-type Tab = 'products' | 'assignments' | 'stock';
+type Tab = 'products' | 'assignments' | 'stock' | 'exports';
 
 const MAX_SHOWN = 300;
 const OPTIONAL: { col: ProductColumn; label: string }[] = [
@@ -21,10 +24,12 @@ const OPTIONAL: { col: ProductColumn; label: string }[] = [
 @Component({
   selector: 'app-data',
   standalone: true,
-  imports: [DatePipe, AssignmentsImportComponent, OpeningImportComponent,],
+  imports: [DatePipe, AssignmentsImportComponent, OpeningImportComponent, ExportsComponent,],
   templateUrl: './data.component.html',
 })
 export class DataComponent implements OnInit {
+  private readonly route = inject(ActivatedRoute);
+
   readonly tab = signal<Tab>('products');
 
   readonly step = signal<Step>('idle');
@@ -66,8 +71,19 @@ export class DataComponent implements OnInit {
   readonly maxShown = MAX_SHOWN;
 
   async ngOnInit(): Promise<void> {
-    await this.loadHistory();
+  const requestedTab = this.route.snapshot.queryParamMap.get('tab');
+
+  if (
+    requestedTab === 'products' ||
+    requestedTab === 'assignments' ||
+    requestedTab === 'stock' ||
+    requestedTab === 'exports'
+  ) {
+    this.tab.set(requestedTab);
   }
+
+  await this.loadHistory();
+}
 
   // ---------- file ----------
   onFileInput(ev: Event): void {
