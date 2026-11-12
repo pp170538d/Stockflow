@@ -1,0 +1,22 @@
+<div class="mb-5 overflow-x-auto pb-1">
+  <div class="inline-flex min-w-max rounded-xl bg-white p-1 ring-1 ring-slate-200">
+    @for (t of [{ key: 'opening', label: 'Opening stock' }, { key: 'snapshot', label: 'Snapshot' }, { key: 'movements', label: 'Movements' }]; track t.key) {
+    <button type="button" (click)="tab.set($any(t.key))" class="h-9 rounded-lg px-4 text-sm font-medium transition"
+      [class]="tab() === t.key ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'">{{ t.label }}</button>
+    }
+  </div>
+</div>
+
+@if (tab() === 'opening') {
+  <app-opening-import />
+} @else if (tab() === 'snapshot') {
+  @if (error()) { <div class="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{{ error() }}</div> }
+  @if (done()) { <div class="mb-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700 ring-1 ring-emerald-200">{{ done() }}</div> }
+  <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
+    <h2 class="text-lg font-semibold text-slate-900">Current stock snapshot</h2>
+    <p class="mt-1 max-w-2xl text-sm text-slate-500">Export the current on-hand quantity for every assigned product and location. This is a point-in-time operational snapshot, not movement history.</p>
+    <button type="button" (click)="exportSnapshot()" [disabled]="exporting()" class="mt-5 h-10 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-50">{{ exporting() ? 'Exporting…' : 'Export stock snapshot' }}</button>
+  </div>
+} @else {
+  <app-exports mode="movements" />
+}

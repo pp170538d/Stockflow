@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, Input, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { supabase } from '../../core/supabase/supabase.client';
 import {
@@ -15,6 +15,7 @@ interface Loc { id: string; name: string; }
   templateUrl: './exports.component.html',
 })
 export class ExportsComponent implements OnInit {
+  @Input({ required: true }) mode: 'sales' | 'movements' = 'sales';
   readonly periods: { key: PeriodKey; label: string }[] = [
     { key: 'today', label: 'Today' },
     { key: '7d', label: 'Last 7 days' },

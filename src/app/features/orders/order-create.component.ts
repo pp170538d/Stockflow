@@ -7,11 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
-import {
-  ActivatedRoute,
-  Router,
-  RouterLink,
-} from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { supabase } from '../../core/supabase/supabase.client';
 import { AuthService } from '../../core/auth/auth.service';
 import { LocationPickerComponent } from '../../shared/ui/location-picker.component';
@@ -44,6 +40,12 @@ interface Orderable {
   suggest: number;
 }
 
+interface OrderSupplierOption {
+  id: string;
+  name: string;
+  order_email: string | null;
+}
+
 interface BasketLine extends Orderable {
   qty: number;
   after: number;
@@ -51,7 +53,10 @@ interface BasketLine extends Orderable {
 }
 
 interface Placed {
+  orderId: string;
+  orderNumber: string;
   objectName: string;
+  supplierName: string;
   units: number;
   lines: BasketLine[];
 }
@@ -78,14 +83,8 @@ const RANK: Record<Urgency, number> = {
   templateUrl: './order-create.component.html',
   styles: [`
     @keyframes rowIn {
-      from {
-        opacity: 0;
-        transform: translateY(6px);
-      }
-      to {
-        opacity: 1;
-        transform: none;
-      }
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
     }
 
     .row-in {
@@ -93,17 +92,9 @@ const RANK: Record<Urgency, number> = {
     }
 
     @keyframes pop {
-      0% {
-        transform: scale(.6);
-        opacity: 0;
-      }
-      60% {
-        transform: scale(1.08);
-      }
-      100% {
-        transform: scale(1);
-        opacity: 1;
-      }
+      0% { transform: scale(.6); opacity: 0; }
+      60% { transform: scale(1.08); }
+      100% { transform: scale(1); opacity: 1; }
     }
 
     .pop {
@@ -111,15 +102,9 @@ const RANK: Record<Urgency, number> = {
     }
 
     @keyframes bump {
-      0% {
-        transform: scale(1);
-      }
-      40% {
-        transform: scale(1.25);
-      }
-      100% {
-        transform: scale(1);
-      }
+      0% { transform: scale(1); }
+      40% { transform: scale(1.25); }
+      100% { transform: scale(1); }
     }
 
     .bump {
@@ -133,20 +118,12 @@ const RANK: Record<Urgency, number> = {
     }
 
     @keyframes dash {
-      to {
-        stroke-dashoffset: 0;
-      }
+      to { stroke-dashoffset: 0; }
     }
 
     @keyframes ping {
-      0% {
-        transform: scale(1);
-        opacity: .55;
-      }
-      100% {
-        transform: scale(2.4);
-        opacity: 0;
-      }
+      0% { transform: scale(1); opacity: .55; }
+      100% { transform: scale(2.4); opacity: 0; }
     }
 
     .step-ping {
@@ -185,9 +162,7 @@ const RANK: Record<Urgency, number> = {
     }
 
     @keyframes shimmer {
-      100% {
-        transform: translateX(100%);
-      }
+      100% { transform: translateX(100%); }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -221,6 +196,8 @@ export class OrderCreateComponent implements OnInit {
 
   readonly objects = signal<BusinessObject[]>([]);
   readonly selectedObjectId = signal<string | null>(null);
+  readonly suppliers = signal<OrderSupplierOption[]>([]);
+  readonly selectedSupplierId = signal<string | null>(null);
   readonly products = signal<Orderable[]>([]);
   readonly search = signal('');
   readonly onlyNeeded = signal(false);
@@ -238,51 +215,41 @@ export class OrderCreateComponent implements OnInit {
     )?.name ?? 'Your location'
   );
 
+  readonly selectedSupplier = computed(() =>
+    this.suppliers().find(
+      (supplier) => supplier.id === this.selectedSupplierId()
+    ) ?? null
+  );
+
+  readonly supplierName = computed(() =>
+    this.selectedSupplier()?.name ?? 'No supplier selected'
+  );
+
   readonly shortcut =
     typeof navigator !== 'undefined' &&
     /Mac|iPhone|iPad/.test(navigator.platform)
       ? '⌘ Enter'
       : 'Ctrl Enter';
 
-  /**
-   * Products that require the user's attention.
-   *
-   * This includes:
-   * - products with no stock
-   * - products for which the runway calculation produced a suggestion
-   */
   readonly needing = computed(() =>
     this.products().filter(
-      (product) =>
-        product.onHand <= 0 ||
-        product.suggest > 0
+      (product) => product.onHand <= 0 || product.suggest > 0
     )
   );
 
-  /**
-   * Products with a real automatically calculated quantity.
-   *
-   * Empty products without sales history remain in "Needs attention",
-   * but are excluded from automatic suggestions because there is no
-   * reliable sales pace from which to calculate a quantity.
-   */
   readonly suggestedProducts = computed(() =>
-    this.products().filter(
-      (product) => product.suggest > 0
-    )
+    this.products().filter((product) => product.suggest > 0)
   );
 
   readonly suggestedUnits = computed(() =>
     this.suggestedProducts().reduce(
-      (sum, product) =>
-        sum + product.suggest,
+      (sum, product) => sum + product.suggest,
       0
     )
   );
 
   readonly filtered = computed(() => {
-    const query =
-      this.search().trim().toLowerCase();
+    const query = this.search().trim().toLowerCase();
 
     return this.products()
       .filter(
@@ -296,9 +263,7 @@ export class OrderCreateComponent implements OnInit {
           !query ||
           product.name.toLowerCase().includes(query) ||
           product.sku.toLowerCase().includes(query) ||
-          (product.category ?? '')
-            .toLowerCase()
-            .includes(query)
+          (product.category ?? '').toLowerCase().includes(query)
       );
   });
 
@@ -306,10 +271,7 @@ export class OrderCreateComponent implements OnInit {
     const cart = this.cart();
 
     return this.products()
-      .filter(
-        (product) =>
-          (cart[product.id] ?? 0) > 0
-      )
+      .filter((product) => (cart[product.id] ?? 0) > 0)
       .map((product) => {
         const qty = cart[product.id];
         const after =
@@ -330,25 +292,29 @@ export class OrderCreateComponent implements OnInit {
   });
 
   readonly totalUnits = computed(() =>
-    this.lines().reduce(
-      (sum, line) =>
-        sum + line.qty,
-      0
-    )
+    this.lines().reduce((sum, line) => sum + line.qty, 0)
   );
 
   async ngOnInit(): Promise<void> {
-    const queryParams =
-      this.route.snapshot.queryParamMap;
+    const { data: suppliers, error: suppliersError } = await supabase
+      .from('suppliers')
+      .select('id, name, order_email')
+      .eq('active', true)
+      .order('name');
 
-    const fromObject =
-      queryParams.get('object');
+    if (suppliersError) {
+      this.error.set(suppliersError.message);
+    } else {
+      this.suppliers.set(
+        (suppliers ?? []) as OrderSupplierOption[]
+      );
+      this.selectedSupplierId.set(null);
+    }
 
-    const fromProduct =
-      queryParams.get('product');
-
-    const fromQty =
-      Number(queryParams.get('qty')) || 0;
+    const queryParams = this.route.snapshot.queryParamMap;
+    const fromObject = queryParams.get('object');
+    const fromProduct = queryParams.get('product');
+    const fromQty = Number(queryParams.get('qty')) || 0;
 
     if (this.isAdmin()) {
       const { data } = await supabase
@@ -357,22 +323,16 @@ export class OrderCreateComponent implements OnInit {
         .eq('active', true)
         .order('name');
 
-      this.objects.set(
-        (data ?? []) as BusinessObject[]
-      );
+      this.objects.set((data ?? []) as BusinessObject[]);
 
       const chosen =
-        this.objects().find(
-          (object) => object.id === fromObject
-        )?.id ??
+        this.objects().find((object) => object.id === fromObject)?.id ??
         this.objects()[0]?.id ??
         null;
 
       this.selectedObjectId.set(chosen);
     } else {
-      const ownObjectId =
-        this.auth.profile()?.object_id ?? null;
-
+      const ownObjectId = this.auth.profile()?.object_id ?? null;
       this.selectedObjectId.set(ownObjectId);
 
       if (ownObjectId) {
@@ -383,25 +343,21 @@ export class OrderCreateComponent implements OnInit {
           .maybeSingle();
 
         if (data) {
-          this.objects.set([
-            data as BusinessObject,
-          ]);
+          this.objects.set([data as BusinessObject]);
         }
       }
     }
 
-    const objectId =
-      this.selectedObjectId();
+    const objectId = this.selectedObjectId();
 
     if (objectId) {
       await this.loadProducts(objectId);
     }
 
     if (fromProduct) {
-      const product =
-        this.products().find(
-          (item) => item.id === fromProduct
-        );
+      const product = this.products().find(
+        (item) => item.id === fromProduct
+      );
 
       if (product) {
         this.cart.set({
@@ -416,9 +372,7 @@ export class OrderCreateComponent implements OnInit {
     this.loading.set(false);
   }
 
-  async onObjectChange(
-    objectId: string
-  ): Promise<void> {
+  async onObjectChange(objectId: string): Promise<void> {
     if (!objectId) return;
 
     this.selectedObjectId.set(objectId);
@@ -428,34 +382,22 @@ export class OrderCreateComponent implements OnInit {
     this.error.set(null);
 
     void this.router.navigate([], {
-      queryParams: {
-        object: objectId,
-      },
+      queryParams: { object: objectId },
       replaceUrl: true,
     });
 
     await this.loadProducts(objectId);
   }
 
-  private async loadProducts(
-    objectId: string
-  ): Promise<void> {
+  private async loadProducts(objectId: string): Promise<void> {
     this.productsLoading.set(true);
     this.error.set(null);
 
     const since = new Date();
-
     since.setHours(0, 0, 0, 0);
-    since.setDate(
-      since.getDate() - (WINDOW_DAYS - 1)
-    );
+    since.setDate(since.getDate() - (WINDOW_DAYS - 1));
 
-    const [
-      assigned,
-      inventory,
-      sales,
-      openOrders,
-    ] = await Promise.all([
+    const [assigned, inventory, sales, openOrders] = await Promise.all([
       supabase
         .from('object_products')
         .select(`
@@ -492,175 +434,111 @@ export class OrderCreateComponent implements OnInit {
           )
         `)
         .eq('object_id', objectId)
-        .in('status', [
-          'PENDING',
-          'APPROVED',
-        ]),
+        .in('status', ['PENDING', 'APPROVED']),
     ]);
 
     if (assigned.error) {
-      this.error.set(
-        assigned.error.message
-      );
-
+      this.error.set(assigned.error.message);
       this.products.set([]);
       this.productsLoading.set(false);
       return;
     }
 
     if (inventory.error) {
-      this.error.set(
-        inventory.error.message
-      );
-
+      this.error.set(inventory.error.message);
       this.products.set([]);
       this.productsLoading.set(false);
       return;
     }
 
     if (sales.error) {
-      this.error.set(
-        sales.error.message
-      );
-
+      this.error.set(sales.error.message);
       this.products.set([]);
       this.productsLoading.set(false);
       return;
     }
 
     if (openOrders.error) {
-      this.error.set(
-        openOrders.error.message
-      );
-
+      this.error.set(openOrders.error.message);
       this.products.set([]);
       this.productsLoading.set(false);
       return;
     }
 
-    const onHand =
-      new Map<string, number>();
+    const onHand = new Map<string, number>();
 
-    for (
-      const row of
-      (inventory.data ?? []) as {
-        product_id: string;
-        quantity: number;
-      }[]
-    ) {
-      onHand.set(
-        row.product_id,
-        Number(row.quantity) || 0
-      );
+    for (const row of (inventory.data ?? []) as {
+      product_id: string;
+      quantity: number;
+    }[]) {
+      onHand.set(row.product_id, Number(row.quantity) || 0);
     }
 
-    const sold =
-      new Map<string, number>();
+    const sold = new Map<string, number>();
 
-    for (
-      const movement of
-      (sales.data ?? []) as {
-        product_id: string;
-        quantity: number;
-      }[]
-    ) {
+    for (const movement of (sales.data ?? []) as {
+      product_id: string;
+      quantity: number;
+    }[]) {
       sold.set(
         movement.product_id,
-        (
-          sold.get(movement.product_id) ?? 0
-        ) +
-          Math.abs(
-            Number(movement.quantity) || 0
-          )
+        (sold.get(movement.product_id) ?? 0) +
+          Math.abs(Number(movement.quantity) || 0)
       );
     }
 
-    const incoming =
-      new Map<string, number>();
+    const incoming = new Map<string, number>();
 
-    for (
-      const order of
-      (openOrders.data ?? []) as any[]
-    ) {
-      for (
-        const item of
-        (order.order_items ?? []) as {
-          product_id: string;
-          quantity: number;
-        }[]
-      ) {
+    for (const order of (openOrders.data ?? []) as any[]) {
+      for (const item of (order.order_items ?? []) as {
+        product_id: string;
+        quantity: number;
+      }[]) {
         incoming.set(
           item.product_id,
-          (
-            incoming.get(item.product_id) ?? 0
-          ) +
+          (incoming.get(item.product_id) ?? 0) +
             (Number(item.quantity) || 0)
         );
       }
     }
 
-    const list: Orderable[] =
-      ((assigned.data ?? []) as any[])
-        .map((row) => row.product)
-        .filter(
-          (product: any) =>
-            product &&
-            product.active
-        )
-        .map((product: any) => {
-          const have =
-            onHand.get(product.id) ?? 0;
+    const list: Orderable[] = ((assigned.data ?? []) as any[])
+      .map((row) => row.product)
+      .filter((product: any) => product && product.active)
+      .map((product: any) => {
+        const have = onHand.get(product.id) ?? 0;
+        const inc = incoming.get(product.id) ?? 0;
+        const sold30 = sold.get(product.id) ?? 0;
+        const result = runway(have, sold30, WINDOW_DAYS, inc);
 
-          const inc =
-            incoming.get(product.id) ?? 0;
-
-          const sold30 =
-            sold.get(product.id) ?? 0;
-
-          const result = runway(
-            have,
-            sold30,
-            WINDOW_DAYS,
-            inc
-          );
-
-          return {
-            id: product.id,
-            name: product.name,
-            sku: product.sku,
-            category:
-              product.category ?? null,
-            onHand: have,
-            incoming: inc,
-            sold30,
-            dailyRate: result.dailyRate,
-            daysLeft: result.daysLeft,
-            urgency: result.urgency,
-            lowData: result.lowData,
-            suggest: result.suggest,
-          };
-        })
-        .sort(
-          (
-            a: Orderable,
-            b: Orderable
-          ) =>
-            Number(b.suggest > 0) -
-              Number(a.suggest > 0) ||
-            RANK[a.urgency] -
-              RANK[b.urgency] ||
-            (a.daysLeft ?? Infinity) -
-              (b.daysLeft ?? Infinity) ||
-            a.name.localeCompare(b.name)
-        );
+        return {
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          category: product.category ?? null,
+          onHand: have,
+          incoming: inc,
+          sold30,
+          dailyRate: result.dailyRate,
+          daysLeft: result.daysLeft,
+          urgency: result.urgency,
+          lowData: result.lowData,
+          suggest: result.suggest,
+        };
+      })
+      .sort(
+        (a: Orderable, b: Orderable) =>
+          Number(b.suggest > 0) - Number(a.suggest > 0) ||
+          RANK[a.urgency] - RANK[b.urgency] ||
+          (a.daysLeft ?? Infinity) - (b.daysLeft ?? Infinity) ||
+          a.name.localeCompare(b.name)
+      );
 
     this.products.set(list);
     this.productsLoading.set(false);
   }
 
-  tone(
-    urgency: Urgency
-  ): {
+  tone(urgency: Urgency): {
     hex: string;
     text: string;
     chip: string;
@@ -701,20 +579,18 @@ export class OrderCreateComponent implements OnInit {
   }
 
   daysText(
-    onHand: number,
+    onHandValue: number,
     days: number | null,
     sold = MIN_SALES
   ): string {
     return runwayLabel(
-      onHand,
+      onHandValue,
       days,
       sold > 0 && sold < MIN_SALES
     );
   }
 
-  afterTone(
-    days: number | null
-  ): string {
+  afterTone(days: number | null): string {
     if (days === null) {
       return 'bg-slate-100 text-slate-600 ring-slate-200';
     }
@@ -734,18 +610,11 @@ export class OrderCreateComponent implements OnInit {
     return 'bg-green-50 text-green-700 ring-green-200';
   }
 
-  isOverstock(
-    days: number | null
-  ): boolean {
-    return (
-      days !== null &&
-      days > OVERSTOCK_DAYS
-    );
+  isOverstock(days: number | null): boolean {
+    return days !== null && days > OVERSTOCK_DAYS;
   }
 
-  coveredByIncoming(
-    product: Orderable
-  ): boolean {
+  coveredByIncoming(product: Orderable): boolean {
     return (
       product.incoming > 0 &&
       product.suggest === 0 &&
@@ -757,9 +626,7 @@ export class OrderCreateComponent implements OnInit {
     );
   }
 
-  targetQty(
-    line: BasketLine
-  ): number {
+  targetQty(line: BasketLine): number {
     return Math.max(
       0,
       Math.ceil(
@@ -778,16 +645,10 @@ export class OrderCreateComponent implements OnInit {
     return this.cart()[id] ?? 0;
   }
 
-  private setQty(
-    id: string,
-    qty: number
-  ): void {
+  private setQty(id: string, qty: number): void {
     const next = Math.max(
       0,
-      Math.min(
-        9999,
-        Math.floor(qty) || 0
-      )
+      Math.min(9999, Math.floor(qty) || 0)
     );
 
     this.cart.update((cart) => ({
@@ -803,36 +664,20 @@ export class OrderCreateComponent implements OnInit {
     });
   }
 
-  add(
-    product: Orderable,
-    delta = 1
-  ): void {
-    this.setQty(
-      product.id,
-      this.qty(product.id) + delta
-    );
+  add(product: Orderable, delta = 1): void {
+    this.setQty(product.id, this.qty(product.id) + delta);
   }
 
-  addSuggested(
-    product: Orderable
-  ): void {
+  addSuggested(product: Orderable): void {
     if (product.suggest > 0) {
-      this.setQty(
-        product.id,
-        product.suggest
-      );
+      this.setQty(product.id, product.suggest);
     }
   }
 
   addAllSuggested(): void {
-    const next = {
-      ...this.cart(),
-    };
+    const next = { ...this.cart() };
 
-    for (
-      const product of
-      this.suggestedProducts()
-    ) {
+    for (const product of this.suggestedProducts()) {
       next[product.id] = Math.max(
         next[product.id] ?? 0,
         product.suggest
@@ -843,14 +688,8 @@ export class OrderCreateComponent implements OnInit {
     this.error.set(null);
   }
 
-  onQtyInput(
-    id: string,
-    value: string
-  ): void {
-    this.setQty(
-      id,
-      Number(value)
-    );
+  onQtyInput(id: string, value: string): void {
+    this.setQty(id, Number(value));
   }
 
   remove(id: string): void {
@@ -864,18 +703,15 @@ export class OrderCreateComponent implements OnInit {
     this.cart.set({});
   }
 
-  @HostListener(
-    'document:keydown',
-    ['$event']
-  )
+  @HostListener('document:keydown', ['$event'])
   onKey(event: KeyboardEvent): void {
     if (
-      (
-        event.ctrlKey ||
-        event.metaKey
-      ) &&
+      (event.ctrlKey || event.metaKey) &&
       event.key === 'Enter' &&
-      !this.placed()
+      !this.placed() &&
+      !!this.selectedSupplierId() &&
+      this.totalUnits() > 0 &&
+      !this.saving()
     ) {
       event.preventDefault();
       void this.submit();
@@ -883,50 +719,48 @@ export class OrderCreateComponent implements OnInit {
   }
 
   async submit(): Promise<void> {
-    const objectId =
-      this.selectedObjectId();
+    const objectId = this.selectedObjectId();
+    const supplierId = this.selectedSupplierId();
+    const snapshot = this.lines();
 
-    const profile =
-      this.auth.profile();
+    if (!objectId || snapshot.length === 0 || this.saving()) {
+      return;
+    }
 
-    const snapshot =
-      this.lines();
-
-    if (
-      !objectId ||
-      !profile ||
-      snapshot.length === 0 ||
-      this.saving()
-    ) {
+    if (!supplierId) {
+      this.error.set('Select a supplier before placing the order.');
       return;
     }
 
     this.saving.set(true);
     this.error.set(null);
 
-    const error =
-      await this.orders.create(
-        objectId,
-        profile.id,
-        this.comment().trim() || null,
-        snapshot.map((line) => ({
-          product_id: line.id,
-          quantity: line.qty,
-        }))
-      );
+    const result = await this.orders.create(
+      objectId,
+      supplierId,
+      this.comment().trim() || null,
+      snapshot.map((line) => ({
+        product_id: line.id,
+        quantity: line.qty,
+      }))
+    );
 
     this.saving.set(false);
 
-    if (error) {
-      this.error.set(error);
+    if (result.error || !result.order) {
+      this.error.set(
+        result.error ?? 'Could not create the order.'
+      );
       return;
     }
 
     this.placed.set({
+      orderId: result.order.id,
+      orderNumber: result.order.orderNumber,
       objectName: this.objectName(),
+      supplierName: this.supplierName(),
       units: snapshot.reduce(
-        (sum, line) =>
-          sum + line.qty,
+        (sum, line) => sum + line.qty,
         0
       ),
       lines: snapshot,
@@ -944,9 +778,10 @@ export class OrderCreateComponent implements OnInit {
     this.comment.set('');
     this.search.set('');
     this.onlyNeeded.set(false);
+    this.selectedSupplierId.set(null);
+    this.error.set(null);
 
-    const objectId =
-      this.selectedObjectId();
+    const objectId = this.selectedObjectId();
 
     if (objectId) {
       await this.loadProducts(objectId);

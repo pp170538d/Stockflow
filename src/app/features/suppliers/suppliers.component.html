@@ -1,0 +1,132 @@
+<!-- Header -->
+<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Suppliers</h1>
+    <p class="mt-1 text-sm text-slate-500">Manage distributor details used on purchase orders.</p>
+  </div>
+  <button type="button" (click)="openCreate()"
+    class="inline-flex shrink-0 items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">
+    + New supplier
+  </button>
+</div>
+
+<div class="mb-4 max-w-sm">
+  <input type="text" [value]="search()" (input)="search.set($any($event.target).value)"
+    placeholder="Search name, city, PIB, email…" class="field" />
+</div>
+
+@if (svc.loading()) {
+<div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">Loading suppliers…</div>
+} @else if (svc.error()) {
+<div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">{{ svc.error() }}</div>
+} @else if (filtered().length === 0) {
+<app-empty-state title="No suppliers yet" subtitle="Add the distributor that should receive your first purchase order.">
+  <button type="button" (click)="openCreate()" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">+ New supplier</button>
+</app-empty-state>
+} @else {
+<div class="grid gap-3 lg:hidden">
+  @for (s of filtered(); track s.id) {
+  <article class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <p class="truncate font-medium text-slate-900">{{ s.name }}</p>
+        <p class="mt-0.5 text-xs text-slate-500">{{ s.city || 'No city' }}@if (s.order_email) { · {{ s.order_email }} }</p>
+      </div>
+      @if (s.active) { <app-badge tone="success">Active</app-badge> }
+      @else { <app-badge tone="neutral">Inactive</app-badge> }
+    </div>
+    <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+      <div><span class="text-slate-400">PIB</span><p class="mt-0.5 text-slate-700">{{ s.tax_id || '—' }}</p></div>
+      <div><span class="text-slate-400">Contact</span><p class="mt-0.5 truncate text-slate-700">{{ s.contact_name || s.phone || '—' }}</p></div>
+    </div>
+    <div class="mt-3 flex gap-2 border-t border-slate-100 pt-3">
+      <button type="button" (click)="openEdit(s)" class="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700">Edit</button>
+      <button type="button" (click)="toggleActive(s)" class="rounded-md px-3 py-1.5 text-xs font-medium"
+        [class]="s.active ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'">
+        {{ s.active ? 'Deactivate' : 'Activate' }}
+      </button>
+    </div>
+  </article>
+  }
+</div>
+
+<div class="hidden overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200 lg:block">
+  <table class="w-full min-w-[900px] text-left text-sm">
+    <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
+      <tr>
+        <th class="px-5 py-3 font-medium">Supplier</th>
+        <th class="px-5 py-3 font-medium">Address</th>
+        <th class="px-5 py-3 font-medium">Order contact</th>
+        <th class="px-5 py-3 font-medium">PIB / Reg. no.</th>
+        <th class="px-5 py-3 font-medium">Status</th>
+        <th class="px-5 py-3 text-right font-medium">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      @for (s of filtered(); track s.id) {
+      <tr class="group transition hover:bg-slate-50/60">
+        <td class="px-5 py-3"><p class="font-medium text-slate-900">{{ s.name }}</p><p class="text-xs text-slate-400">Added {{ s.created_at | date: 'mediumDate' }}</p></td>
+        <td class="px-5 py-3 text-slate-600"><p>{{ s.address || '—' }}</p><p class="text-xs text-slate-400">{{ s.postal_code }} {{ s.city }}</p></td>
+        <td class="px-5 py-3 text-slate-600"><p>{{ s.order_email || '—' }}</p><p class="text-xs text-slate-400">{{ s.contact_name || s.phone || '' }}</p></td>
+        <td class="px-5 py-3 text-slate-600"><p>{{ s.tax_id || '—' }}</p><p class="text-xs text-slate-400">{{ s.registration_number || '' }}</p></td>
+        <td class="px-5 py-3">@if (s.active) { <app-badge tone="success">Active</app-badge> } @else { <app-badge tone="neutral">Inactive</app-badge> }</td>
+        <td class="px-5 py-3"><div class="flex justify-end gap-2 opacity-100 transition lg:opacity-0 lg:group-hover:opacity-100">
+          <button type="button" (click)="openEdit(s)" class="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100">Edit</button>
+          <button type="button" (click)="toggleActive(s)" class="rounded-md px-2 py-1 text-xs font-medium hover:bg-slate-100" [class]="s.active ? 'text-red-600' : 'text-green-600'">{{ s.active ? 'Deactivate' : 'Activate' }}</button>
+        </div></td>
+      </tr>
+      }
+    </tbody>
+  </table>
+</div>
+}
+
+<app-drawer [open]="drawerOpen()" [title]="drawerTitle()" (close)="closeDrawer()">
+  <form [formGroup]="form" (ngSubmit)="save()" class="space-y-5">
+    <section>
+      <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Identity</p>
+      <div class="space-y-4">
+        <label><span class="mb-1.5 block text-sm font-medium text-slate-700">Legal name <span class="text-red-500">*</span></span>
+          <input type="text" formControlName="name" class="field" /></label>
+        <div class="grid grid-cols-2 gap-3">
+          <label><span class="mb-1.5 block text-sm font-medium text-slate-700">Tax ID / PIB</span><input type="text" formControlName="tax_id" class="field" /></label>
+          <label><span class="mb-1.5 block text-sm font-medium text-slate-700">Registration no.</span><input type="text" formControlName="registration_number" class="field" /></label>
+        </div>
+      </div>
+    </section>
+
+    <section class="border-t border-slate-100 pt-5">
+      <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Address</p>
+      <div class="space-y-4">
+        <label><span class="mb-1.5 block text-sm font-medium text-slate-700">Street and number</span><input type="text" formControlName="address" class="field" /></label>
+        <div class="grid grid-cols-2 gap-3">
+          <label><span class="mb-1.5 block text-sm font-medium text-slate-700">City</span><input type="text" formControlName="city" class="field" /></label>
+          <label><span class="mb-1.5 block text-sm font-medium text-slate-700">Postal code</span><input type="text" formControlName="postal_code" class="field" /></label>
+        </div>
+        <label><span class="mb-1.5 block text-sm font-medium text-slate-700">Country</span><input type="text" formControlName="country" class="field" /></label>
+      </div>
+    </section>
+
+    <section class="border-t border-slate-100 pt-5">
+      <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Ordering contact</p>
+      <div class="space-y-4">
+        <label><span class="mb-1.5 block text-sm font-medium text-slate-700">Order email</span><input type="email" formControlName="order_email" class="field" /></label>
+        @if (form.controls.order_email.touched && form.controls.order_email.hasError('email')) { <p class="-mt-3 text-xs text-red-500">Enter a valid email.</p> }
+        <div class="grid grid-cols-2 gap-3">
+          <label><span class="mb-1.5 block text-sm font-medium text-slate-700">Contact person</span><input type="text" formControlName="contact_name" class="field" /></label>
+          <label><span class="mb-1.5 block text-sm font-medium text-slate-700">Phone</span><input type="tel" formControlName="phone" class="field" /></label>
+        </div>
+      </div>
+    </section>
+
+    <label class="flex items-center gap-2 text-sm text-slate-700">
+      <input type="checkbox" formControlName="active" class="h-4 w-4 rounded border-slate-300 text-brand-600" /> Active for new orders
+    </label>
+    @if (formError()) { <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">{{ formError() }}</div> }
+  </form>
+
+  <div drawer-footer class="flex justify-end gap-2">
+    <button type="button" (click)="closeDrawer()" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
+    <button type="button" (click)="save()" [disabled]="saving()" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60">{{ saving() ? 'Saving…' : 'Save supplier' }}</button>
+  </div>
+</app-drawer>

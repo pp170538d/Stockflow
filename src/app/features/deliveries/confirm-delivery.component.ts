@@ -47,7 +47,7 @@ export class ConfirmDeliveryComponent {
   readonly delivered = output<string>();   // emits a summary message on success
 
   readonly form: FormGroup = this.fb.group({
-    carrier: ['NELT'],
+    carrier: [''],
     received_by: [''],
     note: [''],
     lines: this.fb.array([]),
@@ -70,33 +70,47 @@ export class ConfirmDeliveryComponent {
     effect(() => {
       const o = this.order();
       if (this.open() && o) {
-        void this.build(o.id);
-      }
+  void this.build(o);
+}
     });
   }
 
   /** Load the fulfillment view and seed one row per order line (pre-filled). */
-  private async build(orderId: string): Promise<void> {
-    await this.svc.loadFulfillment(orderId);
-    this.lines.clear();
-    for (const f of this.svc.fulfillment()) {
-      this.lines.push(
-        this.fb.group(
-          {
-            order_item_id: [f.order_item_id],
-            product_name: [f.product?.name ?? 'Product'],
-            product_sku: [f.product?.sku ?? ''],
-            ordered_qty: [f.ordered_qty],
-            // Pre-fill with the ordered qty — the common case is an exact match.
-            delivered_qty: [f.ordered_qty, [Validators.required, Validators.min(0)]],
-            reason: [''],
-          },
-          { validators: reasonRequiredOnVariance }
-        )
-      );
-    }
-    this.form.patchValue({ carrier: 'NELT', received_by: '', note: '' });
+private async build(order: Order): Promise<void> {
+  await this.svc.loadFulfillment(order.id);
+
+  this.lines.clear();
+
+  for (const f of this.svc.fulfillment()) {
+    this.lines.push(
+      this.fb.group(
+        {
+          order_item_id: [f.order_item_id],
+          product_name: [f.product?.name ?? 'Product'],
+          product_sku: [f.product?.sku ?? ''],
+          ordered_qty: [f.ordered_qty],
+          delivered_qty: [
+            f.ordered_qty,
+            [Validators.required, Validators.min(0)],
+          ],
+          reason: [''],
+        },
+        { validators: reasonRequiredOnVariance }
+      )
+    );
   }
+
+  const carrier =
+    order.supplier_snapshot?.name ??
+    order.supplier?.name ??
+    '';
+
+  this.form.patchValue({
+    carrier,
+    received_by: '',
+    note: '',
+  });
+}
 
   /** Live variance for a row: delivered − ordered. */
   variance(row: AbstractControl): number {

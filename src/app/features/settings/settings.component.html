@@ -1,134 +1,151 @@
 <!-- Header -->
 <div class="mb-6">
   <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Settings</h1>
-  <p class="mt-1 text-sm text-slate-500">Manage your account.</p>
+  <p class="mt-1 text-sm text-slate-500">Manage your account and business identity.</p>
 </div>
 
-<div class="max-w-xl space-y-6">
-
-  <!-- ===== DEMO NOTICE ===== -->
+<div class="max-w-3xl space-y-6">
   @if (auth.isDemo()) {
-    <div class="rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200">
-      <p class="text-sm font-medium text-amber-900">You're signed in to the demo account</p>
-      <p class="mt-1 text-xs text-amber-700">
-        Browse everything freely. Changes are limited to the sandbox object so the
-        demo stays usable for the next visitor.
-      </p>
+  <div class="rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200">
+    <p class="text-sm font-medium text-amber-900">You're signed in to the demo account</p>
+    <p class="mt-1 text-xs text-amber-700">Business and account settings are read-only in demo mode.</p>
+  </div>
+  }
+
+  <!-- ===== COMPANY PROFILE ===== -->
+  @if (auth.isAdmin()) {
+  <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
+    <div class="flex items-start gap-3">
+      <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 9h.01M15 9h.01M9 12h.01M15 12h.01" />
+        </svg>
+      </span>
+      <div>
+        <h2 class="text-sm font-semibold text-slate-900">Company profile</h2>
+        <p class="mt-0.5 text-xs text-slate-400">Legal identity printed on approved purchase orders and PDFs.</p>
+      </div>
     </div>
+
+    @if (companyLoading()) {
+    <div class="mt-5 rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-400">Loading company profile…</div>
+    } @else {
+    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+      <label class="sm:col-span-2">
+        <span class="mb-1.5 block text-sm font-medium text-slate-700">Legal company name <span class="text-red-500">*</span></span>
+        <input type="text" [ngModel]="companyName()" (ngModelChange)="companyName.set($event)" [disabled]="auth.isDemo()"
+          placeholder="e.g. Stockflow Company d.o.o." class="field" />
+      </label>
+      <label class="sm:col-span-2">
+        <span class="mb-1.5 block text-sm font-medium text-slate-700">Registered address</span>
+        <input type="text" [ngModel]="companyAddress()" (ngModelChange)="companyAddress.set($event)" [disabled]="auth.isDemo()"
+          placeholder="Street and number" class="field" />
+      </label>
+      <label>
+        <span class="mb-1.5 block text-sm font-medium text-slate-700">City</span>
+        <input type="text" [ngModel]="companyCity()" (ngModelChange)="companyCity.set($event)" [disabled]="auth.isDemo()" class="field" />
+      </label>
+      <label>
+        <span class="mb-1.5 block text-sm font-medium text-slate-700">Postal code</span>
+        <input type="text" [ngModel]="companyPostalCode()" (ngModelChange)="companyPostalCode.set($event)" [disabled]="auth.isDemo()" class="field" />
+      </label>
+      <label>
+        <span class="mb-1.5 block text-sm font-medium text-slate-700">Country</span>
+        <input type="text" [ngModel]="companyCountry()" (ngModelChange)="companyCountry.set($event)" [disabled]="auth.isDemo()" class="field" />
+      </label>
+      <div></div>
+      <label>
+        <span class="mb-1.5 block text-sm font-medium text-slate-700">Tax ID / PIB</span>
+        <input type="text" [ngModel]="companyTaxId()" (ngModelChange)="companyTaxId.set($event)" [disabled]="auth.isDemo()" class="field" />
+      </label>
+      <label>
+        <span class="mb-1.5 block text-sm font-medium text-slate-700">Registration number</span>
+        <input type="text" [ngModel]="companyRegistrationNumber()" (ngModelChange)="companyRegistrationNumber.set($event)" [disabled]="auth.isDemo()" class="field" />
+      </label>
+      <label>
+        <span class="mb-1.5 block text-sm font-medium text-slate-700">Business email</span>
+        <input type="email" [ngModel]="companyEmail()" (ngModelChange)="companyEmail.set($event)" [disabled]="auth.isDemo()" class="field" />
+      </label>
+      <label>
+        <span class="mb-1.5 block text-sm font-medium text-slate-700">Phone</span>
+        <input type="tel" [ngModel]="companyPhone()" (ngModelChange)="companyPhone.set($event)" [disabled]="auth.isDemo()" class="field" />
+      </label>
+    </div>
+
+    @if (companyError()) {
+    <div class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">{{ companyError() }}</div>
+    }
+    @if (companyMsg()) {
+    <div class="mt-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 ring-1 ring-green-100">{{ companyMsg() }}</div>
+    }
+
+    <div class="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+      <p class="text-xs text-slate-400">Approved orders keep a permanent snapshot, even if this profile changes later.</p>
+      @if (!auth.isDemo()) {
+      <button type="button" (click)="saveCompany()" [disabled]="savingCompany()"
+        class="shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60">
+        {{ savingCompany() ? 'Saving…' : 'Save company' }}
+      </button>
+      }
+    </div>
+    }
+  </div>
   }
 
   <!-- ===== PROFILE ===== -->
   <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
     <h2 class="text-sm font-semibold text-slate-900">My profile</h2>
-    <p class="mt-0.5 text-xs text-slate-400">Your account information.</p>
-
-    <div class="mt-4 space-y-4">
-      <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">Email</label>
-        <input type="email" [value]="auth.profile()?.email" disabled
-          class="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50
-                 px-3 py-2 text-sm text-slate-500" />
-        <p class="mt-1 text-xs text-slate-400">Email can't be changed here.</p>
-      </div>
-
-      <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">Role</label>
-        <input type="text" [value]="auth.profile()?.role" disabled
-          class="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50
-                 px-3 py-2 text-sm text-slate-500" />
-      </div>
-
-      <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">Full name</label>
-        <input type="text" [value]="fullName()"
-          (input)="fullName.set($any($event.target).value)"
-          [disabled]="auth.isDemo()"
-          placeholder="e.g. Petar Petrovic"
-          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20
-                 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50
-                 disabled:text-slate-500" />
-      </div>
-
-      @if (profileMsg()) {
-        <div class="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 ring-1 ring-green-100">
-          {{ profileMsg() }}
-        </div>
-      }
-
-      @if (auth.isDemo()) {
-        <p class="text-xs text-slate-400">Profile changes are disabled in the demo account.</p>
-      } @else {
-        <button (click)="saveProfile()" [disabled]="savingProfile()"
-          class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
-                 transition hover:bg-brand-700 disabled:opacity-60">
-          {{ savingProfile() ? 'Saving…' : 'Save profile' }}
-        </button>
-      }
+    <p class="mt-0.5 text-xs text-slate-400">Your name is captured on purchase orders you prepare.</p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <label>
+        <span class="mb-1.5 block text-sm font-medium text-slate-700">Email</span>
+        <input type="email" [value]="auth.profile()?.email" disabled class="field cursor-not-allowed bg-slate-50 text-slate-500" />
+      </label>
+      <label>
+        <span class="mb-1.5 block text-sm font-medium text-slate-700">Role</span>
+        <input type="text" [value]="auth.profile()?.role" disabled class="field cursor-not-allowed bg-slate-50 text-slate-500" />
+      </label>
+      <label class="sm:col-span-2">
+        <span class="mb-1.5 block text-sm font-medium text-slate-700">Full name</span>
+        <input type="text" [value]="fullName()" (input)="fullName.set($any($event.target).value)" [disabled]="auth.isDemo()"
+          placeholder="e.g. Petar Petrovic" class="field" />
+      </label>
     </div>
+    @if (profileMsg()) {
+    <div class="mt-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 ring-1 ring-green-100">{{ profileMsg() }}</div>
+    }
+    @if (!auth.isDemo()) {
+    <button type="button" (click)="saveProfile()" [disabled]="savingProfile()"
+      class="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60">
+      {{ savingProfile() ? 'Saving…' : 'Save profile' }}
+    </button>
+    }
   </div>
 
   <!-- ===== PASSWORD ===== -->
   @if (!auth.isDemo()) {
-    <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
-      <h2 class="text-sm font-semibold text-slate-900">Change password</h2>
-      <p class="mt-0.5 text-xs text-slate-400">Update your login password.</p>
-
-      <div class="mt-4 space-y-4">
-        <div>
-          <label class="mb-1.5 block text-sm font-medium text-slate-700">New password</label>
-          <input type="password" [value]="newPassword()"
-            (input)="newPassword.set($any($event.target).value)"
-            placeholder="••••••••"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-                   transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-        </div>
-
-        <div>
-          <label class="mb-1.5 block text-sm font-medium text-slate-700">Confirm password</label>
-          <input type="password" [value]="confirmPassword()"
-            (input)="confirmPassword.set($any($event.target).value)"
-            placeholder="••••••••"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-                   transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-        </div>
-
-        @if (passwordErr()) {
-          <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
-            {{ passwordErr() }}
-          </div>
-        }
-        @if (passwordMsg()) {
-          <div class="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 ring-1 ring-green-100">
-            {{ passwordMsg() }}
-          </div>
-        }
-
-        <button (click)="changePassword()" [disabled]="savingPassword()"
-          class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
-                 transition hover:bg-brand-700 disabled:opacity-60">
-          {{ savingPassword() ? 'Updating…' : 'Change password' }}
-        </button>
-      </div>
+  <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
+    <h2 class="text-sm font-semibold text-slate-900">Change password</h2>
+    <p class="mt-0.5 text-xs text-slate-400">Update your login password.</p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <label><span class="mb-1.5 block text-sm font-medium text-slate-700">New password</span>
+        <input type="password" [value]="newPassword()" (input)="newPassword.set($any($event.target).value)" class="field" /></label>
+      <label><span class="mb-1.5 block text-sm font-medium text-slate-700">Confirm password</span>
+        <input type="password" [value]="confirmPassword()" (input)="confirmPassword.set($any($event.target).value)" class="field" /></label>
     </div>
-  } @else {
-    <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
-      <h2 class="text-sm font-semibold text-slate-900">Change password</h2>
-      <p class="mt-0.5 text-xs text-slate-400">
-        Password changes are disabled in the demo account so the shared
-        credentials keep working.
-      </p>
-    </div>
+    @if (passwordErr()) { <div class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">{{ passwordErr() }}</div> }
+    @if (passwordMsg()) { <div class="mt-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 ring-1 ring-green-100">{{ passwordMsg() }}</div> }
+    <button type="button" (click)="changePassword()" [disabled]="savingPassword()"
+      class="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60">
+      {{ savingPassword() ? 'Updating…' : 'Change password' }}
+    </button>
+  </div>
   }
 
   <!-- ===== SIGN OUT ===== -->
   <div class="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
     <h2 class="text-sm font-semibold text-slate-900">Session</h2>
     <p class="mt-0.5 text-xs text-slate-400">Sign out of Stockflow on this device.</p>
-    <button (click)="signOut()"
-      class="mt-4 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium
-             text-slate-700 transition hover:bg-slate-50">
-      Sign out
-    </button>
+    <button type="button" (click)="signOut()" class="mt-4 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Sign out</button>
   </div>
 </div>

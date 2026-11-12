@@ -20,9 +20,12 @@
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="mb-1.5 block text-sm font-medium text-slate-700">Carrier</label>
-          <input type="text" formControlName="carrier" placeholder="e.g. NELT"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-                   transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+          <input
+    type="text"
+    formControlName="carrier"
+    placeholder="e.g. Delivery supplier"
+    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+  />
         </div>
         <div>
           <label class="mb-1.5 block text-sm font-medium text-slate-700">Received by</label>
@@ -88,7 +91,7 @@
                     <span class="font-normal text-slate-400">— why does the count differ?</span>
                   </label>
                   <input type="text" formControlName="reason"
-                    placeholder="e.g. NELT short-shipped, 2 backordered"
+                    placeholder="e.g. Supplier short-shipped, 2 backordered"
                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
                            transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
                   @if (row.touched && row.hasError('reasonRequired')) {

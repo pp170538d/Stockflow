@@ -1,35 +1,55 @@
-<!-- ======================= TABS ======================= -->
-<div class="mb-5 inline-flex rounded-xl bg-slate-100 p-1">
-    @for (t of [{ key: 'products', label: 'Products' }, { key: 'assignments', label: 'Assignments' }, { key: 'stock',
-    label: 'Opening stock' }, { key: 'exports', label: 'Exports' }]; track t.key) {
-    <button type="button" (click)="tab.set($any(t.key))" class="h-9 rounded-lg px-4 text-sm font-medium transition"
-        [class]="tab() === t.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'">
-        {{ t.label }}
-    </button>
-    }
-</div>
-
-@if (tab() === 'products') {
-
 <!-- ======================= HEADER ======================= -->
-<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-    <div>
+<div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div class="min-w-0">
         <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Data</h1>
         <p class="mt-1 text-sm text-slate-500">
-            Import and export your product catalog. Every import is previewed first. Nothing is saved until you confirm.
+            @if (tab() === 'products') {
+            Import and update your product catalog. Every import is previewed before confirmation.
+            } @else if (tab() === 'assignments') {
+            Assign products to locations and manage where each product is available.
+            } @else if (tab() === 'stock') {
+            Import opening balances, export current stock snapshots, or review movement history.
+            } @else {
+            Export sales transactions for a selected period and location.
+            }
         </p>
     </div>
-    <div class="flex gap-2">
+
+    @if (tab() === 'products') {
+    <div class="flex shrink-0 gap-2">
         <button type="button" (click)="downloadTemplate()"
             class="h-10 flex-1 rounded-xl bg-white px-4 text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 sm:flex-none">
             Template
         </button>
         <button type="button" (click)="exportAll()" [disabled]="exporting()"
-            class="h-10 flex-1 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 sm:flex-none">
+            class="h-10 flex-1 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none">
             {{ exporting() ? 'Exporting…' : 'Export products' }}
         </button>
     </div>
+    }
 </div>
+
+<!-- ======================= TABS ======================= -->
+<div class="-mx-1 mb-6 overflow-x-auto px-1 pb-1">
+    <div class="inline-flex min-w-max rounded-xl bg-slate-100 p-1">
+        @for (t of [
+        { key: 'products', label: 'Products' },
+        { key: 'assignments', label: 'Assignments' },
+        { key: 'stock', label: 'Stock' },
+        { key: 'sales', label: 'Sales' }
+        ]; track t.key) {
+        <button type="button" (click)="tab.set($any(t.key))"
+            class="h-9 shrink-0 rounded-lg px-4 text-sm font-medium transition"
+            [class]="tab() === t.key
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:bg-white/60 hover:text-slate-800'">
+            {{ t.label }}
+        </button>
+        }
+    </div>
+</div>
+
+@if (tab() === 'products') {
 
 @if (error()) {
 <div class="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{{ error() }}</div>
@@ -303,7 +323,7 @@
 } @else if (tab() === 'assignments') {
 <app-assignments-import />
 } @else if (tab() === 'stock') {
-<app-opening-import />
+<app-stock-data />
 } @else {
-<app-exports />
+<app-exports mode="sales" />
 }

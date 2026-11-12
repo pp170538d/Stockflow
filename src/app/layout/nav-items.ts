@@ -64,6 +64,13 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'M12 21s6-5.33 6-11a6 6 0 10-12 0c0 5.67 6 11 6 11zM12 12a2 2 0 100-4 2 2 0 000 4z',
     adminOnly: true,
   },
+  {
+  label: 'Suppliers',
+  path: '/suppliers',
+  section: 'MANAGE',
+  icon: 'M3 7h11v10H3zM14 10h4l3 3v4h-7zM7 17a2 2 0 104 0M16 17a2 2 0 104 0',
+  adminOnly: true,
+},
     {
     label: 'Data',
     path: '/data',

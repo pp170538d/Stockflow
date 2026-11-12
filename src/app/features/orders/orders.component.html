@@ -67,23 +67,96 @@
 <!-- ======================= TOOLBAR ======================= -->
 <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
   <div class="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 sm:pb-0">
-    <button type="button" (click)="statusFilter.set(''); reload(1)"
+  <button
+    type="button"
+    (click)="showAll()"
+    class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
+    [class]="
+      statusFilter() === '' && !exceptionsOnly()
+        ? 'bg-slate-900 text-white'
+        : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+    "
+  >
+    All
+
+    <span
+      class="rounded-full px-1.5 text-[10px] tabular-nums"
+      [class]="
+        statusFilter() === '' && !exceptionsOnly()
+          ? 'bg-white/20'
+          : 'bg-slate-100 text-slate-500'
+      "
+    >
+      {{ countsTotal() }}
+    </span>
+  </button>
+
+  @for (s of statuses; track s) {
+    <button
+      type="button"
+      (click)="onStatusChange(s)"
       class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
-      [class]="statusFilter() === '' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'">
-      All
-      <span class="rounded-full px-1.5 text-[10px] tabular-nums"
-        [class]="statusFilter() === '' ? 'bg-white/20' : 'bg-slate-100 text-slate-500'">{{ countsTotal() }}</span>
-    </button>
-    @for (s of statuses; track s) {
-    <button type="button" (click)="onStatusChange(s)"
-      class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
-      [class]="statusFilter() === s ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'">
+      [class]="
+        statusFilter() === s && !exceptionsOnly()
+          ? 'bg-slate-900 text-white'
+          : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+      "
+    >
       {{ meta[s].label }}
-      <span class="rounded-full px-1.5 text-[10px] tabular-nums"
-        [class]="statusFilter() === s ? 'bg-white/20' : 'bg-slate-100 text-slate-500'">{{ counts()[s] }}</span>
+
+      <span
+        class="rounded-full px-1.5 text-[10px] tabular-nums"
+        [class]="
+          statusFilter() === s && !exceptionsOnly()
+            ? 'bg-white/20'
+            : 'bg-slate-100 text-slate-500'
+        "
+      >
+        {{ counts()[s] }}
+      </span>
     </button>
-    }
-  </div>
+  }
+
+  <button
+    type="button"
+    (click)="showExceptions()"
+    class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
+    [class]="
+      exceptionsOnly()
+        ? 'bg-amber-600 text-white'
+        : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100'
+    "
+    title="Delivered orders with short or over-delivered items"
+  >
+    <svg
+      class="h-3.5 w-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+      <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+    </svg>
+
+    Exceptions
+
+    <span
+      class="rounded-full px-1.5 text-[10px] tabular-nums"
+      [class]="
+        exceptionsOnly()
+          ? 'bg-white/20 text-white'
+          : 'bg-amber-100 text-amber-700'
+      "
+    >
+      {{ exceptionCount() }}
+    </span>
+  </button>
+</div>
 
   <div class="flex gap-2">
     <div class="relative flex-1 sm:w-64 sm:flex-none">
@@ -92,7 +165,8 @@
         <circle cx="11" cy="11" r="7" />
         <path d="m21 21-4.3-4.3" />
       </svg>
-      <input type="text" [value]="search()" (input)="onSearch($any($event.target).value)" placeholder="Search comments"
+      <input type="text" [value]="search()" (input)="onSearch($any($event.target).value)"
+        placeholder="Order number or comment"
         class="h-11 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10" />
     </div>
     @if (auth.isAdmin()) {
@@ -124,13 +198,26 @@
 } @else if (svc.error()) {
 <div class="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{{ svc.error() }}</div>
 } @else if (svc.orders().length === 0) {
-<div class="mt-4">
-  <app-empty-state title="No orders here" subtitle="Try another filter, or create a new order.">
-    <a routerLink="/orders/new"
-      class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">+ New
-      order</a>
-  </app-empty-state>
-</div>
+  <div class="mt-4">
+    @if (exceptionsOnly()) {
+      <app-empty-state
+        title="No delivery exceptions"
+        subtitle="All recorded deliveries match their ordered quantities."
+      />
+    } @else {
+      <app-empty-state
+        title="No orders here"
+        subtitle="Try another filter, or create a new order."
+      >
+        <a
+          routerLink="/orders/new"
+          class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
+        >
+          + New order
+        </a>
+      </app-empty-state>
+    }
+  </div>
 } @else {
 
 <!-- ======================= MOBILE: cards ======================= -->
@@ -140,9 +227,14 @@
     [style.animation-delay.ms]="delay(i)">
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
-        <div class="truncate font-medium text-slate-900">{{ o.object?.name || '—' }}</div>
-        <div class="mt-0.5 text-xs text-slate-400">
-          <span class="font-mono">#{{ shortId(o) }}</span> · {{ ago(o.created_at) }}
+        <div class="font-mono text-sm font-semibold tracking-wide text-slate-900">
+          {{ o.order_number }}
+        </div>
+
+        <div class="mt-0.5 truncate text-xs text-slate-400">
+          {{ o.object?.name || '—' }}
+          · {{ o.supplier?.name || o.supplier_snapshot?.name || 'Legacy order' }}
+          · {{ ago(o.created_at) }}
         </div>
       </div>
       <span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ring-1" [class]="meta[o.status].chip">{{
@@ -204,15 +296,33 @@
         <button type="button" (click)="approve(o)"
           class="rounded-lg bg-status-approved px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90">Approve</button>
         }
+        @if (o.status === 'APPROVED' || o.status === 'DELIVERED') {
+        <button type="button" (click)="printOrder(o)"
+          class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 transition hover:bg-slate-50"
+          title="Open the purchase order for printing or saving as PDF">
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 9V2h12v7" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <path d="M6 14h12v8H6z" />
+          </svg>
+
+          Print / Save PDF
+        </button>
+        }
+
         @if (o.status === 'APPROVED') {
         <button type="button" (click)="openDeliver(o)"
-          class="rounded-lg bg-status-delivered px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90">Confirm
-          delivery</button>
+          class="rounded-lg bg-status-delivered px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:opacity-90">
+          Confirm delivery
+        </button>
         }
+
         @if (o.status === 'DELIVERED') {
         <button type="button" (click)="openSummary(o)"
-          class="rounded-lg px-3 py-1.5 text-xs font-medium text-brand-700 ring-1 ring-brand-200 transition hover:bg-brand-50">View
-          delivery</button>
+          class="rounded-lg px-3 py-1.5 text-xs font-medium text-brand-700 ring-1 ring-brand-200 transition hover:bg-brand-50">
+          View delivery
+        </button>
         }
       </span>
     </div>
@@ -242,8 +352,17 @@
           <div class="flex items-center gap-3">
             <span class="h-9 w-1 shrink-0 rounded-full" [class]="meta[o.status].dot"></span>
             <div class="min-w-0">
-              <div class="truncate font-medium text-slate-900">{{ o.object?.name || '—' }}</div>
-              <div class="font-mono text-xs text-slate-400">#{{ shortId(o) }}</div>
+              <div class="font-mono text-sm font-semibold tracking-wide text-slate-900">
+                {{ o.order_number }}
+              </div>
+
+              <div class="truncate text-xs text-slate-500">
+                {{ o.object?.name || '—' }}
+              </div>
+
+              <div class="truncate text-[11px] text-slate-400">
+                {{ o.supplier?.name || o.supplier_snapshot?.name || 'Legacy order · no supplier' }}
+              </div>
             </div>
           </div>
         </td>
@@ -286,23 +405,35 @@
         </td>
 
         <!-- items -->
+        <!-- items -->
         <td class="px-4 py-4">
           <div class="flex flex-wrap gap-1.5">
             @for (it of o.order_items; track it.id; let ii = $index) {
             @if (ii < 3) { <span class="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
-              <span class="font-semibold tabular-nums">{{ it.quantity }}×</span> {{ it.product?.name || 'Product' }}
+              <span class="font-semibold tabular-nums">
+                {{ it.quantity }}×
+              </span>
+              {{ it.product?.name || 'Product' }}
               </span>
               }
               }
+
               @if ((o.order_items?.length ?? 0) > 3) {
-              <span class="rounded-md px-1.5 py-0.5 text-xs text-slate-400">+{{ (o.order_items?.length ?? 0) - 3 }}
-                more</span>
+              <span class="rounded-md px-1.5 py-0.5 text-xs text-slate-400">
+                +{{ (o.order_items?.length ?? 0) - 3 }} more
+              </span>
               }
           </div>
+
           <div class="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
-            <span class="tabular-nums">{{ itemCount(o) }} units</span>
+            <span class="tabular-nums">
+              {{ itemCount(o) }} units
+            </span>
+
             @if (o.comment) {
-            <span class="truncate italic" [attr.title]="o.comment">· "{{ o.comment }}"</span>
+            <span class="truncate italic" [attr.title]="o.comment">
+              · "{{ o.comment }}"
+            </span>
             }
           </div>
         </td>
@@ -314,29 +445,58 @@
         </td>
 
         <!-- next step -->
+        <!-- next step -->
         <td class="px-5 py-4">
           <div class="flex flex-col items-end gap-1.5">
-            <div class="flex gap-2">
+            <div class="flex flex-wrap justify-end gap-2">
               @if (auth.isAdmin() && o.status === 'PENDING') {
               <button type="button" (click)="reject(o)"
-                class="rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 ring-1 ring-red-200 transition hover:bg-red-50">Reject</button>
+                class="rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 ring-1 ring-red-200 transition hover:bg-red-50">
+                Reject
+              </button>
+
               <button type="button" (click)="approve(o)"
-                class="rounded-lg bg-status-approved px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:opacity-90">Approve</button>
+                class="rounded-lg bg-status-approved px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:opacity-90">
+                Approve
+              </button>
               }
+
+              @if (o.status === 'APPROVED' || o.status === 'DELIVERED') {
+              <button type="button" (click)="printOrder(o)"
+                class="inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 transition hover:bg-slate-50"
+                title="Open the purchase order for printing or saving as PDF">
+                <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 9V2h12v7" />
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                  <path d="M6 14h12v8H6z" />
+                </svg>
+
+                Print / Save PDF
+              </button>
+              }
+
               @if (o.status === 'APPROVED') {
               <button type="button" (click)="openDeliver(o)"
-                class="rounded-lg bg-status-delivered px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:opacity-90">Confirm
-                delivery</button>
+                class="rounded-lg bg-status-delivered px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:opacity-90">
+                Confirm delivery
+              </button>
               }
+
               @if (o.status === 'DELIVERED') {
               <button type="button" (click)="openSummary(o)"
-                class="rounded-lg px-3 py-1.5 text-xs font-medium text-brand-700 ring-1 ring-brand-200 transition hover:bg-brand-50">View
-                delivery</button>
+                class="rounded-lg px-3 py-1.5 text-xs font-medium text-brand-700 ring-1 ring-brand-200 transition hover:bg-brand-50">
+                View delivery
+              </button>
               }
             </div>
-            <span class="text-[11px] font-medium" [class]="meta[o.status].text">{{ nextHint(o) }}</span>
+
+            <span class="text-[11px] font-medium" [class]="meta[o.status].text">
+              {{ nextHint(o) }}
+            </span>
           </div>
         </td>
+
       </tr>
       }
     </tbody>
@@ -354,7 +514,9 @@
   </div>
   <div class="flex gap-2">
     <button type="button" (click)="previous()" [disabled]="svc.page() <= 1"
-      class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">Previous</button>
+      class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
+      Previous
+    </button>
     <button type="button" (click)="next()" [disabled]="svc.page() >= svc.totalPages()"
       class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">Next</button>
   </div>
