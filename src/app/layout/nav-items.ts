@@ -64,6 +64,13 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'M12 21s6-5.33 6-11a6 6 0 10-12 0c0 5.67 6 11 6 11zM12 12a2 2 0 100-4 2 2 0 000 4z',
     adminOnly: true,
   },
+    {
+    label: 'Data',
+    path: '/data',
+    section: 'MANAGE',
+    icon: 'M4 7c0-1.66 3.58-3 8-3s8 1.34 8 3-3.58 3-8 3-8-1.34-8-3zM4 7v10c0 1.66 3.58 3 8 3s8-1.34 8-3V7M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3',
+    adminOnly: true,
+  },
 
   // ======================= ADMIN =======================
   {

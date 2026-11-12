@@ -47,6 +47,11 @@ export const routes: Routes = [
                 loadComponent: () =>
                     import('./features/products/products.component').then((m) => m.ProductsComponent),
             },
+                        {
+                path: 'data', canActivate: [adminGuard],
+                loadComponent: () =>
+                    import('./features/data/data.component').then((m) => m.DataComponent),
+            },
             {
                 path: 'orders',
                 loadComponent: () =>
