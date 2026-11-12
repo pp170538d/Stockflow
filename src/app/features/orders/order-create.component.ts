@@ -29,6 +29,7 @@ interface Orderable {
   id: string;
   name: string;
   sku: string;
+  barcode: string | null;
   category: string | null;
   onHand: number;
   incoming: number;
@@ -44,6 +45,11 @@ interface OrderSupplierOption {
   id: string;
   name: string;
   order_email: string | null;
+}
+
+interface ScanFeedback {
+  ok: boolean;
+  message: string;
 }
 
 interface BasketLine extends Orderable {
@@ -200,6 +206,7 @@ export class OrderCreateComponent implements OnInit {
   readonly selectedSupplierId = signal<string | null>(null);
   readonly products = signal<Orderable[]>([]);
   readonly search = signal('');
+  readonly scanFeedback = signal<ScanFeedback | null>(null);
   readonly onlyNeeded = signal(false);
   readonly comment = signal('');
 
@@ -262,8 +269,9 @@ export class OrderCreateComponent implements OnInit {
         (product) =>
           !query ||
           product.name.toLowerCase().includes(query) ||
-          product.sku.toLowerCase().includes(query) ||
-          (product.category ?? '').toLowerCase().includes(query)
+        product.sku.toLowerCase().includes(query) ||
+        (product.barcode ?? '').toLowerCase().includes(query) ||
+        (product.category ?? '').toLowerCase().includes(query)
       );
   });
 
@@ -378,6 +386,7 @@ export class OrderCreateComponent implements OnInit {
     this.selectedObjectId.set(objectId);
     this.cart.set({});
     this.search.set('');
+    this.scanFeedback.set(null);
     this.onlyNeeded.set(false);
     this.error.set(null);
 
@@ -404,6 +413,7 @@ export class OrderCreateComponent implements OnInit {
           product:products (
             id,
             sku,
+            barcode,
             name,
             category,
             active
@@ -514,8 +524,9 @@ export class OrderCreateComponent implements OnInit {
         return {
           id: product.id,
           name: product.name,
-          sku: product.sku,
-          category: product.category ?? null,
+        sku: product.sku,
+        barcode: product.barcode ?? null,
+        category: product.category ?? null,
           onHand: have,
           incoming: inc,
           sold30,
@@ -536,6 +547,58 @@ export class OrderCreateComponent implements OnInit {
 
     this.products.set(list);
     this.productsLoading.set(false);
+  }
+
+  onSearchInput(value: string): void {
+    this.search.set(value);
+    this.scanFeedback.set(null);
+  }
+
+  onSearchEnter(event: Event): void {
+    event.preventDefault();
+
+    const raw = this.search().trim();
+    if (!raw) return;
+
+    const value = raw.toLowerCase();
+    const exactMatches = this.products().filter((product) =>
+      product.sku.trim().toLowerCase() === value ||
+      product.barcode?.trim().toLowerCase() === value
+    );
+
+    if (exactMatches.length === 0) {
+      this.scanFeedback.set({
+        ok: false,
+        message: `No assigned product found for "${raw}".`,
+      });
+      this.focusSearch();
+      return;
+    }
+
+    if (exactMatches.length > 1) {
+      this.scanFeedback.set({
+        ok: false,
+        message: `More than one product uses "${raw}". Check the product catalogue.`,
+      });
+      this.focusSearch();
+      return;
+    }
+
+    const product = exactMatches[0];
+    this.setQty(product.id, this.qty(product.id) + 1);
+    this.search.set('');
+    this.onlyNeeded.set(false);
+    this.scanFeedback.set({
+      ok: true,
+      message: `${product.name} added. Quantity: ${this.qty(product.id)}.`,
+    });
+    this.focusSearch();
+  }
+
+  private focusSearch(): void {
+    setTimeout(() =>
+      document.getElementById('order-product-search')?.focus()
+    );
   }
 
   tone(urgency: Urgency): {
@@ -777,6 +840,7 @@ export class OrderCreateComponent implements OnInit {
     this.cart.set({});
     this.comment.set('');
     this.search.set('');
+    this.scanFeedback.set(null);
     this.onlyNeeded.set(false);
     this.selectedSupplierId.set(null);
     this.error.set(null);
