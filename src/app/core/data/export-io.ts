@@ -36,6 +36,10 @@ interface MovementRow {
   reference: string | null;
   note: string | null;
   user_name: string | null;
+  occurred_at: string;
+  unit_price: number | null;
+  unit_cost: number | null;
+  currency: string | null;
 }
 
 type Xlsx = typeof import('xlsx');
@@ -93,32 +97,56 @@ export async function exportSales(f: ExportFilter): Promise<string | null> {
   const XLSX = await import('xlsx');
 
   // Sales are stored as negative movements → show as positive units
-  const detail = rows.map((r) => [
-    fmtDate(r.created_at), r.location, r.sku, r.product, -r.quantity, r.user_name ?? '', r.note ?? '',
+  const money = (n: number | null) => (n == null ? '' : Math.round(n * 100) / 100);
+
+// Sales are stored as negative movements → show as positive units
+const detail = rows.map((r) => {
+  const units = -r.quantity;
+  return [
+    fmtDate(r.occurred_at), r.location, r.sku, r.product, units,
+    money(r.unit_price),
+    r.unit_price == null ? '' : money(units * r.unit_price),
+    r.currency ?? '',
+    r.user_name ?? '', r.note ?? '',
+  ];
+});
+
+const totals = new Map<string, {
+  location: string; sku: string; product: string;
+  units: number; lines: number; revenue: number; priced: number;
+}>();
+for (const r of rows) {
+  const key = `${r.location}|${r.sku}`;
+  const t = totals.get(key) ?? {
+    location: r.location, sku: r.sku, product: r.product,
+    units: 0, lines: 0, revenue: 0, priced: 0,
+  };
+  const units = -r.quantity;
+  t.units += units;
+  t.lines += 1;
+  if (r.unit_price != null) { t.revenue += units * r.unit_price; t.priced += 1; }
+  totals.set(key, t);
+}
+
+const summary = [...totals.values()]
+  .sort((a, b) => a.location.localeCompare(b.location) || b.units - a.units)
+  .map((t) => [
+    t.location, t.sku, t.product, t.units, t.lines,
+    t.priced ? money(t.revenue) : '',
+    t.priced < t.lines ? 'Partial (some sales without price)' : '',
   ]);
 
-  const totals = new Map<string, { location: string; sku: string; product: string; units: number; lines: number }>();
-  for (const r of rows) {
-    const key = `${r.location}|${r.sku}`;
-    const t = totals.get(key) ?? { location: r.location, sku: r.sku, product: r.product, units: 0, lines: 0 };
-    t.units += -r.quantity;
-    t.lines += 1;
-    totals.set(key, t);
-  }
-  const summary = [...totals.values()]
-    .sort((a, b) => a.location.localeCompare(b.location) || b.units - a.units)
-    .map((t) => [t.location, t.sku, t.product, t.units, t.lines]);
+const wb = XLSX.utils.book_new();
+addSheet(XLSX, wb, 'Summary',
+  ['Location', 'SKU', 'Product', 'Units sold', 'Sales lines', 'Revenue', 'Price coverage'], summary,
+  [24, 16, 36, 12, 12, 14, 30]);
+addSheet(XLSX, wb, 'Sales',
+  ['Date', 'Location', 'SKU', 'Product', 'Units', 'Unit price', 'Revenue', 'Currency', 'Sold by', 'Note'], detail,
+  [18, 24, 16, 36, 8, 12, 14, 10, 22, 30]);
 
-  const wb = XLSX.utils.book_new();
-  addSheet(XLSX, wb, 'Summary',
-    ['Location', 'SKU', 'Product', 'Units sold', 'Sales lines'], summary,
-    [24, 16, 36, 12, 12]);
-  addSheet(XLSX, wb, 'Sales',
-    ['Date', 'Location', 'SKU', 'Product', 'Units', 'Sold by', 'Note'], detail,
-    [18, 24, 16, 36, 8, 22, 30]);
+XLSX.writeFile(wb, fileName('sales', f));
+return null;
 
-  XLSX.writeFile(wb, fileName('sales', f));
-  return null;
 }
 
 /** Full ledger for a period (optionally only some events). */
@@ -129,21 +157,26 @@ export async function exportMovements(f: ExportFilter): Promise<string | null> {
 
   const XLSX = await import('xlsx');
   const data = rows.map((r) => [
-    fmtDate(r.created_at),
-    r.location,
-    r.sku,
-    r.product,
-    EVENT_LABELS[r.event] ?? r.event,
-    r.quantity,
-    r.reference ?? '',
-    r.note ?? '',
-    r.user_name ?? '',
-  ]);
+  fmtDate(r.occurred_at),
+  fmtDate(r.created_at),
+  r.location,
+  r.sku,
+  r.product,
+  EVENT_LABELS[r.event] ?? r.event,
+  r.quantity,
+  r.unit_price ?? '',
+  r.unit_cost ?? '',
+  r.currency ?? '',
+  r.reference ?? '',
+  r.note ?? '',
+  r.user_name ?? '',
+]);
 
-  const wb = XLSX.utils.book_new();
-  addSheet(XLSX, wb, 'Movements',
-    ['Date', 'Location', 'SKU', 'Product', 'Event', 'Qty', 'Reference', 'Note', 'User'], data,
-    [18, 24, 16, 36, 14, 8, 28, 32, 22]);
+const wb = XLSX.utils.book_new();
+addSheet(XLSX, wb, 'Movements',
+  ['Date', 'Recorded at', 'Location', 'SKU', 'Product', 'Event', 'Qty',
+   'Unit price', 'Unit cost', 'Currency', 'Reference', 'Note', 'User'], data,
+  [18, 18, 24, 16, 36, 14, 8, 12, 12, 10, 28, 32, 22]);
 
   XLSX.writeFile(wb, fileName('movements', f));
   return null;

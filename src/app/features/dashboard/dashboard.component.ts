@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
-import { DatePipe, DecimalPipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { DatePipe } from '@angular/common';
+import { RouterLink, Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { BadgeComponent } from '../../shared/ui/badge.component';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -8,6 +8,7 @@ import { ConfirmService } from '../../shared/ui/confirm.service';
 import {
   DashboardService, FlowDay, LedgerRow, MovementEvent, PendingOrder, RangeDays, StoreHealth, Urgency,
 } from './dashboard.service';
+import { InventoryPerformanceComponent } from './inventory-performance.component';
 
 /**
  * Stock flow chart geometry (SVG units - the SVG stretches to the card width).
@@ -25,7 +26,7 @@ const QUIET_MIN = 5;
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, RouterLink, BadgeComponent],
+  imports: [DatePipe, RouterLink, BadgeComponent, InventoryPerformanceComponent],
   templateUrl: './dashboard.component.html',
   styles: [`
     @keyframes rowIn { from { opacity: 0; transform: translateY(-6px); background: #eef2ff; }
@@ -55,6 +56,7 @@ const QUIET_MIN = 5;
   `],
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  private router = inject(Router);
   readonly auth = inject(AuthService);
   readonly svc = inject(DashboardService);
   private toast = inject(ToastService);
@@ -306,7 +308,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return `${Math.round(days)}d left`;
   }
   /** Reports is admin-only → sellers go to their inventory. */
-  readonly runwayLink = computed(() => (this.isAdmin() ? '/reports' : '/inventory'));
+  readonly runwayLink = computed(() => {
+    const urgent = this.svc.runningOut();
+
+    const objectIds = [
+      ...new Set(
+        urgent
+          .map((row) => row.object_id)
+          .filter(Boolean)
+      ),
+    ];
+
+    return this.router.createUrlTree(['/inventory'], {
+      queryParams: {
+        filter: 'reorder',
+
+        // Ako su svi hitni proizvodi iz jedne lokacije,
+        // Inventory odmah otvara baš tu lokaciju.
+        object: objectIds.length === 1
+          ? objectIds[0]
+          : null,
+      },
+    });
+  });
 
   // ---------- stores ----------
   storeTone(s: StoreHealth): string {
@@ -323,13 +347,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // ---------- ledger ----------
   /** Same colours as the landing page: delivery green, count amber, sale red. */
   readonly eventMeta: Record<MovementEvent, { label: string; cls: string }> = {
-    DELIVERY:    { label: 'Delivery',    cls: 'bg-green-50 text-green-700' },
-    SALE:        { label: 'Sale',        cls: 'bg-red-50 text-red-700' },
+    DELIVERY: { label: 'Delivery', cls: 'bg-green-50 text-green-700' },
+    SALE: { label: 'Sale', cls: 'bg-red-50 text-red-700' },
     STOCK_COUNT: { label: 'Stock count', cls: 'bg-amber-50 text-amber-700' },
-    ADJUSTMENT:  { label: 'Adjustment',  cls: 'bg-violet-50 text-violet-700' },
-    TRANSFER:    { label: 'Transfer',    cls: 'bg-sky-50 text-sky-700' },
-    RETURN:      { label: 'Return',      cls: 'bg-teal-50 text-teal-700' },
-    WRITE_OFF:   { label: 'Write-off',   cls: 'bg-slate-100 text-slate-700' },
+    ADJUSTMENT: { label: 'Adjustment', cls: 'bg-violet-50 text-violet-700' },
+    TRANSFER: { label: 'Transfer', cls: 'bg-sky-50 text-sky-700' },
+    RETURN: { label: 'Return', cls: 'bg-teal-50 text-teal-700' },
+    WRITE_OFF: { label: 'Write-off', cls: 'bg-slate-100 text-slate-700' },
   };
 
   isFresh(l: LedgerRow): boolean {

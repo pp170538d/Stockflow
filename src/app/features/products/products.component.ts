@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe} from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { ProductsService } from './products.service';
@@ -13,7 +13,7 @@ import { ConfirmService } from '../../shared/ui/confirm.service';
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [DatePipe, ReactiveFormsModule, BadgeComponent, EmptyStateComponent, DrawerComponent],
+  imports: [DatePipe, DecimalPipe, ReactiveFormsModule, BadgeComponent, EmptyStateComponent, DrawerComponent],
   templateUrl: './products.component.html',
 })
 export class ProductsComponent implements OnInit {
@@ -37,6 +37,15 @@ export class ProductsComponent implements OnInit {
     barcode: ['', [Validators.pattern(/^[0-9]{8,14}$/)]],
     name: ['', [Validators.required]],
     category: [''],
+
+    cost_price: ['', [
+      Validators.pattern(/^\d{1,10}([.,]\d{1,2})?$/),
+    ]],
+
+    sell_price: ['', [
+      Validators.pattern(/^\d{1,10}([.,]\d{1,2})?$/),
+    ]],
+
     active: [true],
   });
 
@@ -74,7 +83,15 @@ export class ProductsComponent implements OnInit {
 
     this.editingId.set(null);
     this.formError.set(null);
-    this.form.reset({ sku: '', barcode: '', name: '', category: '', active: true });
+    this.form.reset({
+      sku: '',
+      barcode: '',
+      name: '',
+      category: '',
+      cost_price: '',
+      sell_price: '',
+      active: true,
+    });
     this.drawerOpen.set(true);
   }
 
@@ -83,11 +100,13 @@ export class ProductsComponent implements OnInit {
 
     this.editingId.set(p.id);
     this.formError.set(null);
-        this.form.reset({
+    this.form.reset({
       sku: p.sku,
       barcode: p.barcode ?? '',
       name: p.name,
       category: p.category ?? '',
+      cost_price: p.cost_price?.toString() ?? '',
+      sell_price: p.sell_price?.toString() ?? '',
       active: p.active,
     });
     this.drawerOpen.set(true);
@@ -110,12 +129,16 @@ export class ProductsComponent implements OnInit {
     this.formError.set(null);
     const v = this.form.getRawValue();
     const input = {
-      sku: v.sku.trim(),
-      barcode: v.barcode.trim() || null,
-      name: v.name.trim(),
-      category: v.category.trim() || null,
-      active: v.active,
-    };
+  sku: v.sku.trim(),
+  barcode: v.barcode.trim() || null,
+  name: v.name.trim(),
+  category: v.category.trim() || null,
+
+  cost_price: toPrice(v.cost_price),
+  sell_price: toPrice(v.sell_price),
+
+  active: v.active,
+};
     const editing = !!this.editingId();
     // Service maps the duplicate-SKU Postgres error to a friendly message,
     // so it surfaces cleanly in both the inline banner and the toast.
@@ -164,4 +187,12 @@ export class ProductsComponent implements OnInit {
       this.toast.success(`${p.name} activated.`);
     }
   }
+}
+
+function toPrice(value: string): number | null {
+  const text = value.trim().replace(',', '.');
+
+  if (!text) return null;
+
+  return Math.round(Number(text) * 100) / 100;
 }

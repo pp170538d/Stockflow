@@ -68,6 +68,10 @@ interface SalesFeedRecord {
   units: number | null;
   note: string | null;
   created_at: string;
+  occurred_at: string;
+  unit_price: number | null;
+  revenue: number | null;
+  margin: number | null;
 }
 
 interface SalesSummaryRecord {
@@ -114,13 +118,14 @@ export class SalesService {
     this.error.set(null);
 
     let query = supabase
-      .from('sales_feed')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(from, to);
+  .from('sales_feed')
+  .select('*', { count: 'exact' })
+  .order('occurred_at', { ascending: false })
+  .order('created_at', { ascending: false })
+  .range(from, to);
 
     if (objectId) query = query.eq('object_id', objectId);
-    if (since !== null) query = query.gte('created_at', since);
+    if (since !== null) query = query.gte('occurred_at', since);
     if (search) {
       const safe = search.replace(/,/g, ' ');
       query = query.or(
@@ -178,7 +183,7 @@ export class SalesService {
         sku: r.sku ?? '—',
         units: r.units ?? 0,
         note: r.note,
-        createdAt: r.created_at,
+        createdAt: r.occurred_at ?? r.created_at,
         reference: refs.get(r.id) ?? null,
       }))
     );
@@ -206,14 +211,15 @@ export class SalesService {
     const since = sinceIso(rangeDays);
 
     let q = supabase
-      .from('stock_movements')
-      .select('id, product_id, quantity, note, reference, created_at, product:products ( name, sku )')
-      .eq('event', 'SALE')
-      .order('created_at', { ascending: false })
-      .limit(5000);
+  .from('stock_movements')
+  .select('id, product_id, quantity, note, reference, occurred_at, product:products ( name, sku )')
+  .eq('event', 'SALE')
+  .order('occurred_at', { ascending: false })
+  .order('created_at', { ascending: false })
+  .limit(5000);
 
     if (objectId) q = q.eq('object_id', objectId);
-    if (since !== null) q = q.gte('created_at', since);
+if (since !== null) q = q.gte('occurred_at', since);
 
     const { data, error } = await q;
     if (error) {
@@ -231,7 +237,7 @@ export class SalesService {
         units: Math.abs(Number(m.quantity) || 0),
         note: m.note,
         reference: m.reference,
-        createdAt: m.created_at,
+        createdAt: m.occurred_at,
       }))
     );
     this.insightsLoading.set(false);
@@ -261,7 +267,7 @@ export class SalesService {
         .select('product_id, quantity')
         .eq('object_id', objectId)
         .eq('event', 'SALE')
-        .gte('created_at', sinceIso(30) as string)
+        .gte('occurred_at', sinceIso(30) as string)
         .limit(5000),
     ]);
 
@@ -326,6 +332,8 @@ export class SalesService {
   }
 
   private friendly(msg: string): string {
+    if (msg.includes('register import')) return msg;
+if (msg.includes('cannot be in the future')) return msg;
     if (msg.includes('DEMO_READONLY')) return 'This action is disabled in the demo account.';
     if (msg.includes('Insufficient stock')) return msg;
     if (msg.includes('violates row-level security')) return "You don't have permission to sell from this store.";

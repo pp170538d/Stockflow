@@ -115,7 +115,7 @@
     <div class="mt-0.5 text-xs text-slate-400">units · {{ k.products }} products</div>
   </div>
 
-  <button type="button" (click)="filter.set(filter() === 'reorder' ? 'all' : 'reorder')"
+  <button type="button" (click)="setFilter(filter() === 'reorder' ? 'all' : 'reorder')"
     class="rounded-2xl p-4 text-left ring-1 transition hover:-translate-y-0.5 hover:shadow-md"
     [class]="filter() === 'reorder' ? 'bg-red-50 ring-red-300' : 'bg-white ring-slate-200'">
     <div class="flex items-center gap-1.5 text-xs font-medium text-slate-500">
@@ -127,7 +127,7 @@
     <div class="mt-0.5 text-xs text-slate-400">out, or ≤ 7 days left</div>
   </button>
 
-  <button type="button" (click)="filter.set(filter() === 'soon' ? 'all' : 'soon')"
+  <button type="button" (click)="setFilter(filter() === 'soon' ? 'all' : 'soon')"
     class="rounded-2xl p-4 text-left ring-1 transition hover:-translate-y-0.5 hover:shadow-md"
     [class]="filter() === 'soon' ? 'bg-amber-50 ring-amber-300' : 'bg-white ring-slate-200'">
     <div class="text-xs font-medium text-slate-500">Reorder soon</div>
@@ -158,7 +158,7 @@
 <div class="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
   <div class="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:pb-0">
     @for (f of filters; track f.key) {
-    <button type="button" (click)="filter.set(f.key)"
+    <button type="button" (click)="setFilter(f.key)"
       class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
       [class]="filter() === f.key ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'">
       {{ f.label }}
@@ -190,7 +190,7 @@
 <div class="mt-4 rounded-2xl bg-white px-6 py-12 text-center ring-1 ring-slate-200">
   <p class="text-sm font-medium text-slate-900">Nothing matches</p>
   <p class="mt-1 text-sm text-slate-500">Try another filter or search term.</p>
-  <button type="button" (click)="filter.set('all'); search.set('')"
+  <button type="button" (click)="setFilter('all'); search.set('')"
     class="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear
     filters</button>
 </div>
@@ -546,9 +546,9 @@
   <ol class="relative space-y-4 border-l border-slate-200 pl-5">
     @for (m of svc.movements(); track m.id; let i = $index) {
 
-    @if (i === 0 || dayKey(m.created_at) !== dayKey(svc.movements()[i - 1].created_at)) {
+    @if (i === 0 || dayKey(m.occurred_at) !== dayKey(svc.movements()[i - 1].occurred_at)) {
     <li class="relative -ml-[21px] bg-white py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400"
-      [class.pt-2]="i > 0">{{ dayLabel(m.created_at) }}</li>
+      [class.pt-2]="i > 0">{{ dayLabel(m.occurred_at) }}</li>
     }
 
     @let bal = svc.balances().get(m.id);
@@ -562,7 +562,7 @@
               [class.text-red-600]="m.quantity < 0">{{ signed(m.quantity) }}</span>
             <span class="rounded-md px-1.5 py-0.5 text-[11px] font-medium" [class]="eventMeta[m.event].chip">{{
               eventMeta[m.event].label }}</span>
-            <span class="text-xs tabular-nums text-slate-400">{{ m.created_at | date: 'HH:mm' }}</span>
+            <span class="text-xs tabular-nums text-slate-400">{{ m.occurred_at | date: 'HH:mm' }}</span>
           </div>
           @if (showNote(m)) { <p class="mt-1 text-xs text-slate-600">{{ m.note }}</p> }
           @if (m.reference && m.reference !== 'manual') {

@@ -502,6 +502,10 @@ readonly reportLocations = computed(() => [
     'Your store'
   );
 
+  readonly saleBlocked = computed(() =>
+  (this.objects().find((o) => o.id === this.saleObjectId()) as any)?.sales_source === 'import'
+);
+
   /** In stock first, best sellers on top, then A–Z. Search supports name, SKU and barcode. */
   readonly sellableFiltered = computed(() => {
     const q = this.productSearch().trim().toLowerCase();

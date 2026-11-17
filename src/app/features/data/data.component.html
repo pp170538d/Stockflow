@@ -12,7 +12,7 @@
     } @else if (tab() === 'stock') {
       Import opening balances, export current stock snapshots, or review movement history.
     } @else {
-      Export sales transactions for a selected period and location.
+      Import daily sales from the cash register, or export sales for a selected period and location.
     }
   </p>
 </div>
@@ -356,6 +356,8 @@
               <th class="px-4 py-3">Name</th>
               <th class="px-4 py-3">Category</th>
               <th class="px-4 py-3">Barcode</th>
+              <th class="px-4 py-3 text-right">Cost</th>
+              <th class="px-4 py-3 text-right">Sell</th>
               <th class="px-4 py-3">Active</th>
               <th class="px-4 py-3 text-right">Result</th>
             </tr>
@@ -427,6 +429,26 @@
                   </div>
                 </td>
 
+                <td class="px-4 py-3 text-right align-top tabular-nums">
+                  @if (changed(row, 'cost_price')) {
+                    <div class="text-[11px] text-slate-400 line-through">
+                      {{ row.before?.cost_price === null ? '—' : (row.before?.cost_price | number: '1.2-2') }}
+                    </div>
+                  }
+                  <div class="text-slate-700" [class.font-semibold]="changed(row, 'cost_price')">
+                    {{ row.cost_price === null ? '—' : (row.cost_price | number: '1.2-2') }}
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-right align-top tabular-nums">
+                  @if (changed(row, 'sell_price')) {
+                    <div class="text-[11px] text-slate-400 line-through">
+                      {{ row.before?.sell_price === null ? '—' : (row.before?.sell_price | number: '1.2-2') }}
+                    </div>
+                  }
+                  <div class="text-slate-900" [class.font-semibold]="changed(row, 'sell_price')">
+                    {{ row.sell_price === null ? '—' : (row.sell_price | number: '1.2-2') }}
+                  </div>
+                </td>
                 <td class="px-4 py-3 align-top text-xs">
                   @if (changed(row, 'active')) {
                     <div class="text-[11px] text-slate-400 line-through">
@@ -454,7 +476,7 @@
             } @empty {
               <tr>
                 <td
-                  colspan="7"
+                  colspan="9"
                   class="px-4 py-10 text-center text-sm text-slate-400"
                 >
                   No rows in this view.
@@ -501,7 +523,7 @@
                   <p>
                     <span class="text-slate-400">Name:</span>
                     <s class="text-slate-400">{{ row.before?.name }}</s>
-                    →
+                    ?
                     <b>{{ row.name }}</b>
                   </p>
                 }
@@ -512,7 +534,7 @@
                     <s class="text-slate-400">
                       {{ row.before?.category || '—' }}
                     </s>
-                    →
+                    ?
                     <b>{{ row.category || '—' }}</b>
                   </p>
                 }
@@ -523,18 +545,32 @@
                     <s class="text-slate-400">
                       {{ row.before?.barcode || '—' }}
                     </s>
-                    →
+                    ?
                     <b>{{ row.barcode || '—' }}</b>
                   </p>
                 }
 
+                @if (changed(row, 'cost_price')) {
+                  <p>
+                    <span class="text-slate-400">Cost price:</span>
+                    <s class="text-slate-400">{{ row.before?.cost_price === null ? '—' : (row.before?.cost_price | number: '1.2-2') }}</s>
+                    → <b>{{ row.cost_price === null ? '—' : (row.cost_price | number: '1.2-2') }}</b>
+                  </p>
+                }
+                @if (changed(row, 'sell_price')) {
+                  <p>
+                    <span class="text-slate-400">Sell price:</span>
+                    <s class="text-slate-400">{{ row.before?.sell_price === null ? '—' : (row.before?.sell_price | number: '1.2-2') }}</s>
+                    → <b>{{ row.sell_price === null ? '—' : (row.sell_price | number: '1.2-2') }}</b>
+                  </p>
+                }
                 @if (changed(row, 'active')) {
                   <p>
                     <span class="text-slate-400">Active:</span>
                     <s class="text-slate-400">
                       {{ row.before?.active ? 'yes' : 'no' }}
                     </s>
-                    →
+                    ?
                     <b>{{ row.active ? 'yes' : 'no' }}</b>
                   </p>
                 }
@@ -653,5 +689,34 @@
 
 <!-- ======================= SALES ======================= -->
 } @else {
-  <app-exports mode="sales" />
+  <div class="mb-5 overflow-x-auto pb-1">
+    <div class="inline-flex min-w-max rounded-xl bg-white p-1 ring-1 ring-slate-200">
+      @for (
+        t of [
+          { key: 'import', label: 'Import from register' },
+          { key: 'export', label: 'Export' }
+        ];
+        track t.key
+      ) {
+        <button
+          type="button"
+          (click)="salesView.set($any(t.key))"
+          class="h-8 shrink-0 rounded-lg px-3 text-sm font-medium transition"
+          [class]="
+            salesView() === t.key
+              ? 'bg-slate-900 text-white'
+              : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+          "
+        >
+          {{ t.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (salesView() === 'import') {
+    <app-sales-import />
+  } @else {
+    <app-exports mode="sales" />
+  }
 }

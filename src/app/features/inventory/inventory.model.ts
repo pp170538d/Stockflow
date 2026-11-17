@@ -58,6 +58,10 @@ export interface StockMovement {
   reference: string | null;
   note: string | null;
   created_by: string | null;
-  created_at: string;
+  created_at: string;            // kad je upisano u bazu
+  occurred_at: string;           // kad se desilo (koristi ovo za prikaz)
+  unit_price: number | null;
+  unit_cost: number | null;
+  currency: string | null;
   product?: { name: string; sku: string };
 }

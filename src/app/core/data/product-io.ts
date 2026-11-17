@@ -3,13 +3,15 @@ import { supabase } from '../supabase/supabase.client';
 // ---------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------
-export type ProductColumn = 'sku' | 'name' | 'category' | 'barcode' | 'active';
+export type ProductColumn = 'sku' | 'name' | 'category' | 'barcode' | 'cost_price' | 'sell_price' | 'active';
 export type ImportAction = 'new' | 'update' | 'unchanged' | 'error';
 
 export interface ProductSnapshot {
   name: string;
   category: string | null;
   barcode: string | null;
+  cost_price: number | null;
+  sell_price: number | null;
   active: boolean;
 }
 
@@ -68,7 +70,7 @@ export const MAX_IMPORT_ROWS = 5000;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const PAGE = 1000; // Supabase returns max 1000 rows per request
 
-const HEADERS = ['SKU', 'Name', 'Category', 'Barcode', 'Active'];
+const HEADERS = ['SKU', 'Name', 'Category', 'Barcode', 'Cost price', 'Sell price', 'Active'];
 const BARCODE_COL = 3;
 
 const ALIASES: Record<string, ProductColumn> = {
@@ -82,6 +84,18 @@ const ALIASES: Record<string, ProductColumn> = {
   barcode: 'barcode',
   ean: 'barcode',
   gtin: 'barcode',
+  'cost price': 'cost_price',
+  cost_price: 'cost_price',
+  cost: 'cost_price',
+  'purchase price': 'cost_price',
+  nabavna: 'cost_price',
+  'nabavna cena': 'cost_price',
+  'sell price': 'sell_price',
+  sell_price: 'sell_price',
+  price: 'sell_price',
+  'sales price': 'sell_price',
+  prodajna: 'sell_price',
+  'prodajna cena': 'sell_price',
   active: 'active',
 };
 
@@ -89,12 +103,12 @@ const ALIASES: Record<string, ProductColumn> = {
 // Export + template
 // ---------------------------------------------------------------------
 export async function exportProducts(): Promise<string | null> {
-  const all: { sku: string; name: string; category: string | null; barcode: string | null; active: boolean }[] = [];
+  const all: { sku: string; name: string; category: string | null; barcode: string | null; cost_price: number | null; sell_price: number | null; active: boolean }[] = [];
 
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
       .from('products')
-      .select('sku, name, category, barcode, active')
+      .select('sku, name, category, barcode, cost_price, sell_price, active')
       .order('sku')
       .range(from, from + PAGE - 1);
     if (error) return friendly(error.message);
@@ -104,12 +118,14 @@ export async function exportProducts(): Promise<string | null> {
 
   const XLSX = await import('xlsx');
   const rows = all.map((p) => [
-    p.sku,
-    p.name,
-    p.category ?? '',
-    p.barcode ?? '',
-    p.active ? 'yes' : 'no',
-  ]);
+  p.sku,
+  p.name,
+  p.category ?? '',
+  p.barcode ?? '',
+  p.cost_price ?? '',
+  p.sell_price ?? '',
+  p.active ? 'yes' : 'no',
+]);
   downloadSheet(XLSX, rows, `stockflow-products-${today()}.xlsx`);
   return null;
 }
@@ -118,12 +134,12 @@ export async function downloadProductTemplate(): Promise<void> {
   const XLSX = await import('xlsx');
   downloadSheet(
     XLSX,
-    [['SKU-1001', 'Mineral water 0.5 L', 'Drinks', '8600000000011', 'yes']],
+    [['SKU-1001', 'Mineral water 0.5 L', 'Drinks', '8600000000011', 80, 200, 'yes']],
     'stockflow-products-template.xlsx'
   );
 }
 
-function downloadSheet(XLSX: Xlsx, rows: string[][], fileName: string): void {
+function downloadSheet(XLSX: Xlsx, rows: (string | number)[][], fileName: string): void {
   const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...rows]);
 
   // Barcode stays text, so Excel doesn't turn it into 8.6E+12 or drop leading zeros
@@ -134,7 +150,10 @@ function downloadSheet(XLSX: Xlsx, rows: string[][], fileName: string): void {
       cell.z = '@';
     }
   }
-  ws['!cols'] = [{ wch: 16 }, { wch: 36 }, { wch: 18 }, { wch: 16 }, { wch: 8 }];
+  ws['!cols'] = [
+    { wch: 16 }, { wch: 36 }, { wch: 18 }, { wch: 16 },
+    { wch: 12 }, { wch: 12 }, { wch: 8 },
+  ];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Products');

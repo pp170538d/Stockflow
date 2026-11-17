@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import {
   ImportBatch, ImportResult, ImportRow, ParsedFile, ProductColumn, ProductSnapshot,
   downloadProductTemplate, exportProducts, importProducts, loadImportHistory, parseProductFile,
@@ -9,6 +9,7 @@ import { StockDataComponent } from './stock-data.component';
 import { ExportsComponent } from './exports.component';
 import { ActivatedRoute } from '@angular/router';
 import { inject } from '@angular/core';
+import { SalesImportComponent } from './sales-import.component';
 
 type Step = 'idle' | 'reading' | 'preview' | 'importing' | 'done';
 type Filter = 'all' | 'new' | 'update' | 'unchanged' | 'error';
@@ -24,14 +25,14 @@ const OPTIONAL: { col: ProductColumn; label: string }[] = [
 @Component({
   selector: 'app-data',
   standalone: true,
-  imports: [DatePipe, AssignmentsImportComponent, StockDataComponent, ExportsComponent],
+  imports: [DatePipe, DecimalPipe, AssignmentsImportComponent, StockDataComponent, ExportsComponent, SalesImportComponent],
   templateUrl: './data.component.html',
 })
 export class DataComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
 
   readonly tab = signal<Tab>('products');
-
+  readonly salesView = signal<'import' | 'export'>('import');
   readonly step = signal<Step>('idle');
   readonly file = signal<ParsedFile | null>(null);
   readonly result = signal<ImportResult | null>(null);

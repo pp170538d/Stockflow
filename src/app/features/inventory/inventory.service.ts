@@ -16,8 +16,9 @@ interface WindowMovement {
   product_id: string;
   event: MovementEvent;
   quantity: number;
-  created_at: string;
+  occurred_at: string;
 }
+
 
 const DAY = 86_400_000;
 const SPARK_W = 100;
@@ -61,9 +62,10 @@ export class InventoryService {
         .eq('object_id', objectId),
       supabase
         .from('stock_movements')
-        .select('product_id, event, quantity, created_at')
+        .select('product_id, event, quantity, occurred_at')
         .eq('object_id', objectId)
-        .gte('created_at', since.toISOString())
+        .gte('occurred_at', since.toISOString())
+        .order('occurred_at', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(5000),
     ]);
@@ -104,6 +106,7 @@ export class InventoryService {
       .select('*, product:products ( name, sku )', { count: 'exact' })
       .eq('object_id', objectId)
       .eq('product_id', productId)
+      .order('occurred_at', { ascending: false })
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -194,16 +197,18 @@ export class InventoryService {
   }
 
   private friendly(msg: string): string {
-    if (msg.includes('DEMO_READONLY')) return 'This action is disabled in the demo account.';
-    if (msg.includes('Insufficient stock')) return msg;
-    if (msg.includes('violates row-level security'))
-      return "You don't have permission to record a movement for this object.";
-    if (msg.includes('violates foreign key'))
-      return 'That product or object no longer exists. Please refresh and try again.';
-    if (msg.includes('Failed to fetch') || msg.includes('NetworkError'))
-      return 'Network issue - check your connection and try again.';
-    return 'Could not record the movement. Please try again.';
-  }
+  if (msg.includes('DEMO_READONLY')) return 'This action is disabled in the demo account.';
+  if (msg.includes('Insufficient stock')) return msg;
+  if (msg.includes('register import')) return msg;
+  if (msg.includes('cannot be in the future')) return msg;
+  if (msg.includes('violates row-level security'))
+    return "You don't have permission to record a movement for this object.";
+  if (msg.includes('violates foreign key'))
+    return 'That product or object no longer exists. Please refresh and try again.';
+  if (msg.includes('Failed to fetch') || msg.includes('NetworkError'))
+    return 'Network issue - check your connection and try again.';
+  return 'Could not record the movement. Please try again.';
+}
 }
 
 // ---------------------------------------------------------------------
@@ -234,7 +239,7 @@ function buildItems(rows: InventoryRow[], movs: WindowMovement[], since: Date): 
     let sold30 = 0;
 
     for (const m of list) {
-      const d = new Date(m.created_at);
+      const d = new Date(m.occurred_at);
       d.setHours(0, 0, 0, 0);
       const i = Math.round((d.getTime() - since.getTime()) / DAY);   // round = DST-safe
       if (i >= 0 && i < INSIGHT_DAYS) net[i] += m.quantity;
@@ -264,7 +269,7 @@ function buildItems(rows: InventoryRow[], movs: WindowMovement[], since: Date): 
       daysLeft: rw.daysLeft,
       urgency: rw.urgency,
       lowData: rw.lowData,
-      last: top ? { event: top.event, quantity: top.quantity, created_at: top.created_at } : null,
+      last: top ? { event: top.event, quantity: top.quantity, created_at: top.occurred_at } : null,
     };
   });
 }

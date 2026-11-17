@@ -1,78 +1,167 @@
-<!-- Header -->
+<!-- ======================= HEADER ======================= -->
 <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Locations</h1>
-    <p class="mt-1 text-sm text-slate-500">Manage your business locations.</p>
+    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">
+      Locations
+    </h1>
+
+    <p class="mt-1 text-sm text-slate-500">
+      Manage your business locations.
+    </p>
   </div>
-  <button (click)="openCreate()"
+
+  <button
+    type="button"
+    (click)="openCreate()"
     class="inline-flex shrink-0 items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
-           transition hover:bg-brand-700">
+           transition hover:bg-brand-700"
+  >
     + New location
   </button>
 </div>
 
-<!-- Search -->
+<!-- ======================= SEARCH ======================= -->
 <div class="mb-4 max-w-xs">
-  <input type="text" [value]="search()"
+  <input
+    type="text"
+    [value]="search()"
     (input)="search.set($any($event.target).value)"
     placeholder="Search locations…"
     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-           transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+           transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+  />
 </div>
 
+<!-- ======================= LIST ======================= -->
 @if (svc.loading()) {
-  <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">
+  <div
+    class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200"
+  >
     Loading locations...
   </div>
 } @else if (svc.error()) {
-  <div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">
+  <div
+    class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100"
+  >
     {{ svc.error() }}
   </div>
 } @else if (filtered().length === 0) {
-  <app-empty-state title="No locations yet"
-    subtitle="Create your first business location to get started.">
-    <button (click)="openCreate()"
+  <app-empty-state
+    title="No locations yet"
+    subtitle="Create your first business location to get started."
+  >
+    <button
+      type="button"
+      (click)="openCreate()"
       class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
-             transition hover:bg-brand-700">
+             transition hover:bg-brand-700"
+    >
       + New location
     </button>
   </app-empty-state>
 } @else {
 
-  <!-- ===== MOBILE: stacked cards (below lg) ===== -->
+  <!-- ======================= MOBILE CARDS ======================= -->
   <div class="space-y-3 lg:hidden">
     @for (obj of filtered(); track obj.id) {
       <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
-            <div class="truncate font-medium text-slate-900">{{ obj.name }}</div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="truncate font-medium text-slate-900">
+                {{ obj.name }}
+              </div>
+
+              @if (obj.code) {
+                <span
+                  class="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-500"
+                >
+                  {{ obj.code }}
+                </span>
+              }
+
+              @if (obj.sales_source === 'import') {
+                <span
+                  class="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700 ring-1 ring-brand-100"
+                >
+                  Register
+                </span>
+              }
+            </div>
+
             <div class="mt-0.5 text-xs text-slate-500">
-              {{ obj.city || '—' }}@if (obj.address) { · {{ obj.address }} }
+              {{ obj.city || '—' }}
+              @if (obj.address) {
+                · {{ obj.address }}
+              }
             </div>
           </div>
+
           @if (obj.active) {
             <app-badge tone="success">Active</app-badge>
           } @else {
             <app-badge tone="neutral">Inactive</app-badge>
           }
         </div>
-        <div class="mt-2 text-xs text-slate-400">Created {{ obj.created_at | date: 'mediumDate' }}</div>
-        <!-- actions: always visible on mobile (no hover) -->
-        <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-          <button (click)="openAssign(obj)"
-            class="rounded-md bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700">
+
+        <!-- Sales source info -->
+        <div class="mt-3 flex items-center gap-2 text-xs text-slate-500">
+          @if (obj.sales_source === 'import') {
+            <span
+              class="inline-flex items-center rounded-md bg-brand-50 px-2 py-1 text-brand-700"
+            >
+              Register import
+            </span>
+
+            @if (obj.code) {
+              <span class="font-mono text-slate-400">
+                {{ obj.code }}
+              </span>
+            }
+          } @else {
+            <span
+              class="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-slate-600"
+            >
+              Manual sales
+            </span>
+          }
+        </div>
+
+        <div class="mt-2 text-xs text-slate-400">
+          Created {{ obj.created_at | date: 'mediumDate' }}
+        </div>
+
+        <!-- actions -->
+        <div
+          class="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3"
+        >
+          <button
+            type="button"
+            (click)="openAssign(obj)"
+            class="rounded-md bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700"
+          >
             Products
           </button>
-          <button (click)="openEdit(obj)"
-            class="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600">
+
+          <button
+            type="button"
+            (click)="openEdit(obj)"
+            class="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600"
+          >
             Edit
           </button>
-          <button (click)="toggleActive(obj)"
+
+          <button
+            type="button"
+            (click)="toggleActive(obj)"
             class="rounded-md px-3 py-1.5 text-xs font-medium"
             [class.bg-red-50]="obj.active"
             [class.text-red-600]="obj.active"
             [class.bg-green-50]="!obj.active"
-            [class.text-green-600]="!obj.active">
+            [class.text-green-600]="!obj.active"
+          >
             {{ obj.active ? 'Deactivate' : 'Activate' }}
           </button>
         </div>
@@ -80,25 +169,84 @@
     }
   </div>
 
-  <!-- ===== DESKTOP: table (lg and up) ===== -->
-  <div class="hidden overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200 lg:block">
-    <table class="w-full min-w-[720px] text-left text-sm">
-      <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
+  <!-- ======================= DESKTOP TABLE ======================= -->
+  <div
+    class="hidden overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200 lg:block"
+  >
+    <table class="w-full min-w-[860px] text-left text-sm">
+      <thead
+        class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400"
+      >
         <tr>
           <th class="px-5 py-3 font-medium">Name</th>
           <th class="px-5 py-3 font-medium">City</th>
           <th class="px-5 py-3 font-medium">Address</th>
+          <th class="px-5 py-3 font-medium">Sales</th>
           <th class="px-5 py-3 font-medium">Status</th>
           <th class="px-5 py-3 font-medium">Created</th>
           <th class="px-5 py-3 text-right font-medium">Actions</th>
         </tr>
       </thead>
+
       <tbody class="divide-y divide-slate-100">
         @for (obj of filtered(); track obj.id) {
           <tr class="group transition hover:bg-slate-50/60">
-            <td class="px-5 py-3 font-medium text-slate-900">{{ obj.name }}</td>
-            <td class="px-5 py-3 text-slate-600">{{ obj.city || '—' }}</td>
-            <td class="px-5 py-3 text-slate-600">{{ obj.address || '—' }}</td>
+
+            <!-- Name -->
+            <td class="px-5 py-3">
+              <div class="font-medium text-slate-900">
+                {{ obj.name }}
+              </div>
+
+              @if (obj.code) {
+                <div class="mt-0.5 font-mono text-[11px] text-slate-400">
+                  {{ obj.code }}
+                </div>
+              }
+            </td>
+
+            <!-- City -->
+            <td class="px-5 py-3 text-slate-600">
+              {{ obj.city || '—' }}
+            </td>
+
+            <!-- Address -->
+            <td class="px-5 py-3 text-slate-600">
+              {{ obj.address || '—' }}
+            </td>
+
+            <!-- Sales source -->
+            <td class="px-5 py-3">
+              @if (obj.sales_source === 'import') {
+                <div class="flex items-center gap-2">
+                  <span
+                    class="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700 ring-1 ring-brand-100"
+                  >
+                    Register
+                  </span>
+
+                  @if (obj.code) {
+                    <span class="font-mono text-xs text-slate-400">
+                      {{ obj.code }}
+                    </span>
+                  }
+                </div>
+              } @else {
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-slate-500">
+                    Manual
+                  </span>
+
+                  @if (obj.code) {
+                    <span class="font-mono text-xs text-slate-400">
+                      {{ obj.code }}
+                    </span>
+                  }
+                </div>
+              }
+            </td>
+
+            <!-- Status -->
             <td class="px-5 py-3">
               @if (obj.active) {
                 <app-badge tone="success">Active</app-badge>
@@ -106,21 +254,40 @@
                 <app-badge tone="neutral">Inactive</app-badge>
               }
             </td>
-            <td class="px-5 py-3 text-slate-500">{{ obj.created_at | date: 'mediumDate' }}</td>
+
+            <!-- Created -->
+            <td class="px-5 py-3 text-slate-500">
+              {{ obj.created_at | date: 'mediumDate' }}
+            </td>
+
+            <!-- Actions -->
             <td class="px-5 py-3">
-              <div class="flex items-center justify-end gap-2 opacity-100 transition lg:opacity-0 lg:group-hover:opacity-100">
-                <button (click)="openAssign(obj)"
-                  class="rounded-md px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50">
+              <div
+                class="flex items-center justify-end gap-2 opacity-100 transition lg:opacity-0 lg:group-hover:opacity-100"
+              >
+                <button
+                  type="button"
+                  (click)="openAssign(obj)"
+                  class="rounded-md px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50"
+                >
                   Products
                 </button>
-                <button (click)="openEdit(obj)"
-                  class="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100">
+
+                <button
+                  type="button"
+                  (click)="openEdit(obj)"
+                  class="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                >
                   Edit
                 </button>
-                <button (click)="toggleActive(obj)"
+
+                <button
+                  type="button"
+                  (click)="toggleActive(obj)"
                   class="rounded-md px-2 py-1 text-xs font-medium hover:bg-slate-100"
                   [class.text-red-600]="obj.active"
-                  [class.text-green-600]="!obj.active">
+                  [class.text-green-600]="!obj.active"
+                >
                   {{ obj.active ? 'Deactivate' : 'Activate' }}
                 </button>
               </div>
@@ -132,98 +299,296 @@
   </div>
 }
 
-<!-- ===== CREATE / EDIT DRAWER ===== -->
-<app-drawer [open]="drawerOpen()" [title]="drawerTitle()" (close)="closeDrawer()">
-  <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4">
+<!-- ===============================================================
+     CREATE / EDIT DRAWER
+=============================================================== -->
+<app-drawer
+  [open]="drawerOpen()"
+  [title]="drawerTitle()"
+  (close)="closeDrawer()"
+>
+  <form
+    [formGroup]="form"
+    (ngSubmit)="save()"
+    class="space-y-4"
+  >
+
+    <!-- Name -->
     <div>
-      <label class="mb-1.5 block text-sm font-medium text-slate-700">Name <span class="text-red-500">*</span></label>
-      <input type="text" formControlName="name" placeholder="e.g. Belgrade Central"
+      <label class="mb-1.5 block text-sm font-medium text-slate-700">
+        Name
+        <span class="text-red-500">*</span>
+      </label>
+
+      <input
+        type="text"
+        formControlName="name"
+        placeholder="e.g. Belgrade Central"
         class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+      />
+
       @if (form.controls.name.touched && form.controls.name.invalid) {
-        <p class="mt-1 text-xs text-red-500">Name is required.</p>
+        <p class="mt-1 text-xs text-red-500">
+          Name is required.
+        </p>
       }
     </div>
 
+    <!-- City -->
     <div>
-      <label class="mb-1.5 block text-sm font-medium text-slate-700">City</label>
-      <input type="text" formControlName="city" placeholder="e.g. Beograd"
+      <label class="mb-1.5 block text-sm font-medium text-slate-700">
+        City
+      </label>
+
+      <input
+        type="text"
+        formControlName="city"
+        placeholder="e.g. Beograd"
         class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+      />
     </div>
 
+    <!-- Address -->
     <div>
-      <label class="mb-1.5 block text-sm font-medium text-slate-700">Address</label>
-      <input type="text" formControlName="address" placeholder="e.g. Knez Mihailova 1"
+      <label class="mb-1.5 block text-sm font-medium text-slate-700">
+        Address
+      </label>
+
+      <input
+        type="text"
+        formControlName="address"
+        placeholder="e.g. Knez Mihailova 1"
         class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+               transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+      />
     </div>
 
+    <!-- =========================================================
+         SALES INTEGRATION
+    ========================================================== -->
+    <div class="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+
+      <div>
+        <p class="text-sm font-semibold text-slate-900">
+          Sales integration
+        </p>
+
+        <p class="mt-0.5 text-xs text-slate-500">
+          Choose how sales are recorded for this location.
+        </p>
+      </div>
+
+      <!-- Sales source -->
+      <div class="mt-4">
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">
+          Sales source
+        </label>
+
+        <div class="grid grid-cols-2 gap-2">
+
+          <!-- Manual -->
+          <button
+            type="button"
+            (click)="form.controls.sales_source.setValue('manual')"
+            class="rounded-xl px-3 py-2.5 text-left text-sm transition ring-1"
+            [class]="
+              form.controls.sales_source.value === 'manual'
+                ? 'bg-white font-medium text-slate-900 ring-brand-400 shadow-sm'
+                : 'bg-transparent text-slate-500 ring-slate-200 hover:bg-white'
+            "
+          >
+            <span class="block">
+              Manual
+            </span>
+
+            <span class="mt-0.5 block text-[11px] font-normal text-slate-400">
+              Record sales in Stockflow
+            </span>
+          </button>
+
+          <!-- Register -->
+          <button
+            type="button"
+            (click)="form.controls.sales_source.setValue('import')"
+            class="rounded-xl px-3 py-2.5 text-left text-sm transition ring-1"
+            [class]="
+              form.controls.sales_source.value === 'import'
+                ? 'bg-white font-medium text-slate-900 ring-brand-400 shadow-sm'
+                : 'bg-transparent text-slate-500 ring-slate-200 hover:bg-white'
+            "
+          >
+            <span class="block">
+              Register import
+            </span>
+
+            <span class="mt-0.5 block text-[11px] font-normal text-slate-400">
+              Import sales from POS/register
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Location code -->
+      <div class="mt-4">
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">
+          Location code
+
+          @if (form.controls.sales_source.value === 'import') {
+            <span class="text-red-500">*</span>
+          }
+        </label>
+
+        <input
+          type="text"
+          formControlName="code"
+          maxlength="32"
+          autocomplete="off"
+          placeholder="e.g. BG-KNEZ"
+          class="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm uppercase outline-none
+                 transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+        />
+
+        <p class="mt-1 text-xs text-slate-500">
+          Used to match this location with the location code in imported sales files.
+        </p>
+
+        @if (
+          form.controls.code.touched &&
+          form.controls.code.invalid
+        ) {
+          <p class="mt-1 text-xs text-red-500">
+            Use only letters, numbers, hyphens and underscores, up to 32 characters.
+          </p>
+        }
+      </div>
+
+      <!-- Import warning -->
+      @if (form.controls.sales_source.value === 'import') {
+        <div
+          class="mt-4 rounded-xl bg-amber-50 px-3 py-2.5 text-xs text-amber-800 ring-1 ring-amber-200"
+        >
+          <div class="font-medium">
+            Manual sales will be disabled.
+          </div>
+
+          <div class="mt-0.5">
+            Sales and returns for this location will come from the register import.
+            Inventory movements, stock counts, transfers and orders remain available.
+          </div>
+        </div>
+      }
+
+    </div>
+
+    <!-- Active -->
     <label class="flex items-center gap-2 text-sm text-slate-700">
-      <input type="checkbox" formControlName="active"
-        class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/20" />
+      <input
+        type="checkbox"
+        formControlName="active"
+        class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/20"
+      />
+
       Active
     </label>
 
+    <!-- Form error -->
     @if (formError()) {
-      <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
+      <div
+        class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100"
+      >
         {{ formError() }}
       </div>
     }
   </form>
 
+  <!-- Drawer footer -->
   <div drawer-footer class="flex justify-end gap-2">
-    <button type="button" (click)="closeDrawer()"
-      class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium
-             text-slate-700 transition hover:bg-slate-50">
+    <button
+      type="button"
+      (click)="closeDrawer()"
+      class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700
+             transition hover:bg-slate-50"
+    >
       Cancel
     </button>
-    <button type="button" (click)="save()" [disabled]="saving()"
+
+    <button
+      type="button"
+      (click)="save()"
+      [disabled]="saving()"
       class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
-             transition hover:bg-brand-700 disabled:opacity-60">
+             transition hover:bg-brand-700 disabled:opacity-60"
+    >
       {{ saving() ? 'Saving…' : 'Save' }}
     </button>
   </div>
 </app-drawer>
 
-<!-- ===== PRODUCT ASSIGNMENT DRAWER ===== -->
-<app-drawer [open]="assignOpen()"
+<!-- ===============================================================
+     PRODUCT ASSIGNMENT DRAWER
+=============================================================== -->
+<app-drawer
+  [open]="assignOpen()"
   [title]="'Products · ' + assignObjectName()"
-  (close)="closeAssign()">
-
+  (close)="closeAssign()"
+>
   <div class="mb-3">
     <p class="text-xs text-slate-500">
-      <span class="font-medium text-slate-900">{{ assignedCount() }}</span> assigned
+      <span class="font-medium text-slate-900">
+        {{ assignedCount() }}
+      </span>
+      assigned
     </p>
   </div>
 
-  <input type="text" [value]="productSearch()"
+  <input
+    type="text"
+    [value]="productSearch()"
     (input)="productSearch.set($any($event.target).value)"
     placeholder="Search products…"
     class="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none
-           transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+           transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+  />
 
   @if (assign.loading()) {
-    <p class="py-8 text-center text-sm text-slate-400">Loading products…</p>
+    <p class="py-8 text-center text-sm text-slate-400">
+      Loading products…
+    </p>
   } @else if (filteredProducts().length === 0) {
-    <p class="py-8 text-center text-sm text-slate-400">No active products found.</p>
+    <p class="py-8 text-center text-sm text-slate-400">
+      No active products found.
+    </p>
   } @else {
     <ul class="space-y-1">
       @for (p of filteredProducts(); track p.id) {
         <li>
-          <label class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5
-                        transition hover:bg-slate-50"
-                 [class.bg-brand-50]="isAssigned(p.id)">
-            <input type="checkbox"
+          <label
+            class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition hover:bg-slate-50"
+            [class.bg-brand-50]="isAssigned(p.id)"
+          >
+            <input
+              type="checkbox"
               [checked]="isAssigned(p.id)"
               (change)="toggleAssign(p.id)"
-              class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/20" />
+              class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/20"
+            />
+
             <span class="flex-1">
-              <span class="block text-sm font-medium text-slate-900">{{ p.name }}</span>
-              <span class="block font-mono text-xs text-slate-400">{{ p.sku }}</span>
+              <span class="block text-sm font-medium text-slate-900">
+                {{ p.name }}
+              </span>
+
+              <span class="block font-mono text-xs text-slate-400">
+                {{ p.sku }}
+              </span>
             </span>
+
             @if (isAssigned(p.id)) {
-              <app-badge tone="success">Assigned</app-badge>
+              <app-badge tone="success">
+                Assigned
+              </app-badge>
             }
           </label>
         </li>
@@ -232,15 +597,20 @@
   }
 
   @if (assign.error()) {
-    <div class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
+    <div
+      class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100"
+    >
       {{ assign.error() }}
     </div>
   }
 
   <div drawer-footer class="flex justify-end">
-    <button type="button" (click)="closeAssign()"
+    <button
+      type="button"
+      (click)="closeAssign()"
       class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
-             transition hover:bg-brand-700">
+             transition hover:bg-brand-700"
+    >
       Done
     </button>
   </div>

@@ -2,7 +2,6 @@ import { Injectable, computed, signal } from '@angular/core';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../../core/supabase/supabase.client';
 
-// ---------- types (mirror dashboard_summary() v2 JSON) ----------
 export type Urgency = 'out' | 'critical' | 'warning' | 'healthy' | 'idle';
 export type MovementEvent =
   'DELIVERY' | 'SALE' | 'STOCK_COUNT' | 'ADJUSTMENT' | 'TRANSFER' | 'RETURN' | 'WRITE_OFF';
@@ -25,7 +24,7 @@ export interface VarianceLine {
 export interface FlowEvents { delivery: number; sale: number; count: number; other: number; }
 export interface FlowDay {
   day: string; in: number; out: number; closing: number;
-  events?: FlowEvents;   // optional → still works against the v1 RPC
+  events?: FlowEvents;
 }
 export interface PendingOrder {
   id: string; created_at: string; store: string; units: number;
@@ -50,7 +49,12 @@ export interface DashboardSummary {
   ledger: LedgerRow[];
 }
 
-export interface BriefingPart { text: string; link?: string; tone?: 'danger' | 'warning' | 'ok'; }
+export interface BriefingPart {
+  text: string;
+  link?: string;
+  queryParams?: Record<string, string>;
+  tone?: 'danger' | 'warning' | 'ok';
+}
 export type Decision = 'APPROVED' | 'REJECTED';
 export type RangeDays = 7 | 30 | 90;
 
@@ -58,21 +62,17 @@ export type RangeDays = 7 | 30 | 90;
 export class DashboardService {
   readonly data = signal<DashboardSummary | null>(null);
   readonly loading = signal(false);
-  /** Range switch in progress → dim the chart instead of showing skeletons. */
   readonly refreshing = signal(false);
   readonly error = signal<string | null>(null);
   readonly freshIds = signal<Set<string>>(new Set());
   readonly live = signal(false);
   readonly days = signal<RangeDays>(30);
-
-  /** Orders being approved/rejected right now → instant optimistic hide. */
   readonly deciding = signal<Map<string, Decision>>(new Map());
 
   private channel: RealtimeChannel | null = null;
   private reloadTimer: ReturnType<typeof setTimeout> | null = null;
   private objectId: string | null = null;
 
-  // ---------- derived ----------
   readonly totals = computed(() => this.data()?.totals ?? null);
   readonly runningOut = computed(() => this.data()?.running_out ?? []);
   readonly critical = computed(() =>
@@ -81,21 +81,13 @@ export class DashboardService {
   readonly stores = computed(() => this.data()?.stores ?? []);
   readonly variances = computed(() => this.data()?.variances ?? null);
 
-  /** Pending orders minus the ones the user just decided on. */
   readonly pendingOrders = computed(() => {
     const hidden = this.deciding();
     return (this.data()?.pending_orders ?? []).filter((o) => !hidden.has(o.id));
   });
-
-  /** Pending count corrected for optimistic decisions. */
   readonly pendingCount = computed(() =>
     Math.max(0, (this.totals()?.pending ?? 0) - this.deciding().size));
 
-  /**
-   * Flow trimmed to start one day before the first activity, so an empty
-   * month doesn't squash all the action into the right edge. At least 7 days
-   * are always shown so a single busy day still has context.
-   */
   readonly flow = computed(() => {
     const f = this.data()?.flow ?? [];
     const first = f.findIndex((d) => d.in > 0 || d.out > 0 || d.closing !== 0);
@@ -104,7 +96,6 @@ export class DashboardService {
     return f.slice(start);
   });
 
-  /** Totals over the visible window, for the ledger equation. */
   readonly flowTotals = computed(() => {
     const f = this.flow();
     if (!f.length) return null;
@@ -123,25 +114,60 @@ export class DashboardService {
   briefing(isAdmin: boolean): BriefingPart[] {
     const d = this.data();
     if (!d) return [];
+
     const parts: BriefingPart[] = [];
-    const crit = this.critical().length;
+    const urgent = this.critical();
+    const crit = urgent.length;
     const waiting = isAdmin ? this.pendingCount() : d.totals.approved;
     const short = d.variances.net_week;
 
-    if (crit > 0) parts.push({ text: `${crit} ${crit === 1 ? 'product runs' : 'products run'} out this week`, link: isAdmin ? '/reports' : '/inventory', tone: 'danger' });
+    if (crit > 0) {
+  const objectIds = [
+    ...new Set(
+      urgent
+        .map((r) => r.object_id)
+        .filter(Boolean)
+    ),
+  ];
+
+  const queryParams: Record<string, string> = {
+    filter: 'reorder',
+  };
+
+  // Ako su svi urgent proizvodi u istoj lokaciji,
+  // odmah otvori baš tu lokaciju.
+  if (objectIds.length === 1) {
+    queryParams['object'] = objectIds[0];
+  }
+
+  parts.push({
+    text: `${crit} ${
+      crit === 1
+        ? 'product needs'
+        : 'products need'
+    } replenishment this week`,
+    link: '/inventory',
+    queryParams,
+    tone: 'danger',
+  });
+}
+
     if (waiting > 0) parts.push({
       text: isAdmin
         ? `${waiting} ${waiting === 1 ? 'order waits' : 'orders wait'} for your approval`
         : `${waiting} ${waiting === 1 ? 'delivery is' : 'deliveries are'} on the way`,
       link: '/orders', tone: 'warning',
     });
-    if (short !== 0) parts.push({ text: `deliveries this week were ${Math.abs(short)} ${short < 0 ? 'short' : 'over'}`, link: '/orders', tone: 'warning' });
+
+    if (short !== 0) parts.push({
+      text: `deliveries this week were ${Math.abs(short)} ${short < 0 ? 'short' : 'over'}`,
+      link: '/orders', tone: 'warning',
+    });
 
     if (!parts.length) return [{ text: 'Everything is covered — no shelf runs out in the next 14 days.', tone: 'ok' }];
     return parts;
   }
 
-  // ---------- loading ----------
   async load(objectId: string | null = null, days: RangeDays = this.days()): Promise<void> {
     this.objectId = objectId;
     this.days.set(days);
@@ -164,22 +190,11 @@ export class DashboardService {
     this.refreshing.set(false);
   }
 
-  // ---------- approve / reject ----------
-  /**
-   * Same write as OrdersService.setStatus — RLS decides if it's allowed.
-   * Optimistic: the card disappears immediately; on failure it comes back.
-   * Returns an error message or null.
-   */
   async decide(orderId: string, status: Decision | 'PENDING'): Promise<string | null> {
-    if (status !== 'PENDING') {
-      this.deciding.update((m) => new Map(m).set(orderId, status));
-    }
+    if (status !== 'PENDING') this.deciding.update((m) => new Map(m).set(orderId, status));
 
     const { data, error } = await supabase
-      .from('orders')
-      .update({ status })
-      .eq('id', orderId)
-      .select('id');
+      .from('orders').update({ status }).eq('id', orderId).select('id');
 
     const failed = !!error || !data || data.length === 0;
     if (failed && status !== 'PENDING') this.forget(orderId);
@@ -194,21 +209,16 @@ export class DashboardService {
     this.deciding.update((m) => { const n = new Map(m); n.delete(orderId); return n; });
   }
 
-  // ---------- realtime ----------
   connect(): void {
     if (this.channel) return;
     this.channel = supabase
       .channel('dashboard-live')
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'stock_movements' },
-        (payload) => {
-          const id = (payload.new as { id?: string }).id;
-          if (id) this.freshIds.update((s) => new Set(s).add(id));
-          this.scheduleReload();
-        })
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'orders' },
-        () => this.scheduleReload())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stock_movements' }, (payload) => {
+        const id = (payload.new as { id?: string }).id;
+        if (id) this.freshIds.update((s) => new Set(s).add(id));
+        this.scheduleReload();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => this.scheduleReload())
       .subscribe((status) => this.live.set(status === 'SUBSCRIBED'));
   }
 

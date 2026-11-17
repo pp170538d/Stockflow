@@ -1,445 +1,283 @@
-<!-- ======================= HEADER + BRIEFING ======================= -->
+<!-- ======================= HEADER + GLOBAL PERIOD ======================= -->
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
   <div class="min-w-0">
     <p class="text-sm text-slate-500">{{ greeting() }}{{ firstName() ? ', ' + firstName() : '' }}.</p>
-
     @if (svc.loading()) {
-      <div class="mt-2 space-y-2">
-        <div class="skeleton h-7 w-[min(520px,90%)]"></div>
-        <div class="skeleton h-7 w-[min(340px,60%)]"></div>
-      </div>
+    <div class="mt-2 space-y-2">
+      <div class="skeleton h-7 w-[min(520px,90%)]"></div>
+      <div class="skeleton h-7 w-[min(340px,60%)]"></div>
+    </div>
     } @else {
-      <h1 class="mt-1 max-w-3xl text-2xl font-semibold leading-snug tracking-tight text-slate-900 sm:text-[28px]">
-        @for (p of briefing(); track $index; let last = $last; let first = $first) {
-          @if (!first) { <span class="text-slate-400">{{ last ? ' and ' : ', ' }}</span> }
-          @if (p.link) {
-            <a [routerLink]="p.link"
-               class="underline decoration-2 underline-offset-4 transition hover:opacity-80"
-               [class.decoration-red-300]="p.tone === 'danger'"
-               [class.decoration-amber-300]="p.tone === 'warning'">{{ p.text }}</a>
-          } @else {
-            <span>{{ p.text }}</span>
-          }
-        }
-        @if (briefing()[0]?.tone !== 'ok') { <span>.</span> }
-      </h1>
+    <h1 class="mt-1 max-w-3xl text-2xl font-semibold leading-snug tracking-tight text-slate-900 sm:text-[28px]">
+      @for (p of briefing(); track $index; let last = $last; let first = $first) {
+      @if (!first) { <span class="text-slate-400">{{ last ? ' and ' : ', ' }}</span> }
+      @if (p.link) {
+      <a [routerLink]="p.link" [queryParams]="p.queryParams ?? null"
+        class="underline decoration-2 underline-offset-4 transition hover:opacity-80"
+        [class.decoration-red-300]="p.tone === 'danger'" [class.decoration-amber-300]="p.tone === 'warning'">
+        {{ p.text }}
+      </a>
+      } @else { <span>{{ p.text }}</span> }
+      }
+      @if (briefing()[0]?.tone !== 'ok') { <span>.</span> }
+    </h1>
+    <p class="mt-1 text-xs text-slate-400">{{ isAdmin() ? 'Across all locations' : 'Your location' }} · Last {{
+      svc.days() }} days</p>
     }
   </div>
 
-  <div class="flex shrink-0 items-center gap-2">
-    <span class="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium ring-1 ring-slate-200"
-          [class.text-green-700]="svc.live()" [class.text-slate-400]="!svc.live()">
+  <div class="flex shrink-0 flex-wrap items-center gap-2">
+    <div class="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 text-xs font-medium">
+      @for (r of ranges; track r) {
+      <button type="button" (click)="svc.setRange(r)" [disabled]="svc.refreshing()"
+        class="rounded-md px-2.5 py-1 transition disabled:cursor-wait" [class.bg-white]="svc.days() === r"
+        [class.shadow-sm]="svc.days() === r" [class.text-slate-900]="svc.days() === r"
+        [class.text-slate-500]="svc.days() !== r">{{ r }}d</button>
+      }
+    </div>
+    <span
+      class="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium ring-1 ring-slate-200"
+      [class.text-green-700]="svc.live()" [class.text-slate-400]="!svc.live()">
       <span class="relative flex h-2 w-2">
-        @if (svc.live()) { <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60"></span> }
-        <span class="relative inline-flex h-2 w-2 rounded-full" [class.bg-green-500]="svc.live()" [class.bg-slate-300]="!svc.live()"></span>
-      </span>
-      {{ svc.live() ? 'Live' : 'Connecting…' }}
+        @if (svc.live()) { <span
+          class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60"></span> }
+        <span class="relative inline-flex h-2 w-2 rounded-full" [class.bg-green-500]="svc.live()"
+          [class.bg-slate-300]="!svc.live()"></span>
+      </span>{{ svc.live() ? 'Live' : 'Connecting…' }}
     </span>
-    <a routerLink="/orders/new" class="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700">
-      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-      New order
+    <a routerLink="/orders/new"
+      class="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round">
+        <path d="M12 5v14M5 12h14" />
+      </svg>New order
     </a>
   </div>
 </div>
 
-@if (svc.error()) {
-  <div class="mb-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{{ svc.error() }}</div>
-}
+@if (svc.error()) { <div class="mb-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{{
+  svc.error() }}</div> }
 
-<!-- ======================= NEEDS ATTENTION ======================= -->
-<div class="grid gap-4 lg:grid-cols-3">
+<!-- Business KPIs + health + unified attention feed -->
+<app-inventory-performance />
 
-  <!-- Running out -->
-  <section class="flex flex-col rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-    <div class="flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-slate-900">Running out</h2>
-      <a [routerLink]="runwayLink()" class="text-xs font-medium text-brand-600 hover:text-brand-700">Runway →</a>
-    </div>
-
-    @if (svc.loading()) {
-      <div class="mt-4 space-y-3">@for (i of [1,2,3]; track i) { <div class="skeleton h-9"></div> }</div>
-    } @else if (svc.runningOut().length === 0) {
-      <div class="flex flex-1 flex-col items-center justify-center py-6 text-center">
-        <div class="grid h-10 w-10 place-items-center rounded-full bg-green-50 text-green-600">
-          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-        </div>
-        <p class="mt-3 text-sm font-medium text-slate-900">Every shelf is covered</p>
-        <p class="mt-0.5 text-xs text-slate-500">Nothing runs out in the next 14 days.</p>
-      </div>
-    } @else {
-      <ul class="mt-4 space-y-3">
-        @for (r of svc.runningOut().slice(0, 4); track r.object_id + r.product_id) {
-          <li>
-            <div class="flex items-center justify-between gap-3">
-              <div class="min-w-0">
-                <div class="truncate text-sm font-medium text-slate-900">{{ r.name }}</div>
-                <div class="truncate text-xs text-slate-400">
-                  {{ isAdmin() ? r.store + ' · ' : '' }}{{ r.on_hand }} on hand · {{ r.daily_rate | number: '1.0-1' }}/day
-                </div>
-              </div>
-              <app-badge [tone]="urgencyTone(r.urgency)">{{ urgencyLabel(r.urgency, r.days_left) }}</app-badge>
-            </div>
-            <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-              <div class="h-full rounded-full transition-all duration-700"
-                   [class.bg-red-400]="r.urgency === 'out' || r.urgency === 'critical'"
-                   [class.bg-amber-400]="r.urgency === 'warning'"
-                   [style.width.%]="runwayPct(r.days_left, r.on_hand)"></div>
-            </div>
-          </li>
-        }
-      </ul>
-      <a routerLink="/orders/new" class="mt-4 inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-800">
-        Reorder now
-      </a>
-    }
-  </section>
-
-  <!-- Waiting on you -->
+<!-- ======================= OPERATIONS ======================= -->
+<div class="mt-4 grid gap-4 lg:grid-cols-2">
   <section class="flex flex-col rounded-2xl bg-white p-5 ring-1 ring-slate-200">
     <div class="flex items-center justify-between">
       <h2 class="flex items-center gap-2 text-sm font-semibold text-slate-900">
         {{ isAdmin() ? 'Waiting for approval' : 'On the way' }}
         @let waitN = isAdmin() ? svc.pendingCount() : (svc.totals()?.approved ?? 0);
-        @if (waitN > 0) {
-          <span class="grid h-5 min-w-5 place-items-center rounded-full bg-amber-100 px-1.5 text-[11px] font-semibold text-amber-700">{{ waitN }}</span>
-        }
+        @if (waitN > 0) { <span
+          class="grid h-5 min-w-5 place-items-center rounded-full bg-amber-100 px-1.5 text-[11px] font-semibold text-amber-700">{{
+          waitN }}</span> }
       </h2>
       <a routerLink="/orders" class="text-xs font-medium text-brand-600 hover:text-brand-700">Orders →</a>
     </div>
-
     @if (svc.loading()) {
-      <div class="mt-4 space-y-2"><div class="skeleton h-20"></div></div>
+    <div class="mt-4">
+      <div class="skeleton h-20"></div>
+    </div>
     } @else if (isAdmin()) {
-      <!-- ADMIN: decide right here -->
-      @if (svc.pendingOrders().length === 0) {
-        <div class="flex flex-1 flex-col items-center justify-center py-6 text-center card-in">
-          <div class="grid h-10 w-10 place-items-center rounded-full bg-green-50 text-green-600">
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-          </div>
-          <p class="mt-3 text-sm font-medium text-slate-900">Inbox zero</p>
-          <p class="mt-0.5 text-xs text-slate-500">No orders are waiting for you.</p>
-        </div>
-      } @else {
-        <ul class="mt-4 space-y-2">
-          @for (o of svc.pendingOrders().slice(0, 2); track o.id) {
-            <li class="card-in rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100 transition"
-                [class.opacity-50]="busy() === o.id">
-              <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0">
-                  <div class="truncate text-sm font-semibold text-slate-900">{{ o.store }}</div>
-                  <div class="truncate text-xs text-slate-500">{{ linesLabel(o) }}</div>
-                </div>
-                <span class="shrink-0 text-[11px] text-slate-400">{{ ago(o.created_at) }}</span>
-              </div>
-              <div class="mt-3 flex gap-2">
-                <button type="button" (click)="approve(o)" [disabled]="busy() === o.id"
-                        class="flex-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-800 disabled:cursor-wait">
-                  Approve · {{ o.units }} units
-                </button>
-                <button type="button" (click)="reject(o)" [disabled]="busy() === o.id"
-                        class="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-red-600 ring-1 ring-slate-200 transition hover:bg-red-50 disabled:cursor-wait">
-                  Reject
-                </button>
-              </div>
-            </li>
-          }
-        </ul>
-        @if (svc.pendingOrders().length > 2) {
-          <a routerLink="/orders" class="mt-3 text-center text-xs font-medium text-slate-500 hover:text-slate-700">
-            +{{ svc.pendingOrders().length - 2 }} more waiting
-          </a>
-        }
-      }
+    @if (svc.pendingOrders().length === 0) {
+    <div class="flex flex-1 flex-col items-center justify-center py-6 text-center card-in">
+      <div class="grid h-10 w-10 place-items-center rounded-full bg-green-50 text-green-600"><svg class="h-5 w-5"
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 6 9 17l-5-5" />
+        </svg></div>
+      <p class="mt-3 text-sm font-medium text-slate-900">Inbox zero</p>
+      <p class="mt-0.5 text-xs text-slate-500">No orders are waiting for you.</p>
+    </div>
     } @else {
-      <!-- SELLER: what is coming -->
-      @let incoming = svc.totals()?.approved ?? 0;
-      <div class="mt-4 flex items-end gap-3">
-        <span class="text-5xl font-semibold tracking-tight tabular-nums"
-              [class.text-slate-900]="incoming > 0" [class.text-slate-300]="incoming === 0">{{ incoming }}</span>
-        <span class="mb-1.5 text-sm text-slate-500">{{ incoming === 1 ? 'approved order to receive' : 'approved orders to receive' }}</span>
-      </div>
-      <p class="mt-2 text-xs text-slate-400">{{ svc.totals()?.pending ?? 0 }} still waiting for head office.</p>
-      @if (incoming > 0) {
-        <a routerLink="/orders" class="mt-auto inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-800">
-          Confirm a delivery
-        </a>
+    <ul class="mt-4 space-y-2">
+      @for (o of svc.pendingOrders().slice(0, 2); track o.id) {
+      <li class="card-in rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100 transition"
+        [class.opacity-50]="busy() === o.id">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <div class="truncate text-sm font-semibold text-slate-900">{{ o.store }}</div>
+            <div class="truncate text-xs text-slate-500">{{ linesLabel(o) }}</div>
+          </div><span class="shrink-0 text-[11px] text-slate-400">{{ ago(o.created_at) }}</span>
+        </div>
+        <div class="mt-3 flex gap-2"><button type="button" (click)="approve(o)" [disabled]="busy() === o.id"
+            class="flex-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-wait">Approve
+            · {{ o.units }} units</button><button type="button" (click)="reject(o)" [disabled]="busy() === o.id"
+            class="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-red-600 ring-1 ring-slate-200 hover:bg-red-50 disabled:cursor-wait">Reject</button>
+        </div>
+      </li>
       }
+    </ul>
+    @if (svc.pendingOrders().length > 2) { <a routerLink="/orders"
+      class="mt-3 text-center text-xs font-medium text-slate-500 hover:text-slate-700">+{{ svc.pendingOrders().length -
+      2 }} more waiting</a> }
+    }
+    } @else {
+    @let incoming = svc.totals()?.approved ?? 0;
+    <div class="mt-4 flex items-end gap-3"><span class="text-5xl font-semibold tracking-tight tabular-nums"
+        [class.text-slate-900]="incoming > 0" [class.text-slate-300]="incoming === 0">{{ incoming }}</span><span
+        class="mb-1.5 text-sm text-slate-500">{{ incoming === 1 ? 'approved order to receive' : 'approved orders to
+        receive' }}</span></div>
+    <p class="mt-2 text-xs text-slate-400">{{ svc.totals()?.pending ?? 0 }} still waiting for head office.</p>
+    @if (incoming > 0) { <a routerLink="/orders"
+      class="mt-auto inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Confirm
+      a delivery</a> }
     }
   </section>
 
-  <!-- Unexplained stock -->
   <section class="flex flex-col rounded-2xl bg-white p-5 ring-1 ring-slate-200">
     <div class="flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-slate-900">Stock differences · 7 days</h2>
-      <a routerLink="/stock-count/history" class="text-xs font-medium text-brand-600 hover:text-brand-700">Counts →</a>
+      <h2 class="text-sm font-semibold text-slate-900">Stock accuracy · 7 days</h2><a routerLink="/stock-count/history"
+        class="text-xs font-medium text-brand-600 hover:text-brand-700">Counts →</a>
     </div>
-    @if (svc.loading()) {
-      <div class="skeleton mt-4 h-16"></div>
-    } @else {
-      @let v = svc.variances();
-      <div class="mt-4 grid grid-cols-2 gap-3">
-        <div>
-          <div class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Deliveries</div>
-          <div class="mt-0.5 text-2xl font-semibold tabular-nums"
-               [class.text-red-600]="(v?.net_week ?? 0) < 0" [class.text-blue-600]="(v?.net_week ?? 0) > 0"
-               [class.text-slate-300]="(v?.net_week ?? 0) === 0">
-            {{ (v?.net_week ?? 0) > 0 ? '+' : '' }}{{ v?.net_week ?? 0 }}
-          </div>
-        </div>
-        <div>
-          <div class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Shelf counts</div>
-          <div class="mt-0.5 text-2xl font-semibold tabular-nums"
-               [class.text-red-600]="(v?.count_net_week ?? 0) < 0" [class.text-blue-600]="(v?.count_net_week ?? 0) > 0"
-               [class.text-slate-300]="(v?.count_net_week ?? 0) === 0">
-            {{ (v?.count_net_week ?? 0) > 0 ? '+' : '' }}{{ v?.count_net_week ?? 0 }}
-          </div>
-        </div>
-      </div>
-      @if (v?.lines?.length) {
-        <ul class="mt-4 divide-y divide-slate-100 border-t border-slate-100">
-          @for (l of v!.lines.slice(0, 3); track $index) {
-            <li class="flex items-center justify-between gap-2 py-2 text-xs">
-              <div class="min-w-0">
-                <div class="truncate font-medium text-slate-800">{{ l.name }} · {{ l.delivered_qty }}/{{ l.ordered_qty }}</div>
-                <div class="truncate text-slate-400">{{ l.reason || 'no reason given' }}</div>
-              </div>
-              <app-badge [tone]="l.variance < 0 ? 'warning' : 'info'">{{ l.variance < 0 ? 'Short' : 'Over' }} {{ abs(l.variance) }}</app-badge>
-            </li>
-          }
-        </ul>
-      } @else {
-        <p class="mt-4 text-xs text-slate-500">Every unit delivered and counted this week matches the system.</p>
-      }
-    }
-  </section>
-</div>
-
-<!-- ======================= STOCK FLOW + LEDGER ======================= -->
-<div class="mt-4 grid gap-4 lg:grid-cols-5">
-
-  <!-- Stock flow chart
-       top    : what is on the shelf (stepped line, revealed left -> right)
-       bottom : what moved - came in grows up (green), went out grows down (red)
-       hover  : one day column is highlighted, the readout and the equation switch to that day -->
-  <section class="rounded-2xl bg-white p-5 ring-1 ring-slate-200 lg:col-span-3">
-    <div class="flex flex-wrap items-start justify-between gap-3">
+    @if (svc.loading()) { <div class="skeleton mt-4 h-16"></div> } @else {
+    @let v = svc.variances();
+    <div class="mt-4 grid grid-cols-2 gap-3">
       <div>
-        <h2 class="text-sm font-semibold text-slate-900">Stock flow</h2>
-        <p class="mt-0.5 text-xs text-slate-400">What is on the shelf, and what moved it.</p>
+        <div class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Deliveries</div>
+        <div class="mt-0.5 text-2xl font-semibold tabular-nums" [class.text-red-600]="(v?.net_week ?? 0) < 0"
+          [class.text-blue-600]="(v?.net_week ?? 0) > 0" [class.text-slate-300]="(v?.net_week ?? 0) === 0">{{
+          (v?.net_week ?? 0) > 0 ? '+' : '' }}{{ v?.net_week ?? 0 }}</div>
       </div>
-      <div class="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 text-xs font-medium">
-        @for (r of ranges; track r) {
-          <button type="button" (click)="svc.setRange(r)"
-                  class="rounded-md px-2.5 py-1 transition"
-                  [class.bg-white]="svc.days() === r" [class.shadow-sm]="svc.days() === r"
-                  [class.text-slate-900]="svc.days() === r" [class.text-slate-500]="svc.days() !== r">{{ r }}d</button>
-        }
+      <div>
+        <div class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Shelf counts</div>
+        <div class="mt-0.5 text-2xl font-semibold tabular-nums" [class.text-red-600]="(v?.count_net_week ?? 0) < 0"
+          [class.text-blue-600]="(v?.count_net_week ?? 0) > 0" [class.text-slate-300]="(v?.count_net_week ?? 0) === 0">
+          {{ (v?.count_net_week ?? 0) > 0 ? '+' : '' }}{{ v?.count_net_week ?? 0 }}</div>
       </div>
     </div>
-
-    <!-- readout: hovered day, or "now" -->
-    <div class="mt-4 flex min-h-[52px] items-end justify-between gap-3">
-      @if (hoverDay(); as d) {
-        @for (k of [d.day]; track k) {
-          <div class="swap min-w-0">
-            <div class="truncate text-xs text-slate-400">{{ d.day | date: 'EEE, MMM d' }}{{ dayEvents(d) ? ' · ' + dayEvents(d) : (d.in || d.out ? '' : ' · no movement') }}</div>
-            <div class="mt-0.5 flex items-center gap-2">
-              <span class="text-2xl font-semibold tabular-nums text-slate-900">{{ d.closing }}</span>
-              <span class="text-xs text-slate-500">on the shelf</span>
-              @if (d.in - d.out !== 0) {
-                <span class="rounded-md px-1.5 py-0.5 font-mono text-xs font-semibold"
-                      [class.bg-green-50]="d.in > d.out" [class.text-green-700]="d.in > d.out"
-                      [class.bg-red-50]="d.in < d.out" [class.text-red-700]="d.in < d.out">{{ signed(d.in - d.out) }}</span>
-              }
-            </div>
-          </div>
-        }
-      } @else {
+    @if (v?.lines?.length) {
+    <ul class="mt-4 divide-y divide-slate-100 border-t border-slate-100">
+      @for (l of v!.lines.slice(0, 3); track $index) {
+      <li class="flex items-center justify-between gap-2 py-2 text-xs">
         <div class="min-w-0">
-          <div class="text-xs text-slate-400">On the shelf now{{ isAdmin() ? ' · all stores and products' : ' · all products' }}</div>
-          <div class="mt-0.5 flex items-center gap-2">
-            <span class="text-2xl font-semibold tabular-nums text-slate-900">{{ svc.totals()?.on_hand ?? 0 }}</span>
-            <span class="text-xs text-slate-500">units</span>
-            @if (periodNet() !== 0) {
-              <span class="rounded-md px-1.5 py-0.5 font-mono text-xs font-semibold"
-                    [class.bg-green-50]="periodNet() > 0" [class.text-green-700]="periodNet() > 0"
-                    [class.bg-red-50]="periodNet() < 0" [class.text-red-700]="periodNet() < 0">{{ signed(periodNet()) }} in {{ svc.days() }}d</span>
-            }
+          <div class="truncate font-medium text-slate-800">{{ l.name }} · {{ l.delivered_qty }}/{{ l.ordered_qty }}
           </div>
-        </div>
+          <div class="truncate text-slate-400">{{ l.reason || 'no reason given' }}</div>
+        </div><app-badge [tone]="l.variance < 0 ? 'warning' : 'info'">{{ l.variance < 0 ? 'Short' : 'Over' }} {{
+            abs(l.variance) }}</app-badge>
+      </li>
       }
-      <div class="hidden shrink-0 items-center gap-3 text-[11px] text-slate-500 sm:flex">
-        <span class="flex items-center gap-1.5"><span class="h-0.5 w-3.5 rounded bg-brand-600"></span>On shelf</span>
-        <span class="flex items-center gap-1.5"><span class="h-2.5 w-1.5 rounded-sm bg-green-500"></span>Came in</span>
-        <span class="flex items-center gap-1.5"><span class="h-2.5 w-1.5 rounded-sm bg-red-400"></span>Went out</span>
-      </div>
-    </div>
-
-    @if (svc.loading()) {
-      <div class="skeleton mt-3 h-60"></div>
-    } @else {
-      <div class="mt-3 flex gap-2 transition-opacity" [class.opacity-40]="svc.refreshing()">
-
-        <!-- axis labels: balance scale on top, in/out band below -->
-        <div class="w-7 shrink-0 text-right text-[10px] tabular-nums text-slate-400">
-          <div class="relative h-40">
-            @for (t of yTicks(); track t.v) {
-              <span class="absolute right-0 -translate-y-1/2" [style.top.%]="t.top">{{ t.v }}</span>
-            }
-          </div>
-          <div class="relative h-20">
-            <span class="absolute right-0 top-[25%] -translate-y-1/2 text-green-600">in</span>
-            <span class="absolute right-0 top-[75%] -translate-y-1/2 text-red-500">out</span>
-          </div>
-        </div>
-
-        <!-- plot: one column per day, shared by line, bars and hover -->
-        <div class="relative flex-1 cursor-crosshair touch-pan-y select-none"
-             (pointermove)="onChartMove($event)" (pointerdown)="onChartMove($event)" (pointerleave)="hover.set(null)">
-
-          <!-- hovered day column -->
-          @if (hover() !== null) {
-            <div class="pointer-events-none absolute inset-y-0 rounded-md bg-slate-100"
-                 [style.left.%]="(centerPct(hover()!) - colWidthPct() / 2)" [style.width.%]="colWidthPct()"></div>
-          }
-
-          <!-- balance line -->
-          <div class="relative h-40">
-            @for (t of yTicks(); track t.v) {
-              <div class="pointer-events-none absolute inset-x-0 border-t border-dashed border-slate-100" [style.top.%]="t.top"></div>
-            }
-
-            @for (q of quietRuns(); track q.left) {
-              <div class="pointer-events-none absolute bottom-3 flex justify-center" [style.left.%]="q.left" [style.width.%]="q.width">
-                <span class="whitespace-nowrap rounded-full bg-white/90 px-2 py-0.5 text-[10px] text-slate-400 ring-1 ring-slate-100">{{ q.days }} quiet days</span>
-              </div>
-            }
-
-            @for (k of [svc.days()]; track k) {
-              <svg class="reveal absolute inset-0 h-full w-full overflow-visible" [attr.viewBox]="'0 0 ' + W + ' ' + H" preserveAspectRatio="none" aria-hidden="true">
-                <defs>
-                  <linearGradient id="flowFill" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stop-color="#6366f1" stop-opacity=".14" />
-                    <stop offset="100%" stop-color="#6366f1" stop-opacity="0" />
-                  </linearGradient>
-                </defs>
-                <path [attr.d]="areaPath()" fill="url(#flowFill)" />
-                <path [attr.d]="linePath()" fill="none" stroke="#4f46e5" stroke-width="2.25"
-                      vector-effect="non-scaling-stroke" stroke-linejoin="round" />
-              </svg>
-            }
-
-            <!-- today -->
-            @if (endDot(); as e) {
-              <span class="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2" [style.left.%]="e.left" [style.top.%]="e.top">
-                @if (svc.live()) { <span class="live-ping absolute inset-0 rounded-full bg-brand-500"></span> }
-                <span class="relative block h-2.5 w-2.5 rounded-full bg-brand-600 ring-2 ring-white"></span>
-              </span>
-            }
-          </div>
-
-          <!-- what moved: in up, out down, from one baseline -->
-          <div class="relative h-20 border-t border-slate-200">
-            <div class="pointer-events-none absolute inset-x-0 top-1/2 border-t border-slate-200"></div>
-            <div class="absolute inset-0 flex">
-              @for (b of bars(); track $index; let i = $index) {
-                <div class="flex h-full flex-1 flex-col items-center px-[1px]">
-                  <div class="flex h-1/2 w-full items-end justify-center">
-                    <div class="w-[60%] max-w-[10px] rounded-t-sm transition-[height,background-color] duration-500"
-                         [class.bg-green-500]="hover() === i" [class.bg-green-400]="hover() !== i"
-                         [style.height.%]="b.inPct"></div>
-                  </div>
-                  <div class="flex h-1/2 w-full items-start justify-center">
-                    <div class="w-[60%] max-w-[10px] rounded-b-sm transition-[height,background-color] duration-500"
-                         [class.bg-red-500]="hover() === i" [class.bg-red-300]="hover() !== i"
-                         [style.height.%]="b.outPct"></div>
-                  </div>
-                </div>
-              }
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- dates -->
-      <div class="ml-9 mt-2 flex items-center justify-between text-[11px] text-slate-400">
-        <span>{{ svc.flow()[0]?.day | date: 'MMM d' }}</span>
-        @if (midDay(); as m) { <span>{{ m | date: 'MMM d' }}</span> }
-        <span>Today</span>
-      </div>
-
-      <!-- the ledger equation: whole period, or the hovered day -->
-      @if (equation(); as q) {
-        @for (k of [q.key]; track k) {
-          <div class="swap mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-xl bg-slate-50 px-4 py-3 text-sm tabular-nums ring-1 ring-slate-100">
-            <span class="w-full text-center text-[10px] font-medium uppercase tracking-widest text-slate-400 sm:w-auto sm:text-left">
-              {{ q.day ? (q.day | date: 'MMM d') : 'Last ' + svc.days() + ' days' }}
-            </span>
-            <span class="flex flex-col items-center leading-tight"><span class="font-semibold text-slate-500">{{ q.opening }}</span><span class="text-[10px] text-slate-400">{{ q.day ? 'start of day' : 'opening' }}</span></span>
-            <span class="text-slate-300">+</span>
-            <span class="flex flex-col items-center leading-tight"><span class="font-semibold text-green-600">{{ q.in }}</span><span class="text-[10px] text-slate-400">came in</span></span>
-            <span class="text-slate-300">−</span>
-            <span class="flex flex-col items-center leading-tight"><span class="font-semibold text-red-600">{{ q.out }}</span><span class="text-[10px] text-slate-400">went out</span></span>
-            <span class="text-slate-300">=</span>
-            <span class="flex flex-col items-center rounded-lg bg-brand-50 px-3 py-0.5 leading-tight"><span class="font-semibold text-brand-700">{{ q.closing }}</span><span class="text-[10px] text-brand-600/70">on the shelf</span></span>
-          </div>
-        }
-      }
+    </ul>
+    } @else { <p class="mt-4 text-xs text-slate-500">Every unit delivered and counted this week matches the system.</p>
     }
-  </section>
-
-  <!-- Live ledger -->
-  <section class="flex flex-col rounded-2xl bg-white ring-1 ring-slate-200 lg:col-span-2">
-    <div class="flex items-center justify-between px-5 pt-5">
-      <h2 class="text-sm font-semibold text-slate-900">Live ledger</h2>
-      <a routerLink="/inventory" class="text-xs font-medium text-brand-600 hover:text-brand-700">Inventory →</a>
-    </div>
-    @if (svc.loading()) {
-      <div class="space-y-3 p-5">@for (i of [1,2,3,4,5]; track i) { <div class="skeleton h-10"></div> }</div>
-    } @else if (svc.ledger().length === 0) {
-      <p class="p-5 text-sm text-slate-500">No stock movements yet. The first delivery will appear here.</p>
-    } @else {
-      <ul class="mt-3 flex-1 divide-y divide-slate-100 overflow-y-auto lg:max-h-[420px]">
-        @for (l of svc.ledger(); track l.id) {
-          <li class="flex items-center gap-3 px-5 py-2.5" [class.row-in]="isFresh(l)">
-            <span class="w-11 shrink-0 text-right font-mono text-sm font-semibold tabular-nums"
-                  [class.text-green-600]="l.quantity > 0" [class.text-red-600]="l.quantity < 0">
-              {{ l.quantity > 0 ? '+' : '' }}{{ l.quantity }}
-            </span>
-            <div class="min-w-0 flex-1">
-              <div class="truncate text-sm font-medium text-slate-900">{{ l.name }}</div>
-              <div class="truncate text-xs text-slate-400">{{ isAdmin() ? l.store + ' · ' : '' }}{{ ago(l.created_at) }}</div>
-            </div>
-            <span class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium" [class]="eventMeta[l.event].cls">{{ eventMeta[l.event].label }}</span>
-          </li>
-        }
-      </ul>
     }
   </section>
 </div>
 
-<!-- ======================= STORE HEALTH (admin, 2+ stores) ======================= -->
-@if (isAdmin() && svc.stores().length > 1) {
-  <section class="mt-4 rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-    <div class="flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-slate-900">Store health</h2>
-      <span class="text-xs text-slate-400">worst product decides the colour</span>
+<!-- ======================= STOCK FLOW ======================= -->
+<section class="mt-4 rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+  <div>
+    <h2 class="text-sm font-semibold text-slate-900">Stock flow</h2>
+    <p class="mt-0.5 text-xs text-slate-400">What is on the shelf, and what moved it over the selected {{ svc.days()
+      }}-day period.</p>
+  </div>
+
+  <div class="mt-4 flex min-h-[52px] items-end justify-between gap-3">
+    @if (hoverDay(); as d) {
+    @for (k of [d.day]; track k) {
+    <div class="swap min-w-0">
+      <div class="truncate text-xs text-slate-400">{{ d.day | date: 'EEE, MMM d' }}{{ dayEvents(d) ? ' · ' +
+        dayEvents(d) : (d.in || d.out ? '' : ' · no movement') }}</div>
+      <div class="mt-0.5 flex items-center gap-2"><span class="text-2xl font-semibold tabular-nums text-slate-900">{{
+          d.closing }}</span><span class="text-xs text-slate-500">on the shelf</span>@if (d.in - d.out !== 0) { <span
+          class="rounded-md px-1.5 py-0.5 font-mono text-xs font-semibold" [class.bg-green-50]="d.in > d.out"
+          [class.text-green-700]="d.in > d.out" [class.bg-red-50]="d.in < d.out" [class.text-red-700]="d.in < d.out">{{
+          signed(d.in - d.out) }}</span> }</div>
     </div>
-    <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      @for (s of svc.stores(); track s.id) {
-        <a routerLink="/inventory" [queryParams]="{ object: s.id }"
-           class="rounded-xl p-3 ring-1 transition hover:-translate-y-0.5 hover:shadow-md" [class]="storeTone(s)">
-          <div class="flex items-center gap-2">
-            <span class="h-2 w-2 rounded-full" [class]="storeDot(s)"></span>
-            <span class="truncate text-sm font-medium text-slate-900">{{ s.name }}</span>
-          </div>
-          <div class="mt-2 text-xs text-slate-500">
-            {{ s.on_hand }} units
-            @if (s.critical) { · <span class="font-medium text-red-600">{{ s.critical }} critical</span> }
-            @if (s.warning) { · <span class="font-medium text-amber-600">{{ s.warning }} low</span> }
-          </div>
-        </a>
-      }
+    }
+    } @else {
+    <div class="min-w-0">
+      <div class="text-xs text-slate-400">On the shelf now{{ isAdmin() ? ' · all locations and products' : ' · all
+        products' }}</div>
+      <div class="mt-0.5 flex items-center gap-2"><span class="text-2xl font-semibold tabular-nums text-slate-900">{{
+          svc.totals()?.on_hand ?? 0 }}</span><span class="text-xs text-slate-500">units</span>@if (periodNet() !== 0) {
+        <span class="rounded-md px-1.5 py-0.5 font-mono text-xs font-semibold" [class.bg-green-50]="periodNet() > 0"
+          [class.text-green-700]="periodNet() > 0" [class.bg-red-50]="periodNet() < 0"
+          [class.text-red-700]="periodNet() < 0">{{ signed(periodNet()) }} in {{ svc.days() }}d</span> }</div>
     </div>
-  </section>
-}
+    }
+    <div class="hidden shrink-0 items-center gap-3 text-[11px] text-slate-500 sm:flex"><span
+        class="flex items-center gap-1.5"><span class="h-0.5 w-3.5 rounded bg-brand-600"></span>On shelf</span><span
+        class="flex items-center gap-1.5"><span class="h-2.5 w-1.5 rounded-sm bg-green-500"></span>Came in</span><span
+        class="flex items-center gap-1.5"><span class="h-2.5 w-1.5 rounded-sm bg-red-400"></span>Went out</span></div>
+  </div>
+
+  @if (svc.loading()) { <div class="skeleton mt-3 h-60"></div> } @else {
+  <div class="mt-3 flex gap-2 transition-opacity" [class.opacity-40]="svc.refreshing()">
+    <div class="w-7 shrink-0 text-right text-[10px] tabular-nums text-slate-400">
+      <div class="relative h-40">@for (t of yTicks(); track t.v) { <span class="absolute right-0 -translate-y-1/2"
+          [style.top.%]="t.top">{{ t.v }}</span> }</div>
+      <div class="relative h-20"><span class="absolute right-0 top-[25%] -translate-y-1/2 text-green-600">in</span><span
+          class="absolute right-0 top-[75%] -translate-y-1/2 text-red-500">out</span></div>
+    </div>
+    <div class="relative flex-1 cursor-crosshair touch-pan-y select-none" (pointermove)="onChartMove($event)"
+      (pointerdown)="onChartMove($event)" (pointerleave)="hover.set(null)">
+      @if (hover() !== null) { <div class="pointer-events-none absolute inset-y-0 rounded-md bg-slate-100"
+        [style.left.%]="(centerPct(hover()!) - colWidthPct() / 2)" [style.width.%]="colWidthPct()"></div> }
+      <div class="relative h-40">
+        @for (t of yTicks(); track t.v) { <div
+          class="pointer-events-none absolute inset-x-0 border-t border-dashed border-slate-100" [style.top.%]="t.top">
+        </div> }
+        @for (q of quietRuns(); track q.left) { <div class="pointer-events-none absolute bottom-3 flex justify-center"
+          [style.left.%]="q.left" [style.width.%]="q.width"><span
+            class="whitespace-nowrap rounded-full bg-white/90 px-2 py-0.5 text-[10px] text-slate-400 ring-1 ring-slate-100">{{
+            q.days }} quiet days</span></div> }
+        @for (k of [svc.days()]; track k) {
+        <svg class="reveal absolute inset-0 h-full w-full overflow-visible" [attr.viewBox]="'0 0 ' + W + ' ' + H"
+          preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="flowFill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#6366f1" stop-opacity=".14" />
+              <stop offset="100%" stop-color="#6366f1" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <path [attr.d]="areaPath()" fill="url(#flowFill)" />
+          <path [attr.d]="linePath()" fill="none" stroke="#4f46e5" stroke-width="2.25"
+            vector-effect="non-scaling-stroke" stroke-linejoin="round" />
+        </svg>
+        }
+        @if (endDot(); as e) { <span class="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
+          [style.left.%]="e.left" [style.top.%]="e.top">@if (svc.live()) { <span
+            class="live-ping absolute inset-0 rounded-full bg-brand-500"></span> }<span
+            class="relative block h-2.5 w-2.5 rounded-full bg-brand-600 ring-2 ring-white"></span></span> }
+      </div>
+      <div class="relative h-20 border-t border-slate-200">
+        <div class="pointer-events-none absolute inset-x-0 top-1/2 border-t border-slate-200"></div>
+        <div class="absolute inset-0 flex">@for (b of bars(); track $index; let i = $index) { <div
+            class="flex h-full flex-1 flex-col items-center px-[1px]">
+            <div class="flex h-1/2 w-full items-end justify-center">
+              <div class="w-[60%] max-w-[10px] rounded-t-sm transition-[height,background-color] duration-500"
+                [class.bg-green-500]="hover() === i" [class.bg-green-400]="hover() !== i" [style.height.%]="b.inPct">
+              </div>
+            </div>
+            <div class="flex h-1/2 w-full items-start justify-center">
+              <div class="w-[60%] max-w-[10px] rounded-b-sm transition-[height,background-color] duration-500"
+                [class.bg-red-500]="hover() === i" [class.bg-red-300]="hover() !== i" [style.height.%]="b.outPct"></div>
+            </div>
+          </div> }</div>
+      </div>
+    </div>
+  </div>
+  <div class="ml-9 mt-2 flex items-center justify-between text-[11px] text-slate-400"><span>{{ svc.flow()[0]?.day |
+      date: 'MMM d' }}</span>@if (midDay(); as m) { <span>{{ m | date: 'MMM d' }}</span> }<span>Today</span></div>
+  @if (equation(); as q) {
+  @for (k of [q.key]; track k) {
+  <div
+    class="swap mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-xl bg-slate-50 px-4 py-3 text-sm tabular-nums ring-1 ring-slate-100">
+    <span
+      class="w-full text-center text-[10px] font-medium uppercase tracking-widest text-slate-400 sm:w-auto sm:text-left">{{
+      q.day ? (q.day | date: 'MMM d') : 'Last ' + svc.days() + ' days' }}</span><span
+      class="flex flex-col items-center leading-tight"><span class="font-semibold text-slate-500">{{ q.opening
+        }}</span><span class="text-[10px] text-slate-400">{{ q.day ? 'start of day' : 'opening' }}</span></span><span
+      class="text-slate-300">+</span><span class="flex flex-col items-center leading-tight"><span
+        class="font-semibold text-green-600">{{ q.in }}</span><span class="text-[10px] text-slate-400">came
+        in</span></span><span class="text-slate-300">−</span><span
+      class="flex flex-col items-center leading-tight"><span class="font-semibold text-red-600">{{ q.out }}</span><span
+        class="text-[10px] text-slate-400">went out</span></span><span class="text-slate-300">=</span><span
+      class="flex flex-col items-center rounded-lg bg-brand-50 px-3 py-0.5 leading-tight"><span
+        class="font-semibold text-brand-700">{{ q.closing }}</span><span class="text-[10px] text-brand-600/70">on the
+        shelf</span></span></div>
+  }
+  }
+  }
+</section>

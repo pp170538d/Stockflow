@@ -181,8 +181,8 @@ export class InventoryComponent implements OnInit {
   readonly saving = signal(false);
   readonly formError = signal<string | null>(null);
   readonly manualEvents = computed(() =>
-  this.isAdmin() ? MANUAL_EVENTS : MANUAL_EVENTS.filter((e) => e !== 'ADJUSTMENT')
-);
+    this.isAdmin() ? MANUAL_EVENTS : MANUAL_EVENTS.filter((e) => e !== 'ADJUSTMENT')
+  );
 
   readonly form = this.fb.nonNullable.group({
     product_id: ['', [Validators.required]],
@@ -229,28 +229,90 @@ export class InventoryComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    const fromLink = this.route.snapshot.queryParamMap.get('object');
+    const params = this.route.snapshot.queryParamMap;
+
+    const requestedObjectId = params.get('object');
+    const requestedFilter = params.get('filter') as Filter | null;
 
     if (this.isAdmin()) {
-      const { data } = await supabase.from('objects').select('*').eq('active', true).order('name');
+      const { data } = await supabase
+        .from('objects')
+        .select('*')
+        .eq('active', true)
+        .order('name');
+
       this.objects.set((data ?? []) as BusinessObject[]);
-      // Never an empty screen: the dashboard link wins, otherwise the first store.
-      const chosen = this.objects().find((o) => o.id === fromLink)?.id ?? this.objects()[0]?.id ?? null;
-      if (chosen) await this.selectObject(chosen, false);
+
+      // Deep link location wins.
+      // If it doesn't exist anymore, fall back to the first active location.
+      const chosen =
+        this.objects().find((o) => o.id === requestedObjectId)?.id ??
+        this.objects()[0]?.id ??
+        null;
+
+      if (chosen) {
+        await this.selectObject(chosen, false, false);
+      }
     } else {
       const own = this.auth.profile()?.object_id ?? null;
-      if (own) await this.selectObject(own, false);
+
+      if (own) {
+        await this.selectObject(own, false, false);
+      }
+    }
+
+    // IMPORTANT:
+    // selectObject() resets filter to "all", so the URL filter must
+    // be applied AFTER the initial location has been loaded.
+    if (
+      requestedFilter === 'reorder' ||
+      requestedFilter === 'soon' ||
+      requestedFilter === 'healthy' ||
+      requestedFilter === 'idle'
+    ) {
+      this.filter.set(requestedFilter);
     }
   }
 
-  async selectObject(objectId: string, updateUrl = true): Promise<void> {
+  async selectObject(
+    objectId: string,
+    updateUrl = true,
+    resetFilter = true
+  ): Promise<void> {
     if (!objectId) return;
+
     this.selectedObjectId.set(objectId);
-    this.filter.set('all');
-    if (updateUrl) {
-      this.router.navigate([], { queryParams: { object: objectId }, replaceUrl: true });
+
+    if (resetFilter) {
+      this.filter.set('all');
     }
+
+    if (updateUrl) {
+      await this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: {
+          object: objectId,
+          filter: this.filter() === 'all' ? null : this.filter(),
+        },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
+
     await this.svc.loadInventory(objectId);
+  }
+
+  setFilter(filter: Filter): void {
+    this.filter.set(filter);
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        filter: filter === 'all' ? null : filter,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   // ---------- presentation helpers ----------
@@ -260,22 +322,22 @@ export class InventoryComponent implements OnInit {
    */
   tone(u: Urgency): { hex: string; spark: string; text: string; chip: string; label: string } {
     return {
-      out:      { hex: '#ef4444', spark: '#ef4444', text: 'text-red-600',   chip: 'bg-red-50 text-red-700 ring-red-200',         label: 'Out of stock' },
-      critical: { hex: '#ef4444', spark: '#ef4444', text: 'text-red-600',   chip: 'bg-red-50 text-red-700 ring-red-200',         label: 'Reorder now' },
-      warning:  { hex: '#f59e0b', spark: '#f59e0b', text: 'text-amber-600', chip: 'bg-amber-50 text-amber-700 ring-amber-200',   label: 'Reorder soon' },
-      healthy:  { hex: '#22c55e', spark: '#4f46e5', text: 'text-slate-900', chip: 'bg-green-50 text-green-700 ring-green-200',   label: 'Healthy' },
-      idle:     { hex: '#cbd5e1', spark: '#94a3b8', text: 'text-slate-900', chip: 'bg-slate-100 text-slate-600 ring-slate-200', label: 'No sales' },
+      out: { hex: '#ef4444', spark: '#ef4444', text: 'text-red-600', chip: 'bg-red-50 text-red-700 ring-red-200', label: 'Out of stock' },
+      critical: { hex: '#ef4444', spark: '#ef4444', text: 'text-red-600', chip: 'bg-red-50 text-red-700 ring-red-200', label: 'Reorder now' },
+      warning: { hex: '#f59e0b', spark: '#f59e0b', text: 'text-amber-600', chip: 'bg-amber-50 text-amber-700 ring-amber-200', label: 'Reorder soon' },
+      healthy: { hex: '#22c55e', spark: '#4f46e5', text: 'text-slate-900', chip: 'bg-green-50 text-green-700 ring-green-200', label: 'Healthy' },
+      idle: { hex: '#cbd5e1', spark: '#94a3b8', text: 'text-slate-900', chip: 'bg-slate-100 text-slate-600 ring-slate-200', label: 'No sales' },
     }[u];
   }
 
   readonly eventMeta: Record<MovementEvent, { label: string; chip: string; dot: string }> = {
-    DELIVERY:    { label: 'Delivery',    chip: 'bg-blue-50 text-blue-700',     dot: 'bg-blue-500' },
-    SALE:        { label: 'Sale',        chip: 'bg-red-50 text-red-700',       dot: 'bg-red-500' },
-    STOCK_COUNT: { label: 'Stock count', chip: 'bg-amber-50 text-amber-700',   dot: 'bg-amber-500' },
-    ADJUSTMENT:  { label: 'Adjustment',  chip: 'bg-violet-50 text-violet-700', dot: 'bg-violet-500' },
-    TRANSFER:    { label: 'Transfer',    chip: 'bg-sky-50 text-sky-700',       dot: 'bg-sky-500' },
-    RETURN:      { label: 'Return',      chip: 'bg-green-50 text-green-700',   dot: 'bg-green-500' },
-    WRITE_OFF:   { label: 'Write-off',   chip: 'bg-rose-50 text-rose-700',     dot: 'bg-rose-500' },
+    DELIVERY: { label: 'Delivery', chip: 'bg-blue-50 text-blue-700', dot: 'bg-blue-500' },
+    SALE: { label: 'Sale', chip: 'bg-red-50 text-red-700', dot: 'bg-red-500' },
+    STOCK_COUNT: { label: 'Stock count', chip: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500' },
+    ADJUSTMENT: { label: 'Adjustment', chip: 'bg-violet-50 text-violet-700', dot: 'bg-violet-500' },
+    TRANSFER: { label: 'Transfer', chip: 'bg-sky-50 text-sky-700', dot: 'bg-sky-500' },
+    RETURN: { label: 'Return', chip: 'bg-green-50 text-green-700', dot: 'bg-green-500' },
+    WRITE_OFF: { label: 'Write-off', chip: 'bg-rose-50 text-rose-700', dot: 'bg-rose-500' },
   };
 
   /** Bar fill on a 30-day scale (markers at 7 and 14). */
@@ -396,7 +458,7 @@ export class InventoryComponent implements OnInit {
       return;
     }
 
-        if (v.event === 'ADJUSTMENT' && !v.note?.trim()) {
+    if (v.event === 'ADJUSTMENT' && !v.note?.trim()) {
       this.formError.set('A reason is required for an adjustment.');
       return;
     }

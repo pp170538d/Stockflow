@@ -1,0 +1,604 @@
+<!-- ======================= UPLOAD ======================= -->
+@if (step() === 'idle' || step() === 'checking') {
+  <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+    <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 class="text-base font-semibold text-slate-900">
+          Import sales from the register
+        </h2>
+
+        <p class="mt-1 text-sm text-slate-500">
+          Daily export from the cash register. Negative quantity = return.
+          Import sales
+          <span class="font-medium text-slate-700">before</span>
+          you do a stock count.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        (click)="downloadTemplate()"
+        class="rounded-xl px-3 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50"
+      >
+        Download template
+      </button>
+    </div>
+
+    <label
+      (dragover)="onDragOver($event)"
+      (dragleave)="dragging.set(false)"
+      (drop)="onDrop($event)"
+      class="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition"
+      [class]="
+        dragging()
+          ? 'border-brand-400 bg-brand-50'
+          : 'border-slate-300 bg-white hover:border-brand-400 hover:bg-slate-50'
+      "
+    >
+      <input
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        class="hidden"
+        (change)="onPick($event)"
+        [disabled]="step() === 'checking'"
+      />
+
+      <div
+        class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600"
+      >
+        <svg
+          class="h-6 w-6"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 16V4M7 9l5-5 5 5M4 20h16" />
+        </svg>
+      </div>
+
+      @if (step() === 'checking') {
+        <p class="mt-4 text-sm font-semibold text-slate-700">
+          Checking file…
+        </p>
+
+        <p class="mt-1 text-xs text-slate-500">
+          Validating locations, products, dates and stock.
+        </p>
+      } @else {
+        <p class="mt-4 text-sm font-semibold text-slate-900">
+          Drop a sales file here or click to choose
+        </p>
+
+        <p class="mt-1 text-xs text-slate-500">
+          .xlsx, .xls or .csv · up to 20,000 rows
+        </p>
+
+        <p class="mt-1 text-xs text-slate-400">
+          Date · Location code · SKU or barcode · Quantity · Unit price
+        </p>
+      }
+    </label>
+
+    <ul class="mt-4 grid gap-2 text-xs text-slate-500 sm:grid-cols-3">
+      <li class="rounded-xl bg-white px-4 py-3 ring-1 ring-slate-200">
+        <b class="text-slate-700">Register is the source.</b>
+        Sales are recorded on the date in the file.
+      </li>
+
+      <li class="rounded-xl bg-white px-4 py-3 ring-1 ring-slate-200">
+        <b class="text-slate-700">Returns are supported.</b>
+        Use a negative quantity for returned units.
+      </li>
+
+      <li class="rounded-xl bg-white px-4 py-3 ring-1 ring-slate-200">
+        <b class="text-slate-700">All or nothing.</b>
+        Errors block the entire file before anything is saved.
+      </li>
+    </ul>
+  </div>
+}
+
+<!-- ======================= ERROR ======================= -->
+@if (error()) {
+  <div
+    class="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200"
+  >
+    {{ error() }}
+  </div>
+}
+
+<!-- ======================= PREVIEW / DONE ======================= -->
+@if (result(); as r) {
+  @if (
+    step() === 'preview' ||
+    step() === 'importing' ||
+    step() === 'done'
+  ) {
+    <div class="mt-4 space-y-4">
+
+      <!-- success -->
+      @if (step() === 'done') {
+        <div
+          class="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800 ring-1 ring-emerald-200"
+        >
+          <b>Import complete.</b>
+
+          {{ r.units_sold | number }} units sold and
+          {{ r.units_returned | number }} returned were recorded in
+          {{ r.movements | number }} ledger lines.
+        </div>
+      }
+
+      <!-- ======================= FILE ======================= -->
+      @if (file(); as f) {
+        <div
+          class="flex items-start justify-between gap-3 rounded-2xl bg-white p-4 ring-1 ring-slate-200"
+        >
+          <div class="min-w-0">
+            <p class="truncate text-sm font-semibold text-slate-900">
+              {{ f.fileName }}
+            </p>
+
+            <p class="mt-0.5 text-xs text-slate-500">
+              {{ r.total | number }} rows checked
+            </p>
+          </div>
+
+          @if (step() !== 'done') {
+            <button
+              type="button"
+              (click)="reset()"
+              class="shrink-0 text-xs font-medium text-slate-500 transition hover:text-slate-800"
+            >
+              Choose another file
+            </button>
+          }
+        </div>
+      }
+
+      <!-- ======================= KPIs ======================= -->
+      <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+          <p class="text-xs font-medium text-slate-500">
+            Rows
+          </p>
+
+          <p class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+            {{ r.total | number }}
+          </p>
+        </div>
+
+        <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+          <p class="text-xs font-medium text-slate-500">
+            Units sold
+          </p>
+
+          <p class="mt-1 text-2xl font-semibold tabular-nums text-emerald-700">
+            {{ r.units_sold | number }}
+          </p>
+        </div>
+
+        <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+          <p class="text-xs font-medium text-slate-500">
+            Units returned
+          </p>
+
+          <p class="mt-1 text-2xl font-semibold tabular-nums text-sky-700">
+            {{ r.units_returned | number }}
+          </p>
+        </div>
+
+        <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+          <p class="text-xs font-medium text-slate-500">
+            Net revenue
+          </p>
+
+          <p class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+            {{ r.revenue | number: '1.2-2' }}
+            <span class="text-sm font-medium text-slate-500">
+              {{ r.currency }}
+            </span>
+          </p>
+
+          @if (r.unpriced > 0) {
+            <p class="mt-1 text-xs text-amber-700">
+              {{ r.unpriced }}
+              {{ r.unpriced === 1 ? 'row' : 'rows' }}
+              without price
+            </p>
+          }
+        </div>
+
+        <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+          <p class="text-xs font-medium text-slate-500">
+            Errors
+          </p>
+
+          <p
+            class="mt-1 text-2xl font-semibold tabular-nums"
+            [class]="r.invalid > 0 ? 'text-red-700' : 'text-slate-400'"
+          >
+            {{ r.invalid | number }}
+          </p>
+        </div>
+      </div>
+
+      <!-- ======================= ERRORS ======================= -->
+      @if (!r.ok) {
+        <div
+          class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200"
+        >
+          <b>
+            {{ r.invalid }}
+            {{ r.invalid === 1 ? 'row has' : 'rows have' }}
+            errors.
+          </b>
+
+          Fix the file and upload it again. Nothing has been imported.
+        </div>
+      }
+
+      <!-- ======================= NEGATIVE STOCK ======================= -->
+      @if (negativeStock().length) {
+        <div
+          class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-200"
+        >
+          <div class="flex items-start gap-3">
+            <svg
+              class="mt-0.5 h-5 w-5 shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 9v4M12 17h.01" />
+              <path d="M10.3 3.9 1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" />
+            </svg>
+
+            <div>
+              <p class="font-semibold">
+                Stock will go below zero for
+                {{ negativeStock().length }}
+                {{ negativeStock().length === 1 ? 'product' : 'products' }}.
+              </p>
+
+              <p class="mt-0.5">
+                The register already sold these units, so the import is allowed.
+                Perform a stock count afterwards.
+              </p>
+
+              <ul class="mt-2 list-disc space-y-0.5 pl-5">
+                @for (
+                  w of negativeStock().slice(0, 5);
+                  track $index
+                ) {
+                  <li>{{ w.message }}</li>
+                }
+              </ul>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ======================= FILTER / ACTIONS ======================= -->
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div
+          class="inline-flex rounded-xl bg-white p-1 ring-1 ring-slate-200"
+        >
+          @for (
+            f of [
+              { key: 'all', label: 'All', count: r.total },
+              { key: 'error', label: 'Errors', count: r.invalid },
+              {
+                key: 'warning',
+                label: 'Warnings',
+                count: r.warnings.length
+              }
+            ];
+            track f.key
+          ) {
+            <button
+              type="button"
+              (click)="filter.set($any(f.key))"
+              class="rounded-lg px-3 py-1.5 text-sm font-medium transition"
+              [class]="
+                filter() === f.key
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-600 hover:bg-slate-50'
+              "
+            >
+              {{ f.label }}
+
+              @if (f.count > 0) {
+                <span
+                  class="ml-1 tabular-nums"
+                  [class]="
+                    filter() === f.key
+                      ? 'text-white/70'
+                      : 'text-slate-400'
+                  "
+                >
+                  {{ f.count }}
+                </span>
+              }
+            </button>
+          }
+        </div>
+
+        <div class="flex gap-2">
+          <button
+            type="button"
+            (click)="reset()"
+            class="h-10 rounded-xl px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+          >
+            {{ step() === 'done' ? 'Import another file' : 'Cancel' }}
+          </button>
+
+          @if (step() !== 'done') {
+            <button
+              type="button"
+              (click)="apply()"
+              [disabled]="!canImport()"
+              class="h-10 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
+            >
+              {{
+                step() === 'importing'
+                  ? 'Importing…'
+                  : 'Import ' + (r.sales + r.returns) + ' rows'
+              }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- ======================= DESKTOP TABLE ======================= -->
+      <div
+        class="hidden overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200 md:block"
+      >
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[900px] text-sm">
+            <thead
+              class="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500"
+            >
+              <tr>
+                <th class="px-4 py-3">Row</th>
+                <th class="px-4 py-3">Date</th>
+                <th class="px-4 py-3">Location</th>
+                <th class="px-4 py-3">Product</th>
+                <th class="px-4 py-3 text-right">Qty</th>
+                <th class="px-4 py-3 text-right">Unit price</th>
+                <th class="px-4 py-3 text-right">Amount</th>
+                <th class="px-4 py-3 text-right">Result</th>
+              </tr>
+            </thead>
+
+            <tbody class="divide-y divide-slate-100">
+              @for (
+                row of visibleRows().slice(0, 500);
+                track row.row
+              ) {
+                <tr
+                  class="align-top"
+                  [class.bg-red-50]="row.action === 'error'"
+                >
+                  <td
+                    class="px-4 py-3 text-xs tabular-nums text-slate-400"
+                  >
+                    {{ row.row + 1 }}
+                  </td>
+
+                  <td class="whitespace-nowrap px-4 py-3 text-slate-700">
+                    {{ row.date ?? '—' }}
+                  </td>
+
+                  <td class="px-4 py-3 text-slate-700">
+                    {{ row.location ?? '—' }}
+                  </td>
+
+                  <td class="px-4 py-3">
+                    <div class="font-medium text-slate-900">
+                      {{ row.product ?? '—' }}
+                    </div>
+
+                    <div class="mt-0.5 font-mono text-xs text-slate-400">
+                      {{ row.sku ?? '—' }}
+                    </div>
+
+                    @for (m of rowErrors(row); track $index) {
+                      <div class="mt-1 text-xs text-red-600">
+                        {{ m }}
+                      </div>
+                    }
+
+                    @for (m of rowWarnings(row); track $index) {
+                      <div class="mt-1 text-xs text-amber-700">
+                        {{ m }}
+                      </div>
+                    }
+                  </td>
+
+                  <td class="px-4 py-3 text-right tabular-nums">
+                    {{ row.quantity ?? '—' }}
+                  </td>
+
+                  <td class="px-4 py-3 text-right tabular-nums">
+                    {{
+                      row.unit_price === null
+                        ? '—'
+                        : (row.unit_price | number: '1.2-2')
+                    }}
+                  </td>
+
+                  <td class="px-4 py-3 text-right tabular-nums">
+                    {{
+                      row.amount === null
+                        ? '—'
+                        : (row.amount | number: '1.2-2')
+                    }}
+                  </td>
+
+                  <td class="px-4 py-3 text-right">
+                    <span
+                      class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1"
+                      [class]="badge(row.action)"
+                    >
+                      {{ label(row.action) }}
+                    </span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td
+                    colspan="8"
+                    class="px-4 py-10 text-center text-sm text-slate-400"
+                  >
+                    No rows in this view.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (visibleRows().length > 500) {
+          <p
+            class="border-t border-slate-100 px-4 py-3 text-center text-xs text-slate-500"
+          >
+            Showing the first 500 of
+            {{ visibleRows().length | number }}
+            rows. All rows are checked and imported.
+          </p>
+        }
+      </div>
+
+      <!-- ======================= MOBILE ======================= -->
+      <div class="space-y-2 md:hidden">
+        @for (
+          row of visibleRows().slice(0, 500);
+          track row.row
+        ) {
+          <div
+            class="rounded-xl bg-white p-4 ring-1"
+            [class]="
+              row.action === 'error'
+                ? 'ring-red-200'
+                : 'ring-slate-200'
+            "
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-slate-900">
+                  {{ row.product ?? 'Unknown product' }}
+                </p>
+
+                <p class="mt-0.5 font-mono text-[11px] text-slate-500">
+                  Row {{ row.row + 1 }} · {{ row.sku ?? 'no SKU' }}
+                </p>
+              </div>
+
+              <span
+                class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1"
+                [class]="badge(row.action)"
+              >
+                {{ label(row.action) }}
+              </span>
+            </div>
+
+            <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span class="text-slate-400">Date</span>
+                <div class="mt-0.5 text-slate-700">
+                  {{ row.date ?? '—' }}
+                </div>
+              </div>
+
+              <div>
+                <span class="text-slate-400">Location</span>
+                <div class="mt-0.5 text-slate-700">
+                  {{ row.location ?? '—' }}
+                </div>
+              </div>
+
+              <div>
+                <span class="text-slate-400">Quantity</span>
+                <div class="mt-0.5 font-semibold tabular-nums text-slate-900">
+                  {{ row.quantity ?? '—' }}
+                </div>
+              </div>
+
+              <div>
+                <span class="text-slate-400">Unit price</span>
+                <div class="mt-0.5 tabular-nums text-slate-700">
+                  {{
+                    row.unit_price === null
+                      ? '—'
+                      : (row.unit_price | number: '1.2-2')
+                  }}
+                </div>
+              </div>
+            </div>
+
+            @for (m of rowErrors(row); track $index) {
+              <p class="mt-2 text-xs text-red-600">
+                {{ m }}
+              </p>
+            }
+
+            @for (m of rowWarnings(row); track $index) {
+              <p class="mt-2 text-xs text-amber-700">
+                {{ m }}
+              </p>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+}
+
+<!-- ======================= HISTORY ======================= -->
+@if (history().length) {
+  <div class="mt-8">
+    <h2 class="mb-3 text-sm font-semibold text-slate-900">
+      Recent sales imports
+    </h2>
+
+    <div
+      class="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200"
+    >
+      @for (b of history(); track b.id) {
+        <div
+          class="flex items-center justify-between gap-3 px-4 py-3"
+        >
+          <div class="min-w-0">
+            <p class="truncate text-sm font-medium text-slate-800">
+              {{ b.file_name }}
+            </p>
+
+            <p class="mt-0.5 text-xs text-slate-500">
+              {{ b.created_at | date: 'dd.MM.yyyy HH:mm' }}
+            </p>
+          </div>
+
+          <p class="shrink-0 text-right text-xs text-slate-500">
+            <span class="font-medium text-emerald-700">
+              {{ b.inserted_count }}
+            </span>
+            ledger lines
+
+            <span class="hidden sm:inline">
+              · {{ b.row_count }} rows
+            </span>
+          </p>
+        </div>
+      }
+    </div>
+  </div>
+}

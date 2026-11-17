@@ -2,7 +2,7 @@ import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ObjectsService } from './objects.service';
-import { BusinessObject } from './object.model';
+import { BusinessObject, SalesSource } from './object.model';
 import { AssignmentsService } from './assignments.service';
 import { BadgeComponent } from '../../shared/ui/badge.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
@@ -44,20 +44,28 @@ export class ObjectsComponent implements OnInit {
     name: ['', [Validators.required]],
     city: [''],
     address: [''],
+    code: ['', [
+      Validators.maxLength(32),
+      Validators.pattern(/^[A-Za-z0-9_-]*$/),
+    ]],
+    sales_source: ['manual' as SalesSource],
     active: [true],
   });
 
   readonly filtered = computed(() => {
-    const q = this.search().trim().toLowerCase();
-    const list = this.svc.objects();
-    if (!q) return list;
-    return list.filter(
-      (o) =>
-        o.name.toLowerCase().includes(q) ||
-        (o.city ?? '').toLowerCase().includes(q) ||
-        (o.address ?? '').toLowerCase().includes(q)
-    );
-  });
+  const q = this.search().trim().toLowerCase();
+  const list = this.svc.objects();
+
+  if (!q) return list;
+
+  return list.filter(
+    (o) =>
+      o.name.toLowerCase().includes(q) ||
+      (o.city ?? '').toLowerCase().includes(q) ||
+      (o.address ?? '').toLowerCase().includes(q) ||
+      (o.code ?? '').toLowerCase().includes(q)
+  );
+});
 
   readonly filteredProducts = computed(() => {
     const q = this.productSearch().trim().toLowerCase();
@@ -78,7 +86,14 @@ export class ObjectsComponent implements OnInit {
   openCreate(): void {
     this.editingId.set(null);
     this.formError.set(null);
-    this.form.reset({ name: '', city: '', address: '', active: true });
+    this.form.reset({
+  name: '',
+  city: '',
+  address: '',
+  code: '',
+  sales_source: 'manual',
+  active: true,
+});
     this.drawerOpen.set(true);
   }
 
@@ -86,11 +101,13 @@ export class ObjectsComponent implements OnInit {
     this.editingId.set(obj.id);
     this.formError.set(null);
     this.form.reset({
-      name: obj.name,
-      city: obj.city ?? '',
-      address: obj.address ?? '',
-      active: obj.active,
-    });
+  name: obj.name,
+  city: obj.city ?? '',
+  address: obj.address ?? '',
+  code: obj.code ?? '',
+  sales_source: obj.sales_source ?? 'manual',
+  active: obj.active,
+});
     this.drawerOpen.set(true);
   }
 
@@ -99,32 +116,53 @@ export class ObjectsComponent implements OnInit {
   }
 
   async save(): Promise<void> {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-    this.saving.set(true);
-    this.formError.set(null);
-    const v = this.form.getRawValue();
-    const input = {
-      name: v.name.trim(),
-      city: v.city.trim() || null,
-      address: v.address.trim() || null,
-      active: v.active,
-    };
-    const editing = !!this.editingId();
-    const err = editing
-      ? await this.svc.update(this.editingId()!, input)
-      : await this.svc.create(input);
-    this.saving.set(false);
-    if (err) {
-      this.formError.set(err);
-      this.toast.error(err);
-    } else {
-      this.drawerOpen.set(false);
-      this.toast.success(editing ? 'Object updated.' : 'Object created.');
-    }
+  if (this.form.invalid) {
+    this.form.markAllAsTouched();
+    return;
   }
+
+  this.formError.set(null);
+
+  const v = this.form.getRawValue();
+  const code = v.code.trim().toUpperCase() || null;
+
+  if (v.sales_source === 'import' && !code) {
+    this.formError.set(
+      'A location using register import needs a location code.'
+    );
+    return;
+  }
+
+  this.saving.set(true);
+
+  const input = {
+    name: v.name.trim(),
+    city: v.city.trim() || null,
+    address: v.address.trim() || null,
+    code,
+    sales_source: v.sales_source,
+    active: v.active,
+  };
+
+  const editing = !!this.editingId();
+
+  const err = editing
+    ? await this.svc.update(this.editingId()!, input)
+    : await this.svc.create(input);
+
+  this.saving.set(false);
+
+  if (err) {
+    this.formError.set(err);
+    this.toast.error(err);
+    return;
+  }
+
+  this.drawerOpen.set(false);
+  this.toast.success(
+    editing ? 'Location updated.' : 'Location created.'
+  );
+}
 
   async toggleActive(obj: BusinessObject): Promise<void> {
     if (obj.active) {
