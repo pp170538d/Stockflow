@@ -1,57 +1,145 @@
 <!-- ======================= HEADER + GLOBAL PERIOD ======================= -->
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+
   <div class="min-w-0">
-    <p class="text-sm text-slate-500">{{ greeting() }}{{ firstName() ? ', ' + firstName() : '' }}.</p>
+    <p class="text-sm text-slate-500">
+      {{ greeting() }}{{ firstName() ? ', ' + firstName() : '' }}.
+    </p>
+
     @if (svc.loading()) {
-    <div class="mt-2 space-y-2">
-      <div class="skeleton h-7 w-[min(520px,90%)]"></div>
-      <div class="skeleton h-7 w-[min(340px,60%)]"></div>
-    </div>
+
+      <div class="mt-2 space-y-2">
+        <div class="skeleton h-7 w-[min(520px,90%)]"></div>
+        <div class="skeleton h-7 w-[min(340px,60%)]"></div>
+      </div>
+
     } @else {
-    <h1 class="mt-1 max-w-3xl text-2xl font-semibold leading-snug tracking-tight text-slate-900 sm:text-[28px]">
-      @for (p of briefing(); track $index; let last = $last; let first = $first) {
-      @if (!first) { <span class="text-slate-400">{{ last ? ' and ' : ', ' }}</span> }
-      @if (p.link) {
-      <a [routerLink]="p.link" [queryParams]="p.queryParams ?? null"
-        class="underline decoration-2 underline-offset-4 transition hover:opacity-80"
-        [class.decoration-red-300]="p.tone === 'danger'" [class.decoration-amber-300]="p.tone === 'warning'">
-        {{ p.text }}
-      </a>
-      } @else { <span>{{ p.text }}</span> }
-      }
-      @if (briefing()[0]?.tone !== 'ok') { <span>.</span> }
-    </h1>
-    <p class="mt-1 text-xs text-slate-400">{{ isAdmin() ? 'Across all locations' : 'Your location' }} · Last {{
-      svc.days() }} days</p>
+
+      <h1
+        class="mt-1 max-w-3xl text-2xl font-semibold leading-snug tracking-tight text-slate-900 sm:text-[28px]"
+      >
+        @for (
+          p of briefing();
+          track $index;
+          let last = $last;
+          let first = $first
+        ) {
+
+          @if (!first) {
+            <span class="text-slate-400">
+              {{ last ? ' and ' : ', ' }}
+            </span>
+          }
+
+          @if (p.anchor) {
+
+            <button
+              type="button"
+              (click)="scrollTo(p.anchor)"
+              class="inline font-inherit text-inherit underline decoration-2 underline-offset-4 transition hover:opacity-80"
+              [class.decoration-red-300]="p.tone === 'danger'"
+              [class.decoration-amber-300]="p.tone === 'warning'"
+            >
+              {{ p.text }}
+            </button>
+
+          } @else if (p.link) {
+
+            <a
+              [routerLink]="p.link"
+              [queryParams]="p.queryParams ?? null"
+              class="underline decoration-2 underline-offset-4 transition hover:opacity-80"
+              [class.decoration-red-300]="p.tone === 'danger'"
+              [class.decoration-amber-300]="p.tone === 'warning'"
+            >
+              {{ p.text }}
+            </a>
+
+          } @else {
+
+            <span>
+              {{ p.text }}
+            </span>
+
+          }
+        }
+
+        @if (briefing()[0]?.tone !== 'ok') {
+          <span>.</span>
+        }
+      </h1>
+
+      <p class="mt-1 text-xs text-slate-400">
+        {{ isAdmin() ? 'Across all locations' : 'Your location' }}
+        · Last {{ svc.days() }} days
+      </p>
     }
   </div>
 
   <div class="flex shrink-0 flex-wrap items-center gap-2">
-    <div class="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 text-xs font-medium">
+
+    <!-- Global period -->
+    <div
+      class="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 text-xs font-medium"
+    >
       @for (r of ranges; track r) {
-      <button type="button" (click)="svc.setRange(r)" [disabled]="svc.refreshing()"
-        class="rounded-md px-2.5 py-1 transition disabled:cursor-wait" [class.bg-white]="svc.days() === r"
-        [class.shadow-sm]="svc.days() === r" [class.text-slate-900]="svc.days() === r"
-        [class.text-slate-500]="svc.days() !== r">{{ r }}d</button>
+        <button
+          type="button"
+          (click)="svc.setRange(r)"
+          [disabled]="svc.refreshing()"
+          class="rounded-md px-2.5 py-1 transition disabled:cursor-wait"
+          [class.bg-white]="svc.days() === r"
+          [class.shadow-sm]="svc.days() === r"
+          [class.text-slate-900]="svc.days() === r"
+          [class.text-slate-500]="svc.days() !== r"
+        >
+          {{ r }}d
+        </button>
       }
     </div>
+
+    <!-- Live -->
     <span
       class="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium ring-1 ring-slate-200"
-      [class.text-green-700]="svc.live()" [class.text-slate-400]="!svc.live()">
+      [class.text-green-700]="svc.live()"
+      [class.text-slate-400]="!svc.live()"
+    >
       <span class="relative flex h-2 w-2">
-        @if (svc.live()) { <span
-          class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60"></span> }
-        <span class="relative inline-flex h-2 w-2 rounded-full" [class.bg-green-500]="svc.live()"
-          [class.bg-slate-300]="!svc.live()"></span>
-      </span>{{ svc.live() ? 'Live' : 'Connecting…' }}
+        @if (svc.live()) {
+          <span
+            class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60"
+          ></span>
+        }
+
+        <span
+          class="relative inline-flex h-2 w-2 rounded-full"
+          [class.bg-green-500]="svc.live()"
+          [class.bg-slate-300]="!svc.live()"
+        ></span>
+      </span>
+
+      {{ svc.live() ? 'Live' : 'Connecting…' }}
     </span>
-    <a routerLink="/orders/new"
-      class="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700">
-      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round">
+
+    <!-- New order -->
+    <a
+      routerLink="/orders/new"
+      class="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700"
+    >
+      <svg
+        class="h-4 w-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      >
         <path d="M12 5v14M5 12h14" />
-      </svg>New order
+      </svg>
+
+      New order
     </a>
+
   </div>
 </div>
 
@@ -193,7 +281,8 @@
           svc.totals()?.on_hand ?? 0 }}</span><span class="text-xs text-slate-500">units</span>@if (periodNet() !== 0) {
         <span class="rounded-md px-1.5 py-0.5 font-mono text-xs font-semibold" [class.bg-green-50]="periodNet() > 0"
           [class.text-green-700]="periodNet() > 0" [class.bg-red-50]="periodNet() < 0"
-          [class.text-red-700]="periodNet() < 0">{{ signed(periodNet()) }} in {{ svc.days() }}d</span> }</div>
+          [class.text-red-700]="periodNet() < 0">{{ signed(periodNet()) }} in {{ svc.days() }}d</span> }
+      </div>
     </div>
     }
     <div class="hidden shrink-0 items-center gap-3 text-[11px] text-slate-500 sm:flex"><span
@@ -276,7 +365,8 @@
         class="text-[10px] text-slate-400">went out</span></span><span class="text-slate-300">=</span><span
       class="flex flex-col items-center rounded-lg bg-brand-50 px-3 py-0.5 leading-tight"><span
         class="font-semibold text-brand-700">{{ q.closing }}</span><span class="text-[10px] text-brand-600/70">on the
-        shelf</span></span></div>
+        shelf</span></span>
+  </div>
   }
   }
   }

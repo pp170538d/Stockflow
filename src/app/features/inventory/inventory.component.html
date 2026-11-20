@@ -200,7 +200,7 @@
 <div class="mt-4 space-y-3 lg:hidden">
   @for (r of filtered(); track r.product_id; let i = $index) {
   @let t = tone(r.urgency);
-  <article (click)="openHistory(r)"
+  <article [attr.data-product-id]="r.product_id" (click)="openHistory(r)"
     class="row-in cursor-pointer rounded-2xl bg-white p-4 ring-1 ring-slate-200 active:bg-slate-50"
     [class.row-flash]="flashId() === r.product_id" [style.animation-delay.ms]="delay(i)">
     <div class="flex items-start justify-between gap-3">
@@ -288,7 +288,7 @@
     <tbody class="divide-y divide-slate-100">
       @for (r of filtered(); track r.product_id; let i = $index) {
       @let t = tone(r.urgency);
-      <tr (click)="openHistory(r)" class="row-in group cursor-pointer transition hover:bg-slate-50/70"
+      <tr [attr.data-product-id]="r.product_id" (click)="openHistory(r)" class="row-in group cursor-pointer transition hover:bg-slate-50/70"
         [class.row-flash]="flashId() === r.product_id" [style.animation-delay.ms]="delay(i)">
 
         <td class="px-5 py-3.5">

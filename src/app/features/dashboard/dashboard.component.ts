@@ -294,6 +294,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ---------- running out ----------
   /** Bar fill: 14+ days = full. */
+  scrollTo(id: string): void {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
   runwayPct(days: number | null, onHand: number): number {
     if (onHand <= 0) return 0;
     if (days === null) return 100;

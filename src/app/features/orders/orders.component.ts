@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { printPurchaseOrder } from './order-pdf';
 import { supabase } from '../../core/supabase/supabase.client';
 import { AuthService } from '../../core/auth/auth.service';
@@ -140,6 +140,8 @@ export class OrdersComponent implements OnInit {
 
   private toast = inject(ToastService);
   private confirm = inject(ConfirmService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   // =========================================================
   // Filters
@@ -284,7 +286,67 @@ export class OrdersComponent implements OnInit {
       await this.loadObjects();
     }
 
-    this.reload(1);
+    const focusId = this.route.snapshot.queryParamMap.get('focus');
+    if (focusId) {
+      await this.focusOrder(focusId);
+    } else {
+      this.reload(1);
+    }
+  }
+
+  /** Finds the exact order regardless of pagination, then scrolls and flashes it. */
+  private async focusOrder(orderId: string): Promise<void> {
+    const { data: target, error } = await supabase
+      .from('orders')
+      .select('id, order_number, object_id, status')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (error || !target) {
+      this.reload(1);
+      return;
+    }
+
+    this.exceptionsOnly.set(false);
+    this.statusFilter.set(target.status as OrderStatus);
+    this.selectedObjectId.set(target.object_id);
+    this.search.set(target.order_number);
+
+    await Promise.all([
+      this.svc.load({
+        page: 1,
+        status: this.statusFilter(),
+        objectId: this.selectedObjectId(),
+        search: this.search(),
+        exceptionsOnly: false,
+      }),
+      this.loadCounts(),
+    ]);
+
+    this.scrollAndFlashOrder(orderId);
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { focus: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  private scrollAndFlashOrder(orderId: string): void {
+    this.flashId.set(orderId);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const nodes = Array.from(
+          document.querySelectorAll<HTMLElement>(`[data-order-id="${orderId}"]`)
+        );
+        const target = nodes.find((node) => node.offsetParent !== null) ?? nodes[0];
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+
+    setTimeout(() => this.flashId.set(null), 2300);
   }
 
   private async loadObjects(): Promise<void> {

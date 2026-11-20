@@ -49,8 +49,47 @@ function notZero(control: AbstractControl): ValidationErrors | null {
     @keyframes rowIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
     .row-in { animation: rowIn .45s cubic-bezier(.2,.8,.2,1) backwards; }
 
-    @keyframes flash { 0%, 40% { background: #eef2ff; } 100% { background: transparent; } }
-    .row-flash { animation: flash 2.2s ease-out; }
+    @keyframes flash {
+  0% {
+    background: #e0e7ff;
+    box-shadow:
+      inset 4px 0 0 #4f46e5,
+      0 0 0 2px rgba(79, 70, 229, 0.35),
+      0 8px 24px rgba(79, 70, 229, 0.14);
+    transform: scale(1.008);
+  }
+
+  20% {
+    background: #eef2ff;
+    box-shadow:
+      inset 4px 0 0 #4f46e5,
+      0 0 0 2px rgba(79, 70, 229, 0.25),
+      0 6px 18px rgba(79, 70, 229, 0.10);
+    transform: scale(1.004);
+  }
+
+  65% {
+    background: #eef2ff;
+    box-shadow:
+      inset 4px 0 0 #818cf8,
+      0 0 0 1px rgba(79, 70, 229, 0.12);
+    transform: none;
+  }
+
+  100% {
+    background: transparent;
+    box-shadow:
+      inset 0 0 0 transparent,
+      0 0 0 0 transparent;
+    transform: none;
+  }
+}
+
+.row-flash {
+  position: relative;
+  z-index: 1;
+  animation: flash 2.6s cubic-bezier(.2, .8, .2, 1);
+}
 
     /* Sparkline reveals left → right; the line itself stays solid. */
     .spark { animation: reveal 1s cubic-bezier(.2,.8,.2,1) .15s backwards; }
@@ -233,6 +272,7 @@ export class InventoryComponent implements OnInit {
 
     const requestedObjectId = params.get('object');
     const requestedFilter = params.get('filter') as Filter | null;
+    const requestedFocusId = params.get('focus');
 
     if (this.isAdmin()) {
       const { data } = await supabase
@@ -272,6 +312,9 @@ export class InventoryComponent implements OnInit {
     ) {
       this.filter.set(requestedFilter);
     }
+    if (requestedFocusId) {
+      this.focusProduct(requestedFocusId);
+    }
   }
 
   async selectObject(
@@ -309,6 +352,46 @@ export class InventoryComponent implements OnInit {
       relativeTo: this.route,
       queryParams: {
         filter: filter === 'all' ? null : filter,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  private focusProduct(productId: string): void {
+    // Existing Inventory flash animation.
+    this.flashId.set(productId);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const nodes = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            `[data-product-id="${productId}"]`
+          )
+        );
+
+        // Mobile card and desktop row both exist in the DOM.
+        // Select the currently visible version.
+        const target =
+          nodes.find((node) => node.offsetParent !== null) ??
+          nodes[0];
+
+        target?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      });
+    });
+
+    setTimeout(() => {
+      this.flashId.set(null);
+    }, 2700);
+
+    // Focus is a one-shot instruction.
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        focus: null,
       },
       queryParamsHandling: 'merge',
       replaceUrl: true,

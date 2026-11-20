@@ -9,27 +9,20 @@
     Inventory performance could not be loaded: {{ error() }}
   </section>
 } @else if (data(); as p) {
-  <!-- BUSINESS KPIs: clickable deep-links into the matching report tab -->
+  <!-- BUSINESS KPIs -->
   <section class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-    <a
-      routerLink="/reports"
-      [queryParams]="{ tab: 'performance', days: p.days }"
-      class="group block rounded-2xl bg-white p-4 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-200"
-    >
+    <a routerLink="/reports" [queryParams]="{ tab: 'performance', days: p.days }"
+      class="group block rounded-2xl bg-white p-4 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-200">
       <div class="text-xs font-medium text-slate-500">Inventory value · Now</div>
       <div class="mt-1.5 text-2xl font-semibold tabular-nums text-slate-900">
-        {{ p.inventory_value | number:'1.0-0' }}
-        <span class="text-sm font-medium text-slate-400">{{ p.currency }}</span>
+        {{ p.inventory_value | number:'1.0-0' }} <span class="text-sm font-medium text-slate-400">{{ p.currency }}</span>
       </div>
       <div class="mt-1 text-xs text-slate-400">{{ (p.cost_coverage ?? 0) | percent:'1.0-0' }} cost coverage</div>
       <div class="mt-2 text-[11px] font-medium text-brand-600 opacity-0 transition group-hover:opacity-100">Performance report →</div>
     </a>
 
-    <a
-      routerLink="/reports"
-      [queryParams]="{ tab: 'performance', days: p.days }"
-      class="group block rounded-2xl bg-white p-4 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-200"
-    >
+    <a routerLink="/reports" [queryParams]="{ tab: 'performance', days: p.days }"
+      class="group block rounded-2xl bg-white p-4 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-200">
       <div class="text-xs font-medium text-slate-500">Inventory turnover · {{ p.days }}d</div>
       <div class="mt-1.5 text-2xl font-semibold tabular-nums text-slate-900">
         {{ p.turnover === null ? '—' : (p.turnover | number:'1.2-2') + '×' }}
@@ -40,29 +33,21 @@
       <div class="mt-2 text-[11px] font-medium text-brand-600 opacity-0 transition group-hover:opacity-100">Performance report →</div>
     </a>
 
-    <a
-      routerLink="/reports"
-      [queryParams]="{ tab: 'margin', days: p.days }"
-      class="group block rounded-2xl bg-white p-4 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-200"
-    >
+    <a routerLink="/reports" [queryParams]="{ tab: 'margin', days: p.days }"
+      class="group block rounded-2xl bg-white p-4 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-200">
       <div class="text-xs font-medium text-slate-500">Revenue · {{ p.days }}d</div>
       <div class="mt-1.5 text-2xl font-semibold tabular-nums text-slate-900">
-        {{ p.revenue | number:'1.0-0' }}
-        <span class="text-sm font-medium text-slate-400">{{ p.currency }}</span>
+        {{ p.revenue | number:'1.0-0' }} <span class="text-sm font-medium text-slate-400">{{ p.currency }}</span>
       </div>
       <div class="mt-1 text-xs text-slate-400">{{ (p.price_coverage ?? 0) | percent:'1.0-0' }} price coverage</div>
       <div class="mt-2 text-[11px] font-medium text-brand-600 opacity-0 transition group-hover:opacity-100">Sales & margin report →</div>
     </a>
 
-    <a
-      routerLink="/reports"
-      [queryParams]="{ tab: 'margin', days: p.days }"
-      class="group block rounded-2xl bg-white p-4 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-200"
-    >
+    <a routerLink="/reports" [queryParams]="{ tab: 'margin', days: p.days }"
+      class="group block rounded-2xl bg-white p-4 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-200">
       <div class="text-xs font-medium text-slate-500">Gross margin · {{ p.days }}d</div>
       <div class="mt-1.5 text-2xl font-semibold tabular-nums text-emerald-700">
-        {{ p.margin | number:'1.0-0' }}
-        <span class="text-sm font-medium text-slate-400">{{ p.currency }}</span>
+        {{ p.margin | number:'1.0-0' }} <span class="text-sm font-medium text-slate-400">{{ p.currency }}</span>
       </div>
       <div class="mt-1 text-xs text-slate-400">{{ p.gross_margin_pct === null ? '—' : (p.gross_margin_pct | number:'1.0-1') + '% margin' }}</div>
       <div class="mt-2 text-[11px] font-medium text-brand-600 opacity-0 transition group-hover:opacity-100">Sales & margin report →</div>
@@ -119,58 +104,101 @@
     </div>
   </section>
 
-  <!-- UNIFIED ATTENTION FEED -->
-  <section class="mt-4 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+  <!-- OPEN ACTIONS -->
+  <section id="needs-attention" class="mt-4 scroll-mt-20 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
     <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
       <div>
         <div class="flex items-center gap-2">
           <h2 class="text-sm font-semibold text-slate-900">Needs attention</h2>
           @if (attentionCount()) {
-            <span class="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">{{ attentionCount() }}</span>
+            <span class="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">{{ attentionCount() }} open</span>
           }
         </div>
-        <p class="mt-0.5 text-xs text-slate-400">Availability and capital issues, ordered by urgency</p>
+        <p class="mt-0.5 text-xs text-slate-400">Only items that still need a decision or action</p>
       </div>
-      <a
-        routerLink="/reports"
-        [queryParams]="{ tab: 'performance', days: p.days }"
-        class="text-xs font-semibold text-brand-600 hover:text-brand-700"
-      >
-        Performance report →
-      </a>
+      <a routerLink="/reports" [queryParams]="{ tab: 'performance', days: p.days }"
+        class="text-xs font-semibold text-brand-600 hover:text-brand-700">Performance report →</a>
     </div>
 
     @if (!attentionCount()) {
-      <div class="px-5 py-10 text-center">
-        <div class="text-sm font-semibold text-slate-900">Nothing urgent</div>
-        <div class="mt-1 text-xs text-slate-500">Shelves are covered and inventory is moving normally.</div>
+      <div class="px-5 py-8 text-center">
+        <div class="text-sm font-semibold text-slate-900">No open actions</div>
+        <div class="mt-1 text-xs text-slate-500">Replenishment is covered and no additional inventory action is required.</div>
       </div>
     } @else {
       <div class="divide-y divide-slate-100">
-        @for (r of availabilityActions(); track r.object_id + ':' + r.product_id) {
+        @for (r of openReplenishment(); track r.object_id + ':' + r.product_id) {
           <div class="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center">
-            <span class="w-fit rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700 ring-1 ring-red-200">Availability</span>
+            <span class="w-fit shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1" [class]="replTone(r.status)">{{ replLabel(r.status) }}</span>
             <div class="min-w-0 flex-1">
-              <div class="truncate text-sm font-semibold text-slate-900">{{ r.name }}</div>
-              <div class="mt-0.5 text-xs text-slate-400">{{ isAdmin() ? r.store + ' · ' : '' }}{{ r.sku }} · {{ availabilityText(r) }}</div>
+              <div class="truncate text-sm font-semibold text-slate-900">{{ r.product_name }}</div>
+              <div class="mt-0.5 text-xs text-slate-400">{{ isAdmin() ? r.object_name + ' · ' : '' }}{{ r.sku }} · {{ replText(r) }}</div>
             </div>
             <div class="flex items-center gap-5">
               <div class="text-right"><div class="text-xs text-slate-400">On hand</div><div class="text-sm font-semibold tabular-nums text-slate-900">{{ r.on_hand }}</div></div>
-              <a routerLink="/orders/new" class="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">Create order</a>
+              <a routerLink="/orders/new" [queryParams]="orderParams(r)"
+                class="min-w-[112px] rounded-lg bg-slate-900 px-3 py-2 text-center text-xs font-semibold text-white hover:bg-slate-800">
+                {{ r.status === 'top_up' ? 'Order more' : 'Create order' }}@if (r.suggested_qty) { · {{ r.suggested_qty }} }
+              </a>
             </div>
           </div>
         }
 
-        @for (a of performanceActions(); track a.object_id + ':' + a.product_id) {
+        @for (a of visiblePerformanceActions(); track a.object_id + ':' + a.product_id + ':' + a.class) {
           <div class="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center">
-            <span class="w-fit rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1" [class]="tone(a.class)">{{ label(a.class) }}</span>
+            <span class="w-fit shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1" [class]="tone(a.class)">{{ label(a.class) }}</span>
             <div class="min-w-0 flex-1">
               <div class="truncate text-sm font-semibold text-slate-900">{{ a.product_name }}</div>
               <div class="mt-0.5 text-xs text-slate-400">{{ a.object_name }} · {{ a.sku }} · {{ actionText(a) }}</div>
             </div>
             <div class="flex items-center gap-5">
               <div class="text-right"><div class="text-xs text-slate-400">Stock value</div><div class="text-sm font-semibold tabular-nums text-slate-900">{{ a.stock_value === null ? '—' : (a.stock_value | number:'1.0-0') + ' ' + p.currency }}</div></div>
-              <a routerLink="/inventory" [queryParams]="{ object: a.object_id }" class="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">Review</a>
+              <a routerLink="/inventory" [queryParams]="{ object: a.object_id, focus: a.product_id }"
+                class="min-w-[112px] rounded-lg bg-white px-3 py-2 text-center text-xs font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">Review</a>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (handledReplenishment().length) {
+  <div class="border-t border-slate-200 bg-slate-50/60 px-5 py-3">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          {{ isAdmin() ? 'Replenishment in progress' : 'Order status' }}
+        </div>
+
+        <div class="mt-0.5 text-[11px] text-slate-400">
+          @if (isAdmin()) {
+            Approved stock that is already on the way.
+          } @else {
+            Replenishment requests already moving through the order workflow.
+          }
+        </div>
+      </div>
+
+      <span
+        class="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200"
+      >
+        {{ handledReplenishment().length }}
+      </span>
+    </div>
+  </div>
+
+
+      <div class="divide-y divide-slate-100 bg-slate-50/40">
+        @for (r of handledReplenishment(); track r.object_id + ':' + r.product_id) {
+          <div class="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center">
+            <span class="w-fit shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1" [class]="replTone(r.status)">{{ replLabel(r.status) }}</span>
+            <div class="min-w-0 flex-1">
+              <div class="truncate text-sm font-semibold text-slate-700">{{ r.product_name }}</div>
+              <div class="mt-0.5 text-xs text-slate-400">{{ isAdmin() ? r.object_name + ' · ' : '' }}{{ r.sku }} · {{ replText(r) }}</div>
+            </div>
+            <div class="flex items-center gap-5">
+              <div class="text-right"><div class="text-xs text-slate-400">Incoming</div><div class="text-sm font-semibold tabular-nums text-slate-700">{{ r.incoming_qty }}</div></div>
+              <a routerLink="/orders" [queryParams]="{ focus: r.open_order_id }"
+                class="min-w-[112px] rounded-lg bg-white px-3 py-2 text-center text-xs font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100">View order</a>
             </div>
           </div>
         }

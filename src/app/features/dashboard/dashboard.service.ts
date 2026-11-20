@@ -49,10 +49,36 @@ export interface DashboardSummary {
   ledger: LedgerRow[];
 }
 
+/** Lifecycle of a product that runs out this week (replenishment_queue RPC). */
+export type ReplenishmentStatus = 'needs_order' | 'top_up' | 'pending' | 'in_transit';
+
+export interface ReplenishmentRow {
+  object_id: string;
+  object_name: string;
+  product_id: string;
+  sku: string;
+  product_name: string;
+  on_hand: number;
+  sold30: number;
+  daily_rate: number;
+  days_left: number | null;
+  urgency: 'out' | 'critical';
+  pending_qty: number;
+  approved_qty: number;
+  incoming_qty: number;
+  open_order_id: string | null;
+  open_order_number: string | null;
+  open_order_status: 'PENDING' | 'APPROVED' | null;
+  status: ReplenishmentStatus;
+  suggested_qty: number | null;
+}
+
 export interface BriefingPart {
   text: string;
   link?: string;
   queryParams?: Record<string, string>;
+  /** Scroll to an element on the same page instead of navigating. */
+  anchor?: string;
   tone?: 'danger' | 'warning' | 'ok';
 }
 export type Decision = 'APPROVED' | 'REJECTED';
@@ -61,6 +87,7 @@ export type RangeDays = 7 | 30 | 90;
 @Injectable({ providedIn: 'root' })
 export class DashboardService {
   readonly data = signal<DashboardSummary | null>(null);
+  readonly replenishment = signal<ReplenishmentRow[]>([]);
   readonly loading = signal(false);
   readonly refreshing = signal(false);
   readonly error = signal<string | null>(null);
@@ -80,6 +107,14 @@ export class DashboardService {
   readonly ledger = computed(() => this.data()?.ledger ?? []);
   readonly stores = computed(() => this.data()?.stores ?? []);
   readonly variances = computed(() => this.data()?.variances ?? null);
+
+  /** Still needs someone to place an order (nothing, or not enough, ordered). */
+  readonly needsOrder = computed(() =>
+    this.replenishment().filter((r) => r.status === 'needs_order' || r.status === 'top_up'));
+
+  /** Already handled: enough is ordered and waits for approval or delivery. */
+  readonly inProgress = computed(() =>
+    this.replenishment().filter((r) => r.status === 'pending' || r.status === 'in_transit'));
 
   readonly pendingOrders = computed(() => {
     const hidden = this.deciding();
@@ -116,55 +151,61 @@ export class DashboardService {
     if (!d) return [];
 
     const parts: BriefingPart[] = [];
-    const urgent = this.critical();
-    const crit = urgent.length;
+    const toOrder = this.needsOrder().length;
     const waiting = isAdmin ? this.pendingCount() : d.totals.approved;
     const short = d.variances.net_week;
 
-    if (crit > 0) {
-  const objectIds = [
-    ...new Set(
-      urgent
-        .map((r) => r.object_id)
-        .filter(Boolean)
-    ),
-  ];
+    if (toOrder > 0) {
+      parts.push({
+        text: `${toOrder} ${toOrder === 1 ? 'product needs' : 'products need'} an order`,
+        anchor: 'needs-attention',
+        tone: 'danger',
+      });
+    }
 
-  const queryParams: Record<string, string> = {
-    filter: 'reorder',
-  };
-
-  // Ako su svi urgent proizvodi u istoj lokaciji,
-  // odmah otvori baš tu lokaciju.
-  if (objectIds.length === 1) {
-    queryParams['object'] = objectIds[0];
-  }
+    if (waiting > 0) {
+  const pending = this.pendingOrders();
 
   parts.push({
-    text: `${crit} ${
-      crit === 1
-        ? 'product needs'
-        : 'products need'
-    } replenishment this week`,
-    link: '/inventory',
-    queryParams,
-    tone: 'danger',
+    text: isAdmin
+      ? `${waiting} ${
+          waiting === 1
+            ? 'order waits'
+            : 'orders wait'
+        } for your approval`
+      : `${waiting} ${
+          waiting === 1
+            ? 'delivery is'
+            : 'deliveries are'
+        } on the way`,
+
+    link: '/orders',
+
+    queryParams:
+      isAdmin && waiting === 1 && pending.length === 1
+        ? {
+            focus: pending[0].id,
+          }
+        : undefined,
+
+    tone: 'warning',
   });
 }
-
-    if (waiting > 0) parts.push({
-      text: isAdmin
-        ? `${waiting} ${waiting === 1 ? 'order waits' : 'orders wait'} for your approval`
-        : `${waiting} ${waiting === 1 ? 'delivery is' : 'deliveries are'} on the way`,
-      link: '/orders', tone: 'warning',
-    });
 
     if (short !== 0) parts.push({
       text: `deliveries this week were ${Math.abs(short)} ${short < 0 ? 'short' : 'over'}`,
       link: '/orders', tone: 'warning',
     });
 
-    if (!parts.length) return [{ text: 'Everything is covered — no shelf runs out in the next 14 days.', tone: 'ok' }];
+    if (!parts.length) {
+      const handled = this.inProgress().length;
+      return [{
+        text: handled > 0
+          ? `Everything is covered — ${handled} ${handled === 1 ? 'shortage is' : 'shortages are'} already on order.`
+          : 'Everything is covered — no shelf runs out in the next 7 days.',
+        tone: 'ok',
+      }];
+    }
     return parts;
   }
 
@@ -174,12 +215,22 @@ export class DashboardService {
     if (!this.data()) this.loading.set(true);
     this.error.set(null);
 
-    const { data, error } = await supabase.rpc('dashboard_summary', {
-      p_object_id: objectId, p_days: days,
-    });
+    const [summary, queue] = await Promise.all([
+      supabase.rpc('dashboard_summary', { p_object_id: objectId, p_days: days }),
+      supabase.rpc('replenishment_queue', { p_object_id: objectId }),
+    ]);
 
-    if (error) this.error.set(error.message);
-    else this.data.set(data as DashboardSummary);
+    if (summary.error) this.error.set(summary.error.message);
+    else this.data.set(summary.data as DashboardSummary);
+
+    // The queue is an enhancement: if it fails the dashboard still works.
+    if (queue.error) {
+      console.error('replenishment_queue', queue.error);
+      this.replenishment.set([]);
+    } else {
+      this.replenishment.set((queue.data ?? []) as ReplenishmentRow[]);
+    }
+
     this.loading.set(false);
   }
 

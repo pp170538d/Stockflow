@@ -223,7 +223,7 @@
 <!-- ======================= MOBILE: cards ======================= -->
 <div class="mt-4 space-y-3 lg:hidden">
   @for (o of svc.orders(); track o.id; let i = $index) {
-  <article class="row-in rounded-2xl bg-white p-4 ring-1 ring-slate-200" [class.row-flash]="flashId() === o.id"
+  <article [attr.data-order-id]="o.id" class="row-in rounded-2xl bg-white p-4 ring-1 ring-slate-200" [class.row-flash]="flashId() === o.id"
     [style.animation-delay.ms]="delay(i)">
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
@@ -344,7 +344,7 @@
     </thead>
     <tbody class="divide-y divide-slate-100">
       @for (o of svc.orders(); track o.id; let i = $index) {
-      <tr class="row-in align-middle transition hover:bg-slate-50/70" [class.row-flash]="flashId() === o.id"
+      <tr [attr.data-order-id]="o.id" class="row-in align-middle transition hover:bg-slate-50/70" [class.row-flash]="flashId() === o.id"
         [style.animation-delay.ms]="delay(i)">
 
         <!-- order -->
