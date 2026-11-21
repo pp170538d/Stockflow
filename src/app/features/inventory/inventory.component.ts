@@ -413,15 +413,58 @@ export class InventoryComponent implements OnInit {
     }[u];
   }
 
-  readonly eventMeta: Record<MovementEvent, { label: string; chip: string; dot: string }> = {
-    DELIVERY: { label: 'Delivery', chip: 'bg-blue-50 text-blue-700', dot: 'bg-blue-500' },
-    SALE: { label: 'Sale', chip: 'bg-red-50 text-red-700', dot: 'bg-red-500' },
-    STOCK_COUNT: { label: 'Stock count', chip: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500' },
-    ADJUSTMENT: { label: 'Adjustment', chip: 'bg-violet-50 text-violet-700', dot: 'bg-violet-500' },
-    TRANSFER: { label: 'Transfer', chip: 'bg-sky-50 text-sky-700', dot: 'bg-sky-500' },
-    RETURN: { label: 'Return', chip: 'bg-green-50 text-green-700', dot: 'bg-green-500' },
-    WRITE_OFF: { label: 'Write-off', chip: 'bg-rose-50 text-rose-700', dot: 'bg-rose-500' },
-  };
+  readonly eventMeta: Record<
+  MovementEvent,
+  { label: string; chip: string; dot: string }
+> = {
+  DELIVERY: {
+    label: 'Delivery',
+    chip: 'bg-blue-50 text-blue-700',
+    dot: 'bg-blue-500',
+  },
+
+  SALE: {
+    label: 'Sale',
+    chip: 'bg-red-50 text-red-700',
+    dot: 'bg-red-500',
+  },
+
+  STOCK_COUNT: {
+    label: 'Stock count',
+    chip: 'bg-amber-50 text-amber-700',
+    dot: 'bg-amber-500',
+  },
+
+  ADJUSTMENT: {
+    label: 'Adjustment',
+    chip: 'bg-violet-50 text-violet-700',
+    dot: 'bg-violet-500',
+  },
+
+  TRANSFER: {
+    label: 'Transfer',
+    chip: 'bg-sky-50 text-sky-700',
+    dot: 'bg-sky-500',
+  },
+
+  RETURN: {
+    label: 'Return',
+    chip: 'bg-green-50 text-green-700',
+    dot: 'bg-green-500',
+  },
+
+  WRITE_OFF: {
+    label: 'Write-off',
+    chip: 'bg-rose-50 text-rose-700',
+    dot: 'bg-rose-500',
+  },
+
+  SUPPLIER_RETURN: {
+    label: 'Supplier return',
+    chip: 'bg-orange-50 text-orange-700',
+    dot: 'bg-orange-500',
+  },
+};
 
   /** Bar fill on a 30-day scale (markers at 7 and 14). */
   runwayPct(i: InventoryItem): number {
@@ -487,16 +530,17 @@ export class InventoryComponent implements OnInit {
   }
 
   eventLabel(ev: MovementEvent): string {
-    return {
-      SALE: 'Sale — sold, stock out',
-      ADJUSTMENT: 'Adjustment — signed correction',
-      RETURN: 'Return — back into stock',
-      WRITE_OFF: 'Write-off — damage / loss',
-      DELIVERY: 'Delivery',
-      STOCK_COUNT: 'Stock count',
-      TRANSFER: 'Transfer',
-    }[ev];
-  }
+  return {
+    SALE: 'Sale — sold, stock out',
+    ADJUSTMENT: 'Adjustment — signed correction',
+    RETURN: 'Return — back into stock',
+    WRITE_OFF: 'Write-off — damage / loss',
+    DELIVERY: 'Delivery — received into stock',
+    STOCK_COUNT: 'Stock count — physical count correction',
+    TRANSFER: 'Transfer — moved between locations',
+    SUPPLIER_RETURN: 'Supplier return — sent back to supplier',
+  }[ev];
+}
 
   private signedQty(event: MovementEvent, qty: number): number {
     if (event === 'RETURN') return Math.abs(qty);

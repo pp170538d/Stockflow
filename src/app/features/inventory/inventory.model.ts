@@ -13,7 +13,9 @@ export type MovementEvent =
   | 'ADJUSTMENT'
   | 'TRANSFER'
   | 'RETURN'
-  | 'WRITE_OFF';
+  | 'WRITE_OFF'
+  | 'SUPPLIER_RETURN';
+
 
 /** Events a human can record from the manual stock drawer. */
 export const MANUAL_EVENTS: MovementEvent[] = ['SALE', 'ADJUSTMENT', 'RETURN', 'WRITE_OFF'];
