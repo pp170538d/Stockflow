@@ -1,9 +1,10 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { supabase } from '../../core/supabase/supabase.client';
 import { ToastService } from '../../shared/ui/toast.service';
 import { ConfirmService } from '../../shared/ui/confirm.service';
+import { RequestSplitComponent } from './request-split.component';
+import { ApproveRequestResult } from './request-split.model';
 
 interface ReviewLine {
   order_item_id: string | null;
@@ -23,7 +24,7 @@ interface ProductOption { id: string; sku: string; name: string; cost_price: num
 @Component({
   selector: 'app-order-review-page',
   standalone: true,
-  imports: [DecimalPipe, RouterLink],
+  imports: [ RouterLink, RequestSplitComponent],
   templateUrl: './order-review-page.component.html',
 })
 export class OrderReviewPageComponent implements OnInit {
@@ -66,6 +67,14 @@ export class OrderReviewPageComponent implements OnInit {
     }
     const requestedUnits = this.lines().reduce((s,l)=>s+l.requested_qty,0); return { units, requestedUnits, value, missing, changedQty, aboveLast, belowLast };
   });
+
+  onSplitApproved(result: ApproveRequestResult): void {
+  void this.router.navigate(['/orders'], {
+    queryParams: {
+      status: 'APPROVED',
+    },
+  });
+}
 
   readonly canSave = computed(() =>
     !this.saving() && this.lines().length > 0 &&

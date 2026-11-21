@@ -8,136 +8,103 @@
 
     @if (svc.loading()) {
 
-      <div class="mt-2 space-y-2">
-        <div class="skeleton h-7 w-[min(520px,90%)]"></div>
-        <div class="skeleton h-7 w-[min(340px,60%)]"></div>
-      </div>
+    <div class="mt-2 space-y-2">
+      <div class="skeleton h-7 w-[min(520px,90%)]"></div>
+      <div class="skeleton h-7 w-[min(340px,60%)]"></div>
+    </div>
 
     } @else {
 
-      <h1
-        class="mt-1 max-w-3xl text-2xl font-semibold leading-snug tracking-tight text-slate-900 sm:text-[28px]"
-      >
-        @for (
-          p of briefing();
-          track $index;
-          let last = $last;
-          let first = $first
-        ) {
+    <h1 class="mt-1 max-w-3xl text-2xl font-semibold leading-snug tracking-tight text-slate-900 sm:text-[28px]">
+      @for (
+      p of briefing();
+      track $index;
+      let last = $last;
+      let first = $first
+      ) {
 
-          @if (!first) {
-            <span class="text-slate-400">
-              {{ last ? ' and ' : ', ' }}
-            </span>
-          }
+      @if (!first) {
+      <span class="text-slate-400">
+        {{ last ? ' and ' : ', ' }}
+      </span>
+      }
 
-          @if (p.anchor) {
+      @if (p.anchor) {
 
-            <button
-              type="button"
-              (click)="scrollTo(p.anchor)"
-              class="inline font-inherit text-inherit underline decoration-2 underline-offset-4 transition hover:opacity-80"
-              [class.decoration-red-300]="p.tone === 'danger'"
-              [class.decoration-amber-300]="p.tone === 'warning'"
-            >
-              {{ p.text }}
-            </button>
+      <button type="button" (click)="scrollTo(p.anchor)"
+        class="inline font-inherit text-inherit underline decoration-2 underline-offset-4 transition hover:opacity-80"
+        [class.decoration-red-300]="p.tone === 'danger'" [class.decoration-amber-300]="p.tone === 'warning'">
+        {{ p.text }}
+      </button>
 
-          } @else if (p.link) {
+      } @else if (p.link) {
 
-            <a
-              [routerLink]="p.link"
-              [queryParams]="p.queryParams ?? null"
-              class="underline decoration-2 underline-offset-4 transition hover:opacity-80"
-              [class.decoration-red-300]="p.tone === 'danger'"
-              [class.decoration-amber-300]="p.tone === 'warning'"
-            >
-              {{ p.text }}
-            </a>
+      <a [routerLink]="p.link" [queryParams]="p.queryParams ?? null"
+        class="underline decoration-2 underline-offset-4 transition hover:opacity-80"
+        [class.decoration-red-300]="p.tone === 'danger'" [class.decoration-amber-300]="p.tone === 'warning'">
+        {{ p.text }}
+      </a>
 
-          } @else {
+      } @else {
 
-            <span>
-              {{ p.text }}
-            </span>
+      <span>
+        {{ p.text }}
+      </span>
 
-          }
-        }
+      }
+      }
 
-        @if (briefing()[0]?.tone !== 'ok') {
-          <span>.</span>
-        }
-      </h1>
+      @if (briefing()[0]?.tone !== 'ok') {
+      <span>.</span>
+      }
+    </h1>
 
-      <p class="mt-1 text-xs text-slate-400">
-        {{ isAdmin() ? 'Across all locations' : 'Your location' }}
-        · Last {{ svc.days() }} days
-      </p>
+    <p class="mt-1 text-xs text-slate-400">
+      {{ isAdmin() ? 'Across all locations' : 'Your location' }}
+      · Last {{ svc.days() }} days
+    </p>
     }
   </div>
 
   <div class="flex shrink-0 flex-wrap items-center gap-2">
 
     <!-- Global period -->
-    <div
-      class="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 text-xs font-medium"
-    >
+    <div class="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 text-xs font-medium">
       @for (r of ranges; track r) {
-        <button
-          type="button"
-          (click)="svc.setRange(r)"
-          [disabled]="svc.refreshing()"
-          class="rounded-md px-2.5 py-1 transition disabled:cursor-wait"
-          [class.bg-white]="svc.days() === r"
-          [class.shadow-sm]="svc.days() === r"
-          [class.text-slate-900]="svc.days() === r"
-          [class.text-slate-500]="svc.days() !== r"
-        >
-          {{ r }}d
-        </button>
+      <button type="button" (click)="svc.setRange(r)" [disabled]="svc.refreshing()"
+        class="rounded-md px-2.5 py-1 transition disabled:cursor-wait" [class.bg-white]="svc.days() === r"
+        [class.shadow-sm]="svc.days() === r" [class.text-slate-900]="svc.days() === r"
+        [class.text-slate-500]="svc.days() !== r">
+        {{ r }}d
+      </button>
       }
     </div>
 
     <!-- Live -->
     <span
       class="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium ring-1 ring-slate-200"
-      [class.text-green-700]="svc.live()"
-      [class.text-slate-400]="!svc.live()"
-    >
+      [class.text-green-700]="svc.live()" [class.text-slate-400]="!svc.live()">
       <span class="relative flex h-2 w-2">
         @if (svc.live()) {
-          <span
-            class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60"
-          ></span>
+        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60"></span>
         }
 
-        <span
-          class="relative inline-flex h-2 w-2 rounded-full"
-          [class.bg-green-500]="svc.live()"
-          [class.bg-slate-300]="!svc.live()"
-        ></span>
+        <span class="relative inline-flex h-2 w-2 rounded-full" [class.bg-green-500]="svc.live()"
+          [class.bg-slate-300]="!svc.live()"></span>
       </span>
 
       {{ svc.live() ? 'Live' : 'Connecting…' }}
     </span>
 
     <!-- New order -->
-    <a
-      routerLink="/orders/new"
-      class="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700"
-    >
-      <svg
-        class="h-4 w-4"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-      >
+    <a routerLink="/orders/new"
+      class="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round">
         <path d="M12 5v14M5 12h14" />
       </svg>
 
-      New order
+      {{ isAdmin() ? 'New order' : 'New request' }}
     </a>
 
   </div>
@@ -154,7 +121,7 @@
   <section class="flex flex-col rounded-2xl bg-white p-5 ring-1 ring-slate-200">
     <div class="flex items-center justify-between">
       <h2 class="flex items-center gap-2 text-sm font-semibold text-slate-900">
-        {{ isAdmin() ? 'Waiting for approval' : 'On the way' }}
+        {{ isAdmin() ? 'Requests to review' : 'On the way' }}
         @let waitN = isAdmin() ? svc.pendingCount() : (svc.totals()?.approved ?? 0);
         @if (waitN > 0) { <span
           class="grid h-5 min-w-5 place-items-center rounded-full bg-amber-100 px-1.5 text-[11px] font-semibold text-amber-700">{{
@@ -174,7 +141,7 @@
           <path d="M20 6 9 17l-5-5" />
         </svg></div>
       <p class="mt-3 text-sm font-medium text-slate-900">Inbox zero</p>
-      <p class="mt-0.5 text-xs text-slate-500">No orders are waiting for you.</p>
+      <p class="mt-0.5 text-xs text-slate-500">No store requests are waiting for review.</p>
     </div>
     } @else {
     <ul class="mt-4 space-y-2">
@@ -187,15 +154,16 @@
             <div class="truncate text-xs text-slate-500">{{ linesLabel(o) }}</div>
           </div><span class="shrink-0 text-[11px] text-slate-400">{{ ago(o.created_at) }}</span>
         </div>
-        <div class="mt-3 flex gap-2"><button type="button" (click)="approve(o)" [disabled]="busy() === o.id"
-            class="flex-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-wait">Approve
-            · {{ o.units }} units</button><button type="button" (click)="reject(o)" [disabled]="busy() === o.id"
+        <div class="mt-3 flex gap-2"><a [routerLink]="['/orders', o.id, 'review']"
+            class="flex-1 rounded-lg bg-slate-900 px-3 py-1.5 text-center text-xs font-medium text-white hover:bg-slate-800">
+            Review · {{ o.units }} {{ o.units === 1 ? 'unit' : 'units' }}
+          </a><button type="button" (click)="reject(o)" [disabled]="busy() === o.id"
             class="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-red-600 ring-1 ring-slate-200 hover:bg-red-50 disabled:cursor-wait">Reject</button>
         </div>
       </li>
       }
     </ul>
-    @if (svc.pendingOrders().length > 2) { <a routerLink="/orders"
+    @if (svc.pendingOrders().length > 2) { <a routerLink="/orders" [queryParams]="{ status: 'PENDING' }"
       class="mt-3 text-center text-xs font-medium text-slate-500 hover:text-slate-700">+{{ svc.pendingOrders().length -
       2 }} more waiting</a> }
     }
@@ -205,7 +173,8 @@
         [class.text-slate-900]="incoming > 0" [class.text-slate-300]="incoming === 0">{{ incoming }}</span><span
         class="mb-1.5 text-sm text-slate-500">{{ incoming === 1 ? 'approved order to receive' : 'approved orders to
         receive' }}</span></div>
-    <p class="mt-2 text-xs text-slate-400">{{ svc.totals()?.pending ?? 0 }} still waiting for head office.</p>
+    <p class="mt-2 text-xs text-slate-400">{{ svc.totals()?.pending ?? 0 }} {{ (svc.totals()?.pending ?? 0) === 1 ?
+      'request' : 'requests' }} waiting for procurement.</p>
     @if (incoming > 0) { <a routerLink="/orders"
       class="mt-auto inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Confirm
       a delivery</a> }

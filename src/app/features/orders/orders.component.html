@@ -4,9 +4,9 @@
     <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Orders</h1>
     <p class="mt-1 text-sm text-slate-500">
       @if (auth.isAdmin()) {
-      Every order from request to shelf — approve, receive, and track discrepancies.
+      Store requests, purchase orders and receipts — review, order, receive and resolve differences.
       } @else {
-      Your orders, from request to shelf.
+      Your requests and deliveries, from request to shelf.
       }
     </p>
   </div>
@@ -16,7 +16,7 @@
     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
       <path d="M12 5v14M5 12h14" />
     </svg>
-    New order
+    {{ auth.isAdmin() ? 'New order' : 'New request' }}
   </a>
 </div>
 
@@ -46,7 +46,7 @@
     <div class="mt-1.5 text-2xl font-semibold tabular-nums" [class]="counts()[s] ? 'text-slate-900' : 'text-slate-300'">
       {{ counts()[s] }}</div>
     <div class="mt-0.5 text-xs text-slate-400">
-      @if (s === 'PENDING' && auth.isAdmin()) { need your approval } @else { {{ meta[s].hint.toLowerCase() }} }
+      {{ cardHint(s) }}
     </div>
   </button>
   }
@@ -207,13 +207,13 @@
     } @else {
       <app-empty-state
         title="No orders here"
-        subtitle="Try another filter, or create a new order."
+        subtitle="Try another filter, or create a new request."
       >
         <a
           routerLink="/orders/new"
           class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
         >
-          + New order
+          + {{ auth.isAdmin() ? 'New order' : 'New request' }}
         </a>
       </app-empty-state>
     }
@@ -233,7 +233,7 @@
 
         <div class="mt-0.5 truncate text-xs text-slate-400">
           {{ o.object?.name || '—' }}
-          · {{ o.supplier?.name || o.supplier_snapshot?.name || 'Legacy order' }}
+          · {{ supplierLabel(o) }}
           · {{ ago(o.created_at) }}
         </div>
       </div>
@@ -257,10 +257,10 @@
       }
     </div>
     <div class="mt-1.5 flex justify-between text-[10px] font-medium uppercase tracking-wide text-slate-400">
-      <span>Pending</span>
-      <span [class.text-red-500]="o.status === 'REJECTED'">{{ o.status === 'REJECTED' ? 'Rejected' : 'Approved'
+      <span>Requested</span>
+      <span [class.text-red-500]="o.status === 'REJECTED'">{{ o.status === 'REJECTED' ? 'Rejected' : 'Ordered'
         }}</span>
-      <span>Delivered</span>
+      <span>Received</span>
     </div>
 
     <div class="mt-4 flex flex-wrap gap-1.5">
@@ -361,7 +361,7 @@
               </div>
 
               <div class="truncate text-[11px] text-slate-400">
-                {{ o.supplier?.name || o.supplier_snapshot?.name || 'Legacy order · no supplier' }}
+                {{ supplierLabel(o) }}
               </div>
             </div>
           </div>
@@ -385,10 +385,9 @@
               }
             </div>
             <div class="mt-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-slate-400">
-              <span>Pending</span>
-              <span [class.text-red-500]="o.status === 'REJECTED'">{{ o.status === 'REJECTED' ? 'Rejected' : 'Approved'
-                }}</span>
-              <span>Delivered</span>
+              <span>Requested</span>
+              <span [class.text-red-500]="o.status === 'REJECTED'">{{ o.status === 'REJECTED' ? 'Rejected' : 'Ordered' }}</span>
+              <span>Received</span>
             </div>
           </div>
           @if (o.status === 'DELIVERED' && variance(o)) {

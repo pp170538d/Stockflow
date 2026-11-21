@@ -76,12 +76,10 @@ export class InventoryPerformanceComponent {
   );
 
   /** Replenishment rows that are already covered by the order workflow. */
+  /** Already moving: requested (waiting for procurement) or on the way. */
   readonly handledReplenishment = computed(() =>
-  this.replenishment().filter((r) =>
-    r.status === 'in_transit' ||
-    (!this.isAdmin() && r.status === 'pending')
-  )
-);
+    this.replenishment().filter((r) => r.status === 'requested' || r.status === 'in_transit')
+  );
 
   readonly performanceActions = computed(() => this.data()?.actions ?? []);
 
@@ -172,7 +170,7 @@ export class InventoryPerformanceComponent {
     return {
       needs_order: 'bg-red-50 text-red-700 ring-red-200',
       top_up: 'bg-orange-50 text-orange-700 ring-orange-200',
-      pending: 'bg-amber-50 text-amber-700 ring-amber-200',
+      requested: 'bg-amber-50 text-amber-700 ring-amber-200',
       in_transit: 'bg-sky-50 text-sky-700 ring-sky-200',
     }[s];
   }
@@ -181,7 +179,7 @@ export class InventoryPerformanceComponent {
     return {
       needs_order: 'Needs order',
       top_up: 'Order more',
-      pending: 'Waiting approval',
+      requested: 'Requested',
       in_transit: 'On the way',
     }[s];
   }
@@ -198,11 +196,20 @@ export class InventoryPerformanceComponent {
         return shelf;
       case 'top_up':
         return `${shelf} · ${r.incoming_qty} ordered, not enough`;
-      case 'pending':
-        return `${shelf} · ${r.pending_qty} on ${r.open_order_number ?? 'an order'} · waiting approval`;
+      case 'requested':
+        return `${shelf} · ${r.pending_qty} requested on ${r.open_order_number ?? 'a request'} · ${
+          this.isAdmin() ? 'needs your review' : 'waiting for procurement'
+        }`;
       default:
         return `${shelf} · ${r.approved_qty} approved, arriving`;
     }
+  }
+
+  /** Qty shown on the right of an in-progress row. */
+  progressQty(r: ReplenishmentRow): { label: string; qty: number } {
+    return r.status === 'requested'
+      ? { label: 'Requested', qty: r.pending_qty }
+      : { label: 'Incoming', qty: r.incoming_qty };
   }
 
   orderParams(r: ReplenishmentRow): Record<string, string | number> {

@@ -205,11 +205,6 @@ export class OrdersComponent implements OnInit {
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
   // =========================================================
-  // Admin review before approval
-  // =========================================================
-  readonly reviewId = signal<string | null>(null);
-
-  // =========================================================
   // Confirm delivery drawer
   // =========================================================
 
@@ -231,8 +226,8 @@ export class OrdersComponent implements OnInit {
 
   readonly meta: Record<OrderStatus, StatusMeta> = {
     PENDING: {
-      label: 'Pending',
-      hint: 'Waiting for approval',
+      label: 'Requests',
+      hint: 'Waiting for review',
       chip: 'bg-amber-50 text-amber-700 ring-amber-200',
       text: 'text-amber-600',
       dot: 'bg-status-pending',
@@ -240,7 +235,7 @@ export class OrdersComponent implements OnInit {
     },
 
     APPROVED: {
-      label: 'Approved',
+      label: 'Ordered',
       hint: 'On the way to the store',
       chip: 'bg-blue-50 text-blue-700 ring-blue-200',
       text: 'text-blue-600',
@@ -249,7 +244,7 @@ export class OrdersComponent implements OnInit {
     },
 
     DELIVERED: {
-      label: 'Delivered',
+      label: 'Received',
       hint: 'Received · stock updated',
       chip: 'bg-green-50 text-green-700 ring-green-200',
       text: 'text-green-600',
@@ -287,22 +282,66 @@ export class OrdersComponent implements OnInit {
   // =========================================================
 
   async ngOnInit(): Promise<void> {
-    if (this.auth.isAdmin()) {
-      await this.loadObjects();
-    }
-
-    const focusId = this.route.snapshot.queryParamMap.get('focus');
-    const openExceptions = this.route.snapshot.queryParamMap.get('exceptions') === '1';
-    if (focusId) {
-      await this.focusOrder(focusId);
-    } else if (openExceptions) {
-      this.exceptionsOnly.set(true);
-      this.statusFilter.set('');
-      this.reload(1);
-    } else {
-      this.reload(1);
-    }
+  if (this.auth.isAdmin()) {
+    await this.loadObjects();
   }
+
+  const queryParams =
+    this.route.snapshot.queryParamMap;
+
+  const focusId =
+    queryParams.get('focus');
+
+  const openExceptions =
+    queryParams.get('exceptions') === '1';
+
+  const requestedStatus =
+    queryParams.get('status');
+
+  // 1. Explicitly focus one specific order.
+  if (focusId) {
+    await this.focusOrder(focusId);
+    return;
+  }
+
+  // 2. Open only orders with unresolved delivery differences.
+  if (openExceptions) {
+    this.exceptionsOnly.set(true);
+    this.statusFilter.set('');
+    this.search.set('');
+
+    this.reload(1);
+    return;
+  }
+
+  // 3. Open a requested status, e.g.
+  // /orders?status=APPROVED
+  if (
+    requestedStatus &&
+    this.statuses.includes(
+      requestedStatus as OrderStatus
+    )
+  ) {
+    this.exceptionsOnly.set(false);
+
+    this.statusFilter.set(
+      requestedStatus as OrderStatus
+    );
+
+    // Important after a split:
+    // don't leave an order number in the search box.
+    this.search.set('');
+
+    this.reload(1);
+    return;
+  }
+
+  // 4. Normal Orders landing.
+  this.exceptionsOnly.set(false);
+  this.search.set('');
+
+  this.reload(1);
+}
 
   /** Finds the exact order regardless of pagination, then scrolls and flashes it. */
   private async focusOrder(orderId: string): Promise<void> {
@@ -665,11 +704,26 @@ export class OrdersComponent implements OnInit {
     ].dot;
   }
 
+  /** Hint under a pipeline card, depending on role. */
+  cardHint(status: OrderStatus): string {
+    if (status === 'PENDING') {
+      return this.auth.isAdmin() ? 'need your review' : 'waiting for procurement';
+    }
+    return this.meta[status].hint.toLowerCase();
+  }
+
+  /** Supplier line: a request gets its supplier(s) on review. */
+  supplierLabel(order: Order): string {
+    const name = order.supplier?.name || order.supplier_snapshot?.name;
+    if (name) return name;
+    return order.status === 'PENDING' ? 'Supplier assigned on review' : 'No supplier';
+  }
+
   nextHint(order: Order): string {
     if (order.status === 'PENDING') {
       return this.auth.isAdmin()
-        ? 'Needs your approval'
-        : 'Waiting for approval';
+        ? 'Needs review'
+        : 'Waiting for procurement';
     }
 
     if (order.status === 'APPROVED') {
@@ -787,71 +841,13 @@ export class OrdersComponent implements OnInit {
   }
 
 
-  async approve(
-    order: Order
-  ): Promise<void> {
-    const error =
-      await this.svc.setStatus(
-        order.id,
-        'APPROVED'
-      );
-
-    if (error) {
-      this.toast.error(error);
-      return;
-    }
-
-    this.reload(
-      this.svc.page()
-    );
-
-    this.flash(order.id);
-
-    this.toast.success(
-      `${order.order_number} approved`,
-      {
-        action: {
-          label: 'Undo',
-
-          run: async () => {
-            const undoError =
-              await this.svc.setStatus(
-                order.id,
-                'PENDING'
-              );
-
-            if (undoError) {
-              this.toast.error(
-                undoError
-              );
-
-              return;
-            }
-
-            this.reload(
-              this.svc.page()
-            );
-
-            this.flash(
-              order.id
-            );
-
-            this.toast.info(
-              'Approval undone — back to Pending.'
-            );
-          },
-        },
-      }
-    );
-  }
-
   async reject(
     order: Order
   ): Promise<void> {
     const ok =
       await this.confirm.ask({
         title:
-          'Reject this order?',
+          'Reject this request?',
 
         message:
           `${order.order_number} for ` +
@@ -860,7 +856,7 @@ export class OrdersComponent implements OnInit {
           `This can't be undone.`,
 
         confirmLabel:
-          'Reject order',
+          'Reject request',
 
         tone:
           'danger',
@@ -892,19 +888,6 @@ export class OrdersComponent implements OnInit {
     this.toast.info(
       `${order.order_number} rejected.`
     );
-  }
-
-  openReview(order: Order): void {
-    this.reviewId.set(order.id);
-  }
-
-  closeReview(): void {
-    this.reviewId.set(null);
-  }
-
-  onReviewed(): void {
-    this.reload(this.svc.page());
-    void this.loadCounts();
   }
 
   // =========================================================

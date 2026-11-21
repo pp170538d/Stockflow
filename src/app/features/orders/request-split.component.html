@@ -1,0 +1,243 @@
+@if (loading()) {
+  <div class="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 ring-1 ring-slate-200">Preparing purchase plan…</div>
+} @else if (error() && !lines().length) {
+  <div class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{{ error() }}</div>
+} @else {
+  <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+
+    <!-- ======================= LINES ======================= -->
+    <section class="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+      <div class="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-sm font-semibold text-slate-900">Supplier per product</h2>
+          <p class="mt-0.5 text-xs text-slate-400">Preferred suppliers and pack-rounded quantities are filled in. Only lines that need a decision require your attention.</p>
+        </div>
+        <div class="inline-flex shrink-0 rounded-lg bg-slate-100 p-0.5 text-xs font-medium">
+          @for (v of [
+            { k: 'all', l: 'All', n: lines().length },
+            { k: 'ready', l: 'Ready', n: readyCount() },
+            { k: 'attention', l: 'Needs decision', n: attentionCount() }
+          ]; track v.k) {
+            <button type="button" (click)="view.set($any(v.k))" class="rounded-md px-2.5 py-1.5 transition"
+              [class]="view() === v.k ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'">
+              {{ v.l }}
+              <span class="ml-0.5 tabular-nums"
+                [class.text-amber-600]="v.k === 'attention' && v.n > 0"
+                [class.text-slate-400]="!(v.k === 'attention' && v.n > 0)">{{ v.n }}</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="divide-y divide-slate-100">
+        @for (line of visibleLines(); track line.s.order_item_id) {
+          @let ready = lineReady(line);
+          <div class="px-5 py-4" [class.opacity-50]="!line.included">
+
+            <!-- product -->
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex min-w-0 items-start gap-2.5">
+                <span class="mt-1 h-2 w-2 shrink-0 rounded-full"
+                  [class.bg-green-500]="line.included && ready"
+                  [class.bg-amber-500]="line.included && !ready"
+                  [class.bg-slate-300]="!line.included"></span>
+                <div class="min-w-0">
+                  <div class="truncate text-sm font-semibold text-slate-900">{{ line.s.product_name }}</div>
+                  <div class="mt-0.5 text-xs text-slate-400">
+                    <span class="font-mono">{{ line.s.sku }}</span>
+                    · store requested <b class="text-slate-700">{{ line.s.requested_qty }}</b>
+                    @if (line.allocations.length > 1) {
+                      · allocated <b [class.text-amber-700]="allocated(line) < line.s.quantity" [class.text-slate-700]="allocated(line) >= line.s.quantity">{{ allocated(line) }}</b>
+                    }
+                    @if (line.s.suppliers_count === 0) { · <span class="font-medium text-amber-700">no supplier in catalog</span> }
+                  </div>
+                </div>
+              </div>
+              <div class="flex shrink-0 items-center gap-1">
+                @if (line.included && optionsFor(line.s.product_id).length > line.allocations.length) {
+                  <button type="button" (click)="split(line)" class="rounded-md px-2 py-1 text-[11px] font-medium text-slate-500 hover:bg-slate-100">Split</button>
+                }
+                <button type="button" (click)="toggleIncluded(line)" class="rounded-md px-2 py-1 text-[11px] font-medium text-slate-500 hover:bg-slate-100">
+                  {{ line.included ? 'Skip' : 'Include' }}
+                </button>
+              </div>
+            </div>
+
+            @if (line.included) {
+              <div class="mt-3 space-y-2 pl-4">
+                @for (a of line.allocations; track a.key) {
+                  @let opt = option(line.s.product_id, a.supplierId);
+                  @let change = priceChange(line, a);
+                  @let level = priceLevel(change);
+                  @let issue = packIssue(line, a);
+                  @let last = lastPrice(a.supplierId, line.s.product_id);
+
+                  <div class="rounded-xl p-3 ring-1"
+                    [class]="!a.supplierId || issue ? 'bg-amber-50/60 ring-amber-300' : 'bg-slate-50 ring-slate-200'">
+
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <!-- supplier: plain text when resolved, picker when editing / missing -->
+                      @if (a.supplierId && !isEditing(line)) {
+                        <div class="flex min-w-0 flex-1 items-center gap-2">
+                          <span class="truncate text-sm font-semibold text-slate-900">{{ opt?.preferred ? '★ ' : '' }}{{ opt?.supplier_name }}</span>
+                          <button type="button" (click)="toggleEdit(line)" class="shrink-0 text-[11px] font-semibold text-brand-600 hover:underline">Change</button>
+                        </div>
+                      } @else {
+                        <select (change)="setSupplier(line, a, $any($event.target).value)"
+                          class="h-9 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+                          <option value="" [selected]="!a.supplierId">Choose supplier…</option>
+                          @if (catalogOptions(line.s.product_id).length) {
+                            <optgroup label="Delivers this product">
+                              @for (o of catalogOptions(line.s.product_id); track o.supplier_id) {
+                                <option [value]="o.supplier_id" [selected]="o.supplier_id === a.supplierId">
+                                  {{ o.preferred ? '★ ' : '' }}{{ o.supplier_name }}{{ o.pack_size > 1 ? ' · pack ' + o.pack_size : '' }}
+                                </option>
+                              }
+                            </optgroup>
+                          }
+                          @if (otherOptions(line.s.product_id).length) {
+                            <optgroup label="Other suppliers (added to catalog)">
+                              @for (o of otherOptions(line.s.product_id); track o.supplier_id) {
+                                <option [value]="o.supplier_id" [selected]="o.supplier_id === a.supplierId">{{ o.supplier_name }}</option>
+                              }
+                            </optgroup>
+                          }
+                        </select>
+                      }
+
+                      <div class="flex items-center gap-2">
+                        <input type="number" min="1" [value]="a.quantity" (input)="setQty(line, a, $any($event.target).value)"
+                          class="h-9 w-24 rounded-lg border bg-white px-2 text-right text-sm font-semibold tabular-nums outline-none focus:ring-2"
+                          [class]="issue ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-300 focus:border-brand-500 focus:ring-brand-500/20'" />
+                        <span class="text-xs text-slate-400">units</span>
+                        @if (line.allocations.length > 1) {
+                          <button type="button" (click)="removeAllocation(line, a)" aria-label="Remove split"
+                            class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-white hover:text-red-600">×</button>
+                        }
+                      </div>
+                    </div>
+
+                    <!-- facts -->
+                    <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
+                      @if (opt) {
+                        @if (opt.pack_size > 1 || opt.minimum_packs > 1) {
+                          <span>Pack {{ opt.pack_size }} · min {{ opt.pack_size * opt.minimum_packs }}</span>
+                        }
+                        @if (opt.lead_time_days !== null) { <span>{{ opt.lead_time_days }}d lead time</span> }
+                        @if (!opt.in_catalog) { <span class="text-sky-700">New supplier for this product</span> }
+                      }
+                      @if (last !== null) {
+                        <span>
+                          Last {{ last | number: '1.2-2' }}
+                          @switch (level) {
+                            @case ('up-big') { <b class="text-red-600">↑ {{ change | number: '1.1-1' }}%</b> }
+                            @case ('up') { <b class="text-red-600">↑ {{ change | number: '1.1-1' }}%</b> }
+                            @case ('down') { <b class="text-green-600">↓ {{ -(change ?? 0) | number: '1.1-1' }}%</b> }
+                            @case ('same') { <b class="text-slate-400">→ same</b> }
+                          }
+                        </span>
+                      } @else if (a.supplierId) {
+                        <span class="text-slate-400">First order from this supplier</span>
+                      }
+                      @if (line.s.current_cost !== null) {
+                        <span>Cost {{ line.s.current_cost | number: '1.2-2' }} {{ currency() }}</span>
+                      }
+                      @if (a.supplierId && a.quantity !== line.s.requested_qty && line.allocations.length === 1 && !issue) {
+                        <span class="text-slate-400">rounded from {{ line.s.requested_qty }}</span>
+                      }
+                    </div>
+
+                    <!-- pack rule: blocking -->
+                    @if (issue) {
+                      <div class="mt-2 flex items-center justify-between gap-2 rounded-lg bg-red-50 px-2.5 py-1.5 text-[11px] text-red-700 ring-1 ring-red-200">
+                        <span><b>Invalid quantity.</b> {{ issue }}</span>
+                        <button type="button" (click)="roundToPack(line, a)"
+                          class="shrink-0 rounded-md bg-white px-2 py-0.5 font-semibold ring-1 ring-red-300 hover:bg-red-100">Use {{ validQty(line, a) }}</button>
+                      </div>
+                    }
+
+                    <!-- big price jump: warning only -->
+                    @if (level === 'up-big') {
+                      <div class="mt-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 ring-1 ring-amber-200">
+                        ⚠ Large price increase vs the last order — check the price before approving.
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        } @empty {
+          <div class="px-5 py-10 text-center text-sm text-slate-400">
+            @if (view() === 'attention') { ✓ Nothing needs a decision. } @else { No lines here. }
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- ======================= PLAN ======================= -->
+    <aside class="h-fit space-y-3 xl:sticky xl:top-4">
+      <section class="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+        <div class="border-b border-slate-100 px-5 py-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-slate-900">Purchase plan</h2>
+            <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+              [class]="attentionCount() ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'">
+              {{ readyCount() }} / {{ readyCount() + attentionCount() }} ready
+            </span>
+          </div>
+          <p class="mt-0.5 text-xs text-slate-400">One purchase order per supplier</p>
+        </div>
+
+        @if (!plan().length) {
+          <div class="px-5 py-8 text-center text-xs text-slate-400">Choose suppliers to build the plan.</div>
+        } @else {
+          <div class="divide-y divide-slate-100">
+            @for (g of plan(); track g.supplierId) {
+              <div class="px-5 py-3">
+                <div class="truncate text-sm font-semibold text-slate-900">{{ g.supplierName }}</div>
+                <div class="mt-0.5 flex items-center justify-between text-xs text-slate-500">
+                  <span>{{ g.lines }} {{ g.lines === 1 ? 'product' : 'products' }} · {{ g.units }} units</span>
+                  <b class="tabular-nums text-slate-800">{{ g.value | number: '1.2-2' }} {{ currency() }}</b>
+                </div>
+                @if (g.missingCost) { <div class="mt-0.5 text-[10px] text-amber-700">{{ g.missingCost }} line(s) without cost</div> }
+              </div>
+            }
+          </div>
+          <div class="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-3 text-sm">
+            <span class="text-slate-500">{{ totals().units }} units</span>
+            <b class="tabular-nums text-slate-900">{{ totals().value | number: '1.2-2' }} {{ currency() }}</b>
+          </div>
+        }
+      </section>
+
+      @if (attentionCount()) {
+        <button type="button" (click)="view.set('attention')"
+          class="w-full rounded-xl bg-amber-50 px-4 py-3 text-left text-xs text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100">
+          <b>{{ attentionCount() }} {{ attentionCount() === 1 ? 'product needs' : 'products need' }} a decision</b>
+          <span class="block">Missing supplier or a quantity that breaks the pack rule. Show them →</span>
+        </button>
+      } @else if (blockers().length) {
+        <div class="rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-800 ring-1 ring-amber-200">
+          @for (m of blockers(); track $index) { <div>• {{ m }}</div> }
+        </div>
+      }
+      @if (warnings()) {
+        <div class="rounded-xl bg-amber-50 px-4 py-2.5 text-xs text-amber-800 ring-1 ring-amber-200">
+          ⚠ {{ warnings() }} line(s) are more than 25% above the last price.
+        </div>
+      }
+      @if (totals().skipped) {
+        <div class="text-center text-[11px] text-slate-400">{{ totals().skipped }} skipped line(s) will not be ordered.</div>
+      }
+
+      <button type="button" (click)="approve()" [disabled]="!!blockers().length || approving()"
+        class="w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
+        @if (approving()) { Approving… }
+        @else if (blockers().length) { Resolve {{ attentionCount() || blockers().length }} {{ (attentionCount() || blockers().length) === 1 ? 'issue' : 'issues' }} to approve }
+        @else if (totals().orders > 1) { Approve · create {{ totals().orders }} purchase orders }
+        @else { Approve purchase order }
+      </button>
+    </aside>
+  </div>
+}

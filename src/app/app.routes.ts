@@ -48,12 +48,19 @@ export const routes: Routes = [
                     import('./features/objects/objects.component').then((m) => m.ObjectsComponent),
             },
             {
-                path: 'suppliers',
-                canActivate: [adminGuard],
-                loadComponent: () =>
-                    import('./features/suppliers/suppliers.component')
-                        .then((m) => m.SuppliersComponent),
-            },
+    path: 'suppliers',
+    canActivate: [adminGuard],
+    loadComponent: () =>
+        import('./features/suppliers/suppliers.component')
+            .then((m) => m.SuppliersComponent),
+},
+{
+    path: 'suppliers/:id/products',
+    canActivate: [adminGuard],
+    loadComponent: () =>
+        import('./features/suppliers/supplier-catalog.component')
+            .then((m) => m.SupplierCatalogComponent),
+},
             {
                 path: 'products',
                 loadComponent: () =>

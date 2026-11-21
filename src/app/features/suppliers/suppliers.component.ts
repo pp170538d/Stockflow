@@ -1,5 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { SuppliersService } from './suppliers.service';
 import { Supplier, SupplierInput } from './supplier.model';
@@ -12,7 +13,7 @@ import { ConfirmService } from '../../shared/ui/confirm.service';
 @Component({
   selector: 'app-suppliers',
   standalone: true,
-  imports: [DatePipe, ReactiveFormsModule, BadgeComponent, EmptyStateComponent, DrawerComponent],
+  imports: [DatePipe, ReactiveFormsModule, RouterLink, BadgeComponent, EmptyStateComponent, DrawerComponent],
   templateUrl: './suppliers.component.html',
 })
 export class SuppliersComponent implements OnInit {

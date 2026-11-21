@@ -1,6 +1,9 @@
 import { Injectable, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
-import { Supplier, SupplierInput } from './supplier.model';
+import {
+  Supplier, SupplierInput, SupplierCatalogStatus, SupplierCatalogResult,
+  SupplierCatalogCandidatesResult, SupplierCatalogPatch, SupplierPerformance,
+} from './supplier.model';
 
 @Injectable({ providedIn: 'root' })
 export class SuppliersService {
@@ -50,6 +53,52 @@ export class SuppliersService {
       active,
     });
   }
+
+  async catalog(supplierId: string, search = '', status: SupplierCatalogStatus = 'active', limit = 50, offset = 0): Promise<{ data: SupplierCatalogResult | null; error: string | null }> {
+    const { data, error } = await supabase.rpc('supplier_catalog', { p_supplier_id: supplierId, p_search: search.trim() || null, p_status: status, p_limit: limit, p_offset: offset });
+    return error ? { data: null, error: friendly(error.message) } : { data: data as SupplierCatalogResult, error: null };
+  }
+
+  async catalogCandidates(supplierId: string, search = '', category: string | null = null, limit = 50, offset = 0): Promise<{ data: SupplierCatalogCandidatesResult | null; error: string | null }> {
+    const { data, error } = await supabase.rpc('supplier_catalog_candidates', { p_supplier_id: supplierId, p_search: search.trim() || null, p_category: category || null, p_limit: limit, p_offset: offset });
+    return error ? { data: null, error: friendly(error.message) } : { data: data as SupplierCatalogCandidatesResult, error: null };
+  }
+
+  async assignCatalogProducts(supplierId: string, productIds: string[], opts?: { allMatching?: boolean; search?: string; category?: string | null }): Promise<string | null> {
+    const { error } = await supabase.rpc('assign_supplier_products', { p_supplier_id: supplierId, p_product_ids: productIds.length ? productIds : null, p_all_matching: !!opts?.allMatching, p_search: opts?.search?.trim() || null, p_category: opts?.category || null, p_preferred_if_none: true });
+    return error ? friendly(error.message) : null;
+  }
+
+  async updateCatalogProduct(id: string, patch: SupplierCatalogPatch): Promise<string | null> {
+    const { error } = await supabase.rpc('update_supplier_product', { p_id: id, p_patch: patch });
+    return error ? friendly(error.message) : null;
+  }
+
+  async setCatalogActive(ids: string[], active: boolean): Promise<string | null> {
+    const { error } = await supabase.rpc('set_supplier_products_active', { p_ids: ids, p_active: active });
+    return error ? friendly(error.message) : null;
+  }
+
+  async setCatalogPreferred(ids: string[], preferred: boolean): Promise<string | null> {
+    const { error } = await supabase.rpc('set_preferred_supplier_products', { p_ids: ids, p_preferred: preferred });
+    return error ? friendly(error.message) : null;
+  }
+
+
+  async performance(
+    supplierId: string,
+    days = 90
+  ): Promise<{ data: SupplierPerformance | null; error: string | null }> {
+    const { data, error } = await supabase.rpc('supplier_performance', {
+      p_supplier_id: supplierId,
+      p_days: days,
+    });
+
+    return error
+      ? { data: null, error: friendly(error.message) }
+      : { data: data as SupplierPerformance, error: null };
+  }
+
 }
 
 function friendly(message: string): string {

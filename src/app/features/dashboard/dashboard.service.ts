@@ -4,7 +4,7 @@ import { supabase } from '../../core/supabase/supabase.client';
 
 export type Urgency = 'out' | 'critical' | 'warning' | 'healthy' | 'idle';
 export type MovementEvent =
-  'DELIVERY' | 'SALE' | 'STOCK_COUNT' | 'ADJUSTMENT' | 'TRANSFER' | 'RETURN' | 'WRITE_OFF';
+  'DELIVERY' | 'SALE' | 'STOCK_COUNT' | 'ADJUSTMENT' | 'TRANSFER' | 'RETURN' | 'WRITE_OFF' | 'SUPPLIER_RETURN';
 
 export interface DashTotals {
   on_hand: number; products: number; stores: number;
@@ -50,7 +50,13 @@ export interface DashboardSummary {
 }
 
 /** Lifecycle of a product that runs out this week (replenishment_queue RPC). */
-export type ReplenishmentStatus = 'needs_order' | 'top_up' | 'pending' | 'in_transit';
+/**
+ * needs_order  nothing requested or ordered
+ * top_up       ordered, but not enough
+ * requested    a store request waits for procurement review (not incoming stock yet)
+ * in_transit   approved purchase orders cover the need
+ */
+export type ReplenishmentStatus = 'needs_order' | 'top_up' | 'requested' | 'in_transit';
 
 export interface ReplenishmentRow {
   object_id: string;
@@ -62,7 +68,7 @@ export interface ReplenishmentRow {
   sold30: number;
   daily_rate: number;
   days_left: number | null;
-  urgency: 'out' | 'critical';
+  urgency: 'out' | 'critical' | 'warning';
   pending_qty: number;
   approved_qty: number;
   incoming_qty: number;
@@ -81,7 +87,8 @@ export interface BriefingPart {
   anchor?: string;
   tone?: 'danger' | 'warning' | 'ok';
 }
-export type Decision = 'APPROVED' | 'REJECTED';
+/** Requests are approved on the review page (supplier split); here only reject. */
+export type Decision = 'REJECTED';
 export type RangeDays = 7 | 30 | 90;
 
 @Injectable({ providedIn: 'root' })
@@ -114,9 +121,9 @@ export class DashboardService {
   readonly needsOrder = computed(() =>
     this.replenishment().filter((r) => r.status === 'needs_order' || r.status === 'top_up'));
 
-  /** Already handled: enough is ordered and waits for approval or delivery. */
+  /** Already being handled: requested (waiting for procurement) or on the way. */
   readonly inProgress = computed(() =>
-    this.replenishment().filter((r) => r.status === 'pending' || r.status === 'in_transit'));
+    this.replenishment().filter((r) => r.status === 'requested' || r.status === 'in_transit'));
 
   readonly pendingOrders = computed(() => {
     const hidden = this.deciding();
@@ -154,7 +161,8 @@ export class DashboardService {
 
     const parts: BriefingPart[] = [];
     const toOrder = this.needsOrder().length;
-    const waiting = isAdmin ? this.pendingCount() : d.totals.approved;
+    const requests = this.pendingCount();
+    const onTheWay = d.totals.approved;
     const deliveryIssues = this.deliveryExceptionCount();
 
     if (toOrder > 0) {
@@ -165,34 +173,27 @@ export class DashboardService {
       });
     }
 
-    if (waiting > 0) {
-  const pending = this.pendingOrders();
+    if (requests > 0) {
+      const pending = this.pendingOrders();
+      const one = requests === 1 && pending.length === 1;
+      parts.push({
+        text: isAdmin
+          ? `${requests} ${requests === 1 ? 'request waits' : 'requests wait'} for review`
+          : `${requests} ${requests === 1 ? 'request is' : 'requests are'} waiting for procurement`,
+        link: isAdmin && one ? `/orders/${pending[0].id}/review` : '/orders',
+        queryParams: isAdmin && one ? undefined : { status: 'PENDING' },
+        tone: 'warning',
+      });
+    }
 
-  parts.push({
-    text: isAdmin
-      ? `${waiting} ${
-          waiting === 1
-            ? 'order waits'
-            : 'orders wait'
-        } for your approval`
-      : `${waiting} ${
-          waiting === 1
-            ? 'delivery is'
-            : 'deliveries are'
-        } on the way`,
-
-    link: '/orders',
-
-    queryParams:
-      isAdmin && waiting === 1 && pending.length === 1
-        ? {
-            focus: pending[0].id,
-          }
-        : undefined,
-
-    tone: 'warning',
-  });
-}
+    if (!isAdmin && onTheWay > 0) {
+      parts.push({
+        text: `${onTheWay} ${onTheWay === 1 ? 'delivery is' : 'deliveries are'} on the way`,
+        link: '/orders',
+        queryParams: { status: 'APPROVED' },
+        tone: 'ok',
+      });
+    }
 
     if (deliveryIssues > 0) {
       parts.push({
@@ -207,7 +208,7 @@ export class DashboardService {
       const handled = this.inProgress().length;
       return [{
         text: handled > 0
-          ? `Current replenishment is covered — ${handled} ${handled === 1 ? 'shortage is' : 'shortages are'} already on order.`
+          ? `Current replenishment is covered — ${handled} ${handled === 1 ? 'shortage is' : 'shortages are'} already requested or on the way.`
           : 'Current replenishment is covered — no shelf is forecast to run out in the next 7 days.',
         tone: 'ok',
       }];
@@ -266,14 +267,14 @@ export class DashboardService {
     this.refreshing.set(false);
   }
 
-  async decide(orderId: string, status: Decision | 'PENDING'): Promise<string | null> {
-    if (status !== 'PENDING') this.deciding.update((m) => new Map(m).set(orderId, status));
+  async decide(orderId: string, status: Decision): Promise<string | null> {
+    this.deciding.update((m) => new Map(m).set(orderId, status));
 
     const { data, error } = await supabase
       .from('orders').update({ status }).eq('id', orderId).select('id');
 
     const failed = !!error || !data || data.length === 0;
-    if (failed && status !== 'PENDING') this.forget(orderId);
+    if (failed) this.forget(orderId);
     if (failed) return error?.message ?? 'You are not allowed to change this order.';
 
     await this.load(this.objectId, this.days());

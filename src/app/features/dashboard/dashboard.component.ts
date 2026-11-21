@@ -258,29 +258,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return l.length > 2 ? `${head} +${l.length - 2} more` : head;
   }
 
-  async approve(o: PendingOrder): Promise<void> {
-    this.busy.set(o.id);
-    const err = await this.svc.decide(o.id, 'APPROVED');
-    this.busy.set(null);
-    if (err) { this.toast.error('Could not approve the order — try again.'); return; }
-
-    this.toast.success(`Order approved for ${o.store}`, {
-      action: {
-        label: 'Undo',
-        run: async () => {
-          const undoErr = await this.svc.decide(o.id, 'PENDING');
-          if (undoErr) this.toast.error('Could not undo approval — try again.');
-          else this.toast.info('Approval undone — back to Pending.');
-        },
-      },
-    });
-  }
-
   async reject(o: PendingOrder): Promise<void> {
     const ok = await this.confirm.ask({
-      title: 'Reject this order?',
-      message: `The order for ${o.store} will be marked REJECTED. This can't be undone.`,
-      confirmLabel: 'Reject order',
+      title: 'Reject this request?',
+      message: `The request from ${o.store} will be closed without ordering. This can't be undone.`,
+      confirmLabel: 'Reject request',
       tone: 'danger',
     });
     if (!ok) return;
@@ -288,8 +270,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.busy.set(o.id);
     const err = await this.svc.decide(o.id, 'REJECTED');
     this.busy.set(null);
-    if (err) this.toast.error('Could not reject the order — try again.');
-    else this.toast.info('Order rejected.');
+    if (err) this.toast.error('Could not reject the request — try again.');
+    else this.toast.info('Request rejected.');
   }
 
   // ---------- running out ----------
@@ -358,6 +340,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     TRANSFER: { label: 'Transfer', cls: 'bg-sky-50 text-sky-700' },
     RETURN: { label: 'Return', cls: 'bg-teal-50 text-teal-700' },
     WRITE_OFF: { label: 'Write-off', cls: 'bg-slate-100 text-slate-700' },
+    SUPPLIER_RETURN: { label: 'Supplier return', cls: 'bg-orange-50 text-orange-700' },
   };
 
   isFresh(l: LedgerRow): boolean {
