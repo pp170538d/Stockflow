@@ -86,19 +86,13 @@ export class InventoryPerformanceComponent {
   readonly performanceActions = computed(() => this.data()?.actions ?? []);
 
   /**
-   * Stockout is already represented by the richer replenishment lifecycle.
-   * Do not show the same store + product twice as both "On the way" and
-   * "Stockout risk". Other performance classes (slow/dead) remain independent.
+   * Stockout here is historical performance (days at zero stock in the selected
+   * period), not a current task. Current shortage work belongs to replenishment.
+   * Keep stockout in Inventory Health and Reports, not in Needs attention.
    */
-  readonly visiblePerformanceActions = computed(() => {
-    const replKeys = new Set(
-      this.replenishment().map((r) => `${r.object_id}:${r.product_id}`)
-    );
-
-    return this.performanceActions().filter((a) =>
-      !(a.class === 'stockout' && replKeys.has(`${a.object_id}:${a.product_id}`))
-    );
-  });
+  readonly visiblePerformanceActions = computed(() =>
+    this.performanceActions().filter((a) => a.class !== 'stockout')
+  );
 
   /** Badge deliberately counts only unresolved work, not already-handled rows. */
   readonly attentionCount = computed(() =>

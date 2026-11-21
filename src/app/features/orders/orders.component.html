@@ -201,8 +201,8 @@
   <div class="mt-4">
     @if (exceptionsOnly()) {
       <app-empty-state
-        title="No delivery exceptions"
-        subtitle="All recorded deliveries match their ordered quantities."
+        title="Nothing to resolve"
+        subtitle="All delivery differences have been resolved."
       />
     } @else {
       <app-empty-state
@@ -278,7 +278,7 @@
     @if (o.status === 'DELIVERED' && variance(o)) {
     <button type="button" (click)="openSummary(o)"
       class="mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition"
-      [class]="variance(o)!.short > 0 ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'">
+      [class]="variance(o)!.open > 0 ? (variance(o)!.short > 0 ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-blue-50 text-blue-700 hover:bg-blue-100') : 'bg-slate-100 text-slate-500 hover:bg-slate-200'">
       <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" />
@@ -321,7 +321,7 @@
         @if (o.status === 'DELIVERED') {
         <button type="button" (click)="openSummary(o)"
           class="rounded-lg px-3 py-1.5 text-xs font-medium text-brand-700 ring-1 ring-brand-200 transition hover:bg-brand-50">
-          View delivery
+          View receipt
         </button>
         }
       </span>
@@ -394,7 +394,7 @@
           @if (o.status === 'DELIVERED' && variance(o)) {
           <button type="button" (click)="openSummary(o)" title="Delivered with a discrepancy — click to view"
             class="mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition"
-            [class]="variance(o)!.short > 0 ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'">
+            [class]="variance(o)!.open > 0 ? (variance(o)!.short > 0 ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-blue-50 text-blue-700 hover:bg-blue-100') : 'bg-slate-100 text-slate-500 hover:bg-slate-200'">
             <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" />
@@ -486,7 +486,7 @@
               @if (o.status === 'DELIVERED') {
               <button type="button" (click)="openSummary(o)"
                 class="rounded-lg px-3 py-1.5 text-xs font-medium text-brand-700 ring-1 ring-brand-200 transition hover:bg-brand-50">
-                View delivery
+                View receipt
               </button>
               }
             </div>
@@ -528,5 +528,6 @@
 <app-confirm-delivery [open]="deliverDrawerOpen()" [order]="deliveringOrder()" (close)="closeDeliver()"
   (delivered)="onDelivered($event)" />
 
-<!-- View delivery drawer -->
-<app-delivery-summary [open]="summaryDrawerOpen()" [order]="summaryOrder()" (close)="closeSummary()" />
+<!-- View receipt drawer -->
+<app-delivery-summary [open]="summaryDrawerOpen()" [order]="summaryOrder()" (close)="closeSummary()"
+  (changed)="onResolved()" />

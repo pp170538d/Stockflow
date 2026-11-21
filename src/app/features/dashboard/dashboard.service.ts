@@ -88,6 +88,8 @@ export type RangeDays = 7 | 30 | 90;
 export class DashboardService {
   readonly data = signal<DashboardSummary | null>(null);
   readonly replenishment = signal<ReplenishmentRow[]>([]);
+  /** Open delivery discrepancy lines that still need a decision. */
+  readonly deliveryExceptionCount = signal(0);
   readonly loading = signal(false);
   readonly refreshing = signal(false);
   readonly error = signal<string | null>(null);
@@ -153,7 +155,7 @@ export class DashboardService {
     const parts: BriefingPart[] = [];
     const toOrder = this.needsOrder().length;
     const waiting = isAdmin ? this.pendingCount() : d.totals.approved;
-    const short = d.variances.net_week;
+    const deliveryIssues = this.deliveryExceptionCount();
 
     if (toOrder > 0) {
       parts.push({
@@ -192,17 +194,21 @@ export class DashboardService {
   });
 }
 
-    if (short !== 0) parts.push({
-      text: `deliveries this week were ${Math.abs(short)} ${short < 0 ? 'short' : 'over'}`,
-      link: '/orders', tone: 'warning',
-    });
+    if (deliveryIssues > 0) {
+      parts.push({
+        text: `${deliveryIssues} ${deliveryIssues === 1 ? 'delivery difference needs' : 'delivery differences need'} resolution`,
+        link: '/orders',
+        queryParams: { exceptions: '1' },
+        tone: 'warning',
+      });
+    }
 
     if (!parts.length) {
       const handled = this.inProgress().length;
       return [{
         text: handled > 0
-          ? `Everything is covered — ${handled} ${handled === 1 ? 'shortage is' : 'shortages are'} already on order.`
-          : 'Everything is covered — no shelf runs out in the next 7 days.',
+          ? `Current replenishment is covered — ${handled} ${handled === 1 ? 'shortage is' : 'shortages are'} already on order.`
+          : 'Current replenishment is covered — no shelf is forecast to run out in the next 7 days.',
         tone: 'ok',
       }];
     }
@@ -215,9 +221,14 @@ export class DashboardService {
     if (!this.data()) this.loading.set(true);
     this.error.set(null);
 
-    const [summary, queue] = await Promise.all([
+    const [summary, queue, deliveryExceptions] = await Promise.all([
       supabase.rpc('dashboard_summary', { p_object_id: objectId, p_days: days }),
       supabase.rpc('replenishment_queue', { p_object_id: objectId }),
+      supabase.rpc('delivery_exceptions', {
+        p_status: 'open',
+        p_object_id: objectId,
+        p_delivery_id: null,
+      }),
     ]);
 
     if (summary.error) this.error.set(summary.error.message);
@@ -229,6 +240,20 @@ export class DashboardService {
       this.replenishment.set([]);
     } else {
       this.replenishment.set((queue.data ?? []) as ReplenishmentRow[]);
+    }
+
+    if (deliveryExceptions.error) {
+      console.error('delivery_exceptions', deliveryExceptions.error);
+      this.deliveryExceptionCount.set(0);
+    } else {
+      const rows = (deliveryExceptions.data ?? []) as Array<{ line_id: string | null }>;
+      this.deliveryExceptionCount.set(
+        new Set(
+          rows
+            .map((row) => row.line_id)
+            .filter((id): id is string => typeof id === 'string' && id.length > 0)
+        ).size
+      );
     }
 
     this.loading.set(false);
@@ -270,6 +295,8 @@ export class DashboardService {
         this.scheduleReload();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => this.scheduleReload())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_items' }, () => this.scheduleReload())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deliveries' }, () => this.scheduleReload())
       .subscribe((status) => this.live.set(status === 'SUBSCRIBED'));
   }
 

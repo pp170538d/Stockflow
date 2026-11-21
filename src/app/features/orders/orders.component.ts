@@ -292,8 +292,13 @@ export class OrdersComponent implements OnInit {
     }
 
     const focusId = this.route.snapshot.queryParamMap.get('focus');
+    const openExceptions = this.route.snapshot.queryParamMap.get('exceptions') === '1';
     if (focusId) {
       await this.focusOrder(focusId);
+    } else if (openExceptions) {
+      this.exceptionsOnly.set(true);
+      this.statusFilter.set('');
+      this.reload(1);
     } else {
       this.reload(1);
     }
@@ -375,95 +380,106 @@ export class OrdersComponent implements OnInit {
    * is allowed to count.
    */
   private async loadCounts(): Promise<void> {
-    const objectId = this.selectedObjectId();
+  const objectId =
+    this.selectedObjectId() || null;
 
-    const results = await Promise.all(
-      this.statuses.map((status) => {
-        let query = supabase
-          .from('orders')
-          .select('id', {
-            count: 'exact',
-            head: true,
-          })
-          .eq('status', status);
+  // -------------------------------------------------------
+  // ORDER STATUS COUNTS
+  // -------------------------------------------------------
 
-        if (objectId) {
-          query = query.eq(
-            'object_id',
-            objectId
-          );
-        }
+  const results = await Promise.all(
+    this.statuses.map((status) => {
+      let query = supabase
+        .from('orders')
+        .select('id', {
+          count: 'exact',
+          head: true,
+        })
+        .eq('status', status);
 
-        return query;
-      })
+      if (objectId) {
+        query = query.eq(
+          'object_id',
+          objectId
+        );
+      }
+
+      return query;
+    })
+  );
+
+  const next: Record<OrderStatus, number> = {
+    PENDING: 0,
+    APPROVED: 0,
+    DELIVERED: 0,
+    REJECTED: 0,
+  };
+
+  results.forEach((result, index) => {
+    next[this.statuses[index]] =
+      result.count ?? 0;
+  });
+
+  this.counts.set(next);
+
+  // -------------------------------------------------------
+  // OPEN DELIVERY DIFFERENCES
+  //
+  // IMPORTANT:
+  // This counts OPEN discrepancy LINES, not:
+  // - historical differences
+  // - resolved differences
+  // - number of affected orders
+  //
+  // Example:
+  // ORD-20 -> 1 open line
+  // ORD-11 -> 2 open lines
+  // Badge   -> Needs resolution 3
+  // -------------------------------------------------------
+
+  const {
+    data: openRows,
+    error: openError,
+  } = await supabase.rpc(
+    'delivery_exceptions',
+    {
+      p_status: 'open',
+      p_object_id: objectId,
+      p_delivery_id: null,
+    }
+  );
+
+  if (openError) {
+    console.error(
+      'Could not load open delivery differences',
+      openError
     );
 
-    const next: Record<OrderStatus, number> = {
-      PENDING: 0,
-      APPROVED: 0,
-      DELIVERED: 0,
-      REJECTED: 0,
-    };
+    this.exceptionCount.set(0);
 
-    results.forEach((result, index) => {
-      next[this.statuses[index]] =
-        result.count ?? 0;
-    });
-
-    this.counts.set(next);
-
-    let exceptionQuery = supabase
-      .from('order_fulfillment')
-      .select('order_id')
-      .neq('variance', 0);
-
-    const {
-      data: exceptionRows,
-      error: exceptionError,
-    } = await exceptionQuery;
-
-    if (exceptionError) {
-      this.exceptionCount.set(0);
-      return;
-    }
-
-    const exceptionIds = [
-      ...new Set(
-        (exceptionRows ?? []).map(
-          (row) => row.order_id as string
-        )
-      ),
-    ];
-
-    if (
-      !objectId ||
-      exceptionIds.length === 0
-    ) {
-      this.exceptionCount.set(
-        objectId
-          ? 0
-          : exceptionIds.length
-      );
-
-      return;
-    }
-
-    const {
-      count: locationExceptionCount,
-    } = await supabase
-      .from('orders')
-      .select('id', {
-        count: 'exact',
-        head: true,
-      })
-      .eq('status', 'DELIVERED')
-      .eq('object_id', objectId)
-      .in('id', exceptionIds);
-
-    this.exceptionCount.set(
-      locationExceptionCount ?? 0
-    );
+    return;
   }
+
+  const rows =
+    (openRows ?? []) as Array<{
+      line_id: string | null;
+    }>;
+
+  const uniqueOpenLineIds =
+    new Set(
+      rows
+        .map((row) => row.line_id)
+        .filter(
+          (id): id is string =>
+            typeof id === 'string' &&
+            id.length > 0
+        )
+    );
+
+  this.exceptionCount.set(
+    uniqueOpenLineIds.size
+  );
+}
 
   // =========================================================
   // Loading / filters
@@ -743,7 +759,10 @@ export class OrdersComponent implements OnInit {
       );
     }
 
-    return parts.join(' · ');
+    const label = parts.join(' · ');
+    return variance.open > 0
+      ? `${label} · ${variance.open} to resolve`
+      : `${label} · resolved`;
   }
 
   private flash(id: string): void {
@@ -952,6 +971,11 @@ export class OrdersComponent implements OnInit {
     this.summaryDrawerOpen.set(
       true
     );
+  }
+
+  /** Refresh list and Needs resolution count after a receipt decision. */
+  onResolved(): void {
+    this.reload(this.svc.page());
   }
 
   closeSummary(): void {
