@@ -1,30 +1,29 @@
 import { Injectable, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
-import { Delivery, OrderFulfillment, DeliveryLineInput } from './delivery.model';
+import {
+  DeliveryException, DeliveryLineInput, GoodsReceipt, OrderFulfillment, Resolution,
+} from './delivery.model';
 
 /** Compact per-order variance summary for the orders-list chip. */
 export interface OrderVariance {
   order_id: string;
-  short: number;   // count of lines delivered < ordered
-  over: number;    // count of lines delivered > ordered
-  net: number;     // total delivered − total ordered (signed)
+  short: number;
+  over: number;
+  net: number;
+  open: number;
 }
 
 @Injectable({ providedIn: 'root' })
 export class DeliveriesService {
   readonly fulfillment = signal<OrderFulfillment[]>([]);
-  readonly delivery = signal<Delivery | null>(null);
+  readonly receipt = signal<GoodsReceipt | null>(null);
   readonly loading = signal<boolean>(false);
   readonly saving = signal<boolean>(false);
+  readonly resolving = signal<boolean>(false);
   readonly error = signal<string | null>(null);
-
-  /** order_id → variance summary, for the row-level chip on the orders list. */
   readonly variances = signal<Record<string, OrderVariance>>({});
 
-  /**
-   * Load the ordered-vs-delivered picture for one order (from the
-   * `order_fulfillment` view), joined with product name/sku for display.
-   */
+  /** Used by Confirm delivery. */
   async loadFulfillment(orderId: string): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
@@ -37,53 +36,99 @@ export class DeliveriesService {
     this.loading.set(false);
   }
 
-  /**
-   * Bulk-load variance summaries for many orders in ONE query (no N+1).
-   * Only rows with a delivery contribute; orders with no variance simply
-   * don't appear in the map, so the chip is shown only where it matters.
-   */
+  /** Variance + open-decision count per order, in two queries (no N+1). */
   async loadVariances(orderIds: string[]): Promise<void> {
     if (orderIds.length === 0) {
       this.variances.set({});
       return;
     }
-    const { data, error } = await supabase
-      .from('order_fulfillment')
-      .select('order_id, ordered_qty, delivered_qty, variance')
-      .in('order_id', orderIds);
-    if (error) return; // silent — the chip is a nicety, never blocks the list
+
+    const [{ data, error }, open] = await Promise.all([
+      supabase
+        .from('order_fulfillment')
+        .select('order_id, ordered_qty, delivered_qty, variance')
+        .in('order_id', orderIds),
+      supabase.rpc('delivery_exceptions', { p_status: 'open', p_object_id: null, p_delivery_id: null }),
+    ]);
+    if (error) return;
+
+    const openByOrder = new Map<string, number>();
+    for (const r of (open.data ?? []) as DeliveryException[]) {
+      openByOrder.set(r.order_id, (openByOrder.get(r.order_id) ?? 0) + 1);
+    }
 
     const map: Record<string, OrderVariance> = {};
     for (const r of (data ?? []) as OrderFulfillment[]) {
       const v = r.variance ?? 0;
-      const acc = (map[r.order_id] ??= { order_id: r.order_id, short: 0, over: 0, net: 0 });
+      const acc = (map[r.order_id] ??= {
+        order_id: r.order_id, short: 0, over: 0, net: 0, open: openByOrder.get(r.order_id) ?? 0,
+      });
       acc.net += v;
       if (v < 0) acc.short++;
       else if (v > 0) acc.over++;
     }
-    // Drop entries that ended up perfectly matched (no short & no over)
     for (const id of Object.keys(map)) {
       if (map[id].short === 0 && map[id].over === 0) delete map[id];
     }
     this.variances.set(map);
   }
 
-  /** Fetch the (single) delivery for an order, if one exists. */
-  async loadDelivery(orderId: string): Promise<void> {
-    const { data } = await supabase
+  /** Full goods receipt for a delivered order. */
+  async loadReceipt(orderId: string): Promise<void> {
+    this.loading.set(true);
+    this.error.set(null);
+
+    const { data: d } = await supabase
       .from('deliveries')
-      .select('*')
+      .select('id')
       .eq('order_id', orderId)
       .maybeSingle();
-    this.delivery.set((data ?? null) as Delivery | null);
+
+    if (!d) {
+      this.receipt.set(null);
+      this.loading.set(false);
+      return;
+    }
+
+    await this.refreshReceipt(d.id as string);
+    this.loading.set(false);
   }
 
-  /**
-   * Record THE delivery for an order via the atomic RPC.
-   * The DB enforces: APPROVED-only, one-per-order, all lines accounted for,
-   * reason required on variance, and inbound stock sync. We surface any of
-   * those as friendly messages.
-   */
+  private async refreshReceipt(deliveryId: string): Promise<void> {
+    const { data, error } = await supabase.rpc('goods_receipt', { p_delivery_id: deliveryId });
+    if (error) {
+      this.error.set(this.friendly(error.message));
+      this.receipt.set(null);
+      return;
+    }
+    this.receipt.set(data as GoodsReceipt);
+  }
+
+  /** Admin decision on one or more lines of the current receipt. */
+  async resolve(
+    lineIds: string[],
+    resolution: Resolution,
+    note: string | null
+  ): Promise<{ error: string | null; resolved?: number; backorderNumber?: string | null }> {
+    if (lineIds.length === 0) return { error: 'Nothing selected.' };
+
+    this.resolving.set(true);
+    const { data, error } = await supabase.rpc('resolve_delivery_lines', {
+      p_line_ids: lineIds,
+      p_resolution: resolution,
+      p_note: note,
+    });
+    this.resolving.set(false);
+
+    if (error) return { error: this.friendly(error.message) };
+
+    const deliveryId = this.receipt()?.delivery.id;
+    if (deliveryId) await this.refreshReceipt(deliveryId);
+
+    const result = (data ?? {}) as { resolved?: number; backorder_number?: string | null };
+    return { error: null, resolved: result.resolved, backorderNumber: result.backorder_number ?? null };
+  }
+
   async record(
     orderId: string,
     carrier: string | null,
@@ -101,6 +146,7 @@ export class DeliveriesService {
       p_items: lines.map((l) => ({
         order_item_id: l.order_item_id,
         delivered_qty: l.delivered_qty,
+        reason_code: l.reason_code,
         reason: l.reason,
       })),
     });
@@ -113,24 +159,27 @@ export class DeliveriesService {
     return null;
   }
 
-  /** Turn raw Postgres / RPC exceptions into human-readable messages. */
   private friendly(msg: string): string {
-    if (msg.includes('DEMO_READONLY'))
+    if (msg.includes('DEMO_READONLY') || msg.includes('Demo account'))
       return 'This action is disabled in the demo account.';
     if (msg.includes('already been delivered'))
       return 'This order has already been delivered — a delivery is final and can not be repeated.';
     if (msg.includes('must be APPROVED'))
       return 'Only APPROVED orders can be delivered. Approve the order first.';
-    if (msg.includes('A reason is required'))
-      return 'Add a reason for every line where the delivered quantity differs from what was ordered.';
+    if (msg.includes('A reason is required') || msg.includes('Invalid delivery reason'))
+      return 'Pick a reason for every line where the delivered quantity differs from what was ordered.';
     if (msg.includes('must account for all'))
       return 'Every line of the order must be counted before you can confirm the delivery.';
-    if (msg.includes('does not belong to order'))
-      return 'One of the lines no longer matches this order. Please refresh and try again.';
+    if (msg.includes('Insufficient stock'))
+      return 'Not enough stock left to return these units — they may have been sold already.';
+    if (
+      msg.includes('already resolved') || msg.includes('only apply') || msg.includes('Add a note') ||
+      msg.includes('Only admins') || msg.includes('one receipt') || msg.includes('exactly as ordered')
+    ) return msg;
     if (msg.includes('violates row-level security'))
-      return 'You don’t have permission to record a delivery for this object.';
+      return 'You don’t have permission to do this for this location.';
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError'))
       return 'Network issue — check your connection and try again.';
-    return 'Could not record the delivery. Please try again.';
+    return 'Could not complete the action. Please try again.';
   }
 }

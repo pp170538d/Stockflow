@@ -14,6 +14,9 @@ import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
 import { ToastService } from '../../shared/ui/toast.service';
 import { ConfirmService } from '../../shared/ui/confirm.service';
 import { LocationPickerComponent } from '../../shared/ui/location-picker.component';
+import {
+  COUNT_OVER_REASONS, COUNT_SHORT_REASONS, CountReasonCode, ReasonOption,
+} from '../../core/stock/reason-codes';
 
 type View = 'all' | 'todo' | 'diff';
 
@@ -22,15 +25,20 @@ interface LineValue {
   counted_qty: number | null;
 }
 
-/** A reason is required whenever counted ≠ expected (mirrors the DB rule). */
+/**
+ * A reason CODE is required whenever counted ≠ expected (mirrors the DB rule),
+ * and it must fit the direction (e.g. "Found stock" only when counted is higher).
+ * The free-text note stays optional.
+ */
 function reasonRequiredOnVariance(group: AbstractControl): ValidationErrors | null {
   const expected = group.get('expected_qty')?.value ?? 0;
   const counted = group.get('counted_qty')?.value;
-  const reason = (group.get('reason')?.value ?? '').trim();
-  if (counted !== null && counted !== '' && Number(counted) !== expected && !reason) {
-    return { reasonRequired: true };
-  }
-  return null;
+  if (counted === null || counted === '' || counted === undefined) return null;
+  const diff = Number(counted) - expected;
+  if (diff === 0) return null;
+  const code = group.get('reason_code')?.value as string;
+  const allowed = (diff < 0 ? COUNT_SHORT_REASONS : COUNT_OVER_REASONS).map((r) => r.code as string);
+  return code && allowed.includes(code) ? null : { reasonRequired: true };
 }
 
 @Component({
@@ -151,6 +159,7 @@ export class StockCountComponent implements OnInit {
             category: [(r as any).category ?? ''],
             expected_qty: [r.expected_qty],
             counted_qty: [null as number | null, [Validators.required, Validators.min(0)]],
+            reason_code: [''],
             reason: [''],
           },
           { validators: reasonRequiredOnVariance }
@@ -208,6 +217,21 @@ export class StockCountComponent implements OnInit {
       short: 'bg-status-pending',
       over: 'bg-status-approved',
     }[this.state(row)];
+  }
+
+  // ---------- standardized reasons ----------
+  /** Options that fit this row's direction (short vs over). */
+  reasonOptions(row: AbstractControl): ReasonOption<CountReasonCode>[] {
+    return this.variance(row) < 0 ? COUNT_SHORT_REASONS : COUNT_OVER_REASONS;
+  }
+
+  selectedReason(row: AbstractControl): string {
+    return row.get('reason_code')?.value ?? '';
+  }
+
+  setReason(row: AbstractControl, code: CountReasonCode): void {
+    row.get('reason_code')?.setValue(code);
+    row.markAsTouched();
   }
 
   // ---------- barcode / SKU scanner ----------
@@ -292,12 +316,14 @@ this.search.set('');
   /** One tap: "I counted it and it is exactly what the system says." */
   confirmExpected(row: AbstractControl): void {
     row.get('counted_qty')?.setValue(row.get('expected_qty')?.value);
+    row.get('reason_code')?.setValue('');
     row.get('reason')?.setValue('');
     row.get('counted_qty')?.markAsTouched();
   }
 
   clearRow(row: AbstractControl): void {
     row.get('counted_qty')?.setValue(null);
+    row.get('reason_code')?.setValue('');
     row.get('reason')?.setValue('');
   }
 
@@ -404,7 +430,7 @@ this.search.set('');
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.view.set('diff');
-      this.toast.error('Add a reason for every difference.');
+      this.toast.error('Pick a reason for every difference.');
       return;
     }
 
@@ -423,6 +449,7 @@ this.search.set('');
     const lines: StockCountLineInput[] = (v.lines as any[]).map((l) => ({
       product_id: l.product_id,
       counted_qty: Number(l.counted_qty),
+      reason_code: Number(l.counted_qty) !== Number(l.expected_qty) ? (l.reason_code || null) : null,
       reason: (l.reason ?? '').trim() || null,
     }));
 

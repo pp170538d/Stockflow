@@ -65,6 +65,13 @@ export const routes: Routes = [
                     import('./features/data/data.component').then((m) => m.DataComponent),
             },
             {
+                path: 'orders/:id/review',
+                canActivate: [adminGuard],
+                loadComponent: () =>
+                    import('./features/orders/order-review-page.component')
+                        .then((m) => m.OrderReviewPageComponent),
+            },
+            {
                 path: 'orders',
                 loadComponent: () =>
                     import('./features/orders/orders.component').then((m) => m.OrdersComponent),

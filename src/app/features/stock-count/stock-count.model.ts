@@ -23,7 +23,8 @@ export interface StockCountItem {
   expected_qty: number;
   counted_qty: number;
   variance: number;             // counted − expected
-  reason: string | null;
+  reason: string | null;        // free-text note (label if none given)
+  reason_code: string | null;   // standardized reason (FOUND_STOCK, MISSING, …)
   created_at: string;
   product?: { name: string; sku: string };  // joined for display
 }
@@ -48,5 +49,6 @@ export interface StockCountSummary {
 export interface StockCountLineInput {
   product_id: string;
   counted_qty: number;
+  reason_code: string | null;
   reason: string | null;
 }

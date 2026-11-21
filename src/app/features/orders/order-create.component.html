@@ -1,968 +1,439 @@
 <!-- ======================= HEADER ======================= -->
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-
   <div class="flex items-start gap-3">
-
-    <a routerLink="/orders" aria-label="Back to orders"
-      class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100">
-
-      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-        stroke-linecap="round" stroke-linejoin="round">
-        <path d="M15 18l-6-6 6-6" />
-      </svg>
-
-    </a>
-
-
+    @if (step() === 'review' && !placed()) {
+      <button type="button" (click)="backToProducts()" aria-label="Back to products"
+        class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+      </button>
+    } @else {
+      <a routerLink="/orders" aria-label="Back to orders"
+        class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+      </a>
+    }
     <div>
-
       <h1 class="text-2xl font-semibold tracking-tight text-slate-900">
-        New order
+        {{ step() === 'review' && !placed() ? 'Review request' : 'New order request' }}
       </h1>
-
       <p class="mt-1 text-sm text-slate-500">
-        Restock the shelf. Suggestions cover {{ targetDays }} days of sales
-        and count what is already on the way.
+        @if (step() === 'review' && !placed()) {
+          Check the quantities, then send the request. The admin picks the supplier and price.
+        } @else {
+          Restock the shelf. Suggestions cover {{ targetDays }} days of sales and count what is already on the way.
+        }
       </p>
-
     </div>
-
   </div>
 
-
-  @if (isAdmin() && !placed()) {
-
-  <div class="w-full sm:w-64">
-
-    <app-location-picker [locations]="objects()" [selectedId]="selectedObjectId() ?? ''" tone="neutral"
-      (selected)="onObjectChange($event)" />
-
+  <div class="flex flex-col gap-2 sm:items-end">
+    <!-- step indicator -->
+    @if (!placed() && !loading() && selectedObjectId()) {
+      <div class="flex items-center gap-2 text-xs font-medium">
+        <span class="flex items-center gap-1.5" [class.text-brand-700]="step() === 'select'" [class.text-slate-400]="step() !== 'select'">
+          <span class="grid h-5 w-5 place-items-center rounded-full text-[10px] font-bold"
+            [class]="step() === 'select' ? 'bg-brand-600 text-white' : 'bg-green-100 text-green-700'">{{ step() === 'select' ? '1' : '✓' }}</span>
+          Products
+        </span>
+        <span class="h-px w-6 bg-slate-300"></span>
+        <span class="flex items-center gap-1.5" [class.text-brand-700]="step() === 'review'" [class.text-slate-400]="step() !== 'review'">
+          <span class="grid h-5 w-5 place-items-center rounded-full text-[10px] font-bold"
+            [class]="step() === 'review' ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-500'">2</span>
+          Review &amp; send
+        </span>
+      </div>
+    }
+    @if (isAdmin() && !placed() && step() === 'select') {
+      <div class="w-full sm:w-64">
+        <app-location-picker [locations]="objects()" [selectedId]="selectedObjectId() ?? ''" tone="neutral"
+          (selected)="onObjectChange($event)" />
+      </div>
+    }
   </div>
-
-  }
-
 </div>
-
 
 @if (loading()) {
 
-<!-- ======================= SKELETON ======================= -->
-<div class="sk mb-4 h-16 rounded-2xl"></div>
-
-<div class="grid gap-6 lg:grid-cols-[1fr_380px]">
-
-  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-    @for (i of [1,2,3,4,5,6]; track i) {
-    <div class="sk h-44 rounded-2xl"></div>
-    }
+  <!-- ======================= SKELETON ======================= -->
+  <div class="sk mb-4 h-16 rounded-2xl"></div>
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    @for (i of [1,2,3,4,5,6,7,8]; track i) { <div class="sk h-44 rounded-2xl"></div> }
   </div>
-
-  <div class="sk h-80 rounded-2xl"></div>
-
-</div>
 
 } @else if (!selectedObjectId()) {
 
-<app-empty-state title="No location yet" subtitle="Create a location under Locations before placing an order." />
+  <app-empty-state title="No location yet" subtitle="Create a location under Locations before placing an order." />
 
 } @else if (placed(); as placedOrder) {
 
-<!-- ======================= DONE ======================= -->
-<div class="mx-auto max-w-lg py-4">
-
-  <div class="text-center">
-
-    <div class="pop mx-auto grid h-20 w-20 place-items-center rounded-full bg-green-100 ring-8 ring-green-50">
-
-      <svg class="check h-10 w-10 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M5 12l5 5L20 7" />
-      </svg>
-
-    </div>
-
-    <h2 class="mt-5 text-2xl font-semibold text-slate-900">
-      Order placed
-    </h2>
-
-    <p class="mt-2 font-mono text-sm font-semibold tracking-wide text-brand-700">
-      {{ placedOrder.orderNumber }}
-    </p>
-
-    <p class="mt-1 text-sm text-slate-500">
-      {{ placedOrder.units }} units for {{ placedOrder.objectName }}
-      · {{ placedOrder.supplierName }}
-      · waiting for approval.
-    </p>
-
-  </div>
-
-
-  <!-- Lifecycle -->
-  <div class="mt-8 rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-
-    <div class="flex items-center">
-
-      <span class="relative flex h-4 w-4 shrink-0">
-        <span class="step-ping absolute inset-0 rounded-full bg-status-pending"></span>
-        <span class="relative h-4 w-4 rounded-full bg-status-pending ring-2 ring-white"></span>
-      </span>
-
-      <span class="h-1 flex-1 rounded-full bg-slate-200"></span>
-      <span class="h-4 w-4 shrink-0 rounded-full bg-slate-200 ring-2 ring-white"></span>
-      <span class="h-1 flex-1 rounded-full bg-slate-200"></span>
-      <span class="h-4 w-4 shrink-0 rounded-full bg-slate-200 ring-2 ring-white"></span>
-
-    </div>
-
-
-    <div class="mt-2 grid grid-cols-3 text-[11px]">
-
-      <div>
-        <div class="font-semibold text-amber-600">
-          Pending
-        </div>
-        <div class="text-slate-400">
-          you are here
-        </div>
+  <!-- ======================= DONE ======================= -->
+  <div class="mx-auto max-w-lg py-4">
+    <div class="text-center">
+      <div class="pop mx-auto grid h-20 w-20 place-items-center rounded-full bg-green-100 ring-8 ring-green-50">
+        <svg class="check h-10 w-10 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7" /></svg>
       </div>
-
-      <div class="text-center">
-        <div class="font-medium text-slate-500">
-          Approved
-        </div>
-        <div class="text-slate-400">
-          admin reviews
-        </div>
-      </div>
-
-      <div class="text-right">
-        <div class="font-medium text-slate-500">
-          Delivered
-        </div>
-        <div class="text-slate-400">
-          stock goes up
-        </div>
-      </div>
-
+      <h2 class="mt-5 text-2xl font-semibold text-slate-900">Request sent</h2>
+      <p class="mt-2 font-mono text-sm font-semibold tracking-wide text-brand-700">{{ placedOrder.orderNumber }}</p>
+      <p class="mt-1 text-sm text-slate-500">
+        {{ placedOrder.units }} units for {{ placedOrder.objectName }} · waiting for the admin to review and approve.
+      </p>
     </div>
 
-  </div>
-
-
-  <div class="mt-4 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
-
-    <div
-      class="border-b border-dashed border-slate-200 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-      When it arrives
-    </div>
-
-
-    <ul class="divide-y divide-slate-100">
-
-      @for (line of placedOrder.lines; track line.id; let i = $index) {
-
-      <li class="row-in flex items-center justify-between gap-3 px-4 py-3" [style.animation-delay.ms]="200 + i * 70">
-
-        <div class="min-w-0">
-
-          <div class="truncate text-sm font-medium text-slate-900">
-            {{ line.name }}
-          </div>
-
-          <div class="font-mono text-[11px] tabular-nums text-slate-400">
-            {{ line.onHand }}
-
-            <span class="text-green-600">
-              +{{ line.qty }}
-            </span>
-
-            @if (line.incoming) {
-            <span class="text-slate-400">
-              +{{ line.incoming }} already coming
-            </span>
-            }
-
-            =
-
-            <span class="font-semibold text-slate-700">
-              {{ line.after }}
-            </span>
-          </div>
-
-        </div>
-
-
-        <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1"
-          [class]="afterTone(line.daysAfter)">
-
-          {{ daysText(line.after, line.daysAfter, line.sold30) }}
-
+    <div class="mt-8 rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+      <div class="flex items-center">
+        <span class="relative flex h-4 w-4 shrink-0">
+          <span class="step-ping absolute inset-0 rounded-full bg-status-pending"></span>
+          <span class="relative h-4 w-4 rounded-full bg-status-pending ring-2 ring-white"></span>
         </span>
+        <span class="h-1 flex-1 rounded-full bg-slate-200"></span>
+        <span class="h-4 w-4 shrink-0 rounded-full bg-slate-200 ring-2 ring-white"></span>
+        <span class="h-1 flex-1 rounded-full bg-slate-200"></span>
+        <span class="h-4 w-4 shrink-0 rounded-full bg-slate-200 ring-2 ring-white"></span>
+      </div>
+      <div class="mt-2 grid grid-cols-3 text-[11px]">
+        <div><div class="font-semibold text-amber-600">Pending</div><div class="text-slate-400">you are here</div></div>
+        <div class="text-center"><div class="font-medium text-slate-500">Approved</div><div class="text-slate-400">admin sets supplier &amp; price</div></div>
+        <div class="text-right"><div class="font-medium text-slate-500">Delivered</div><div class="text-slate-400">stock goes up</div></div>
+      </div>
+    </div>
 
-      </li>
+    <div class="mt-4 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+      <div class="border-b border-dashed border-slate-200 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">When it arrives</div>
+      <ul class="divide-y divide-slate-100">
+        @for (line of placedOrder.lines; track line.id; let i = $index) {
+          <li class="row-in flex items-center justify-between gap-3 px-4 py-3" [style.animation-delay.ms]="200 + i * 70">
+            <div class="min-w-0">
+              <div class="truncate text-sm font-medium text-slate-900">{{ line.name }}</div>
+              <div class="font-mono text-[11px] tabular-nums text-slate-400">
+                {{ line.onHand }} <span class="text-green-600">+{{ line.qty }}</span>
+                @if (line.incoming) { <span class="text-slate-400">+{{ line.incoming }} already coming</span> }
+                = <span class="font-semibold text-slate-700">{{ line.after }}</span>
+              </div>
+            </div>
+            <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1" [class]="afterTone(line.daysAfter)">
+              {{ daysText(line.after, line.daysAfter, line.sold30) }}
+            </span>
+          </li>
+        }
+      </ul>
+    </div>
 
-      }
-
-    </ul>
-
+    <div class="mt-6 grid grid-cols-2 gap-2">
+      <a routerLink="/orders" class="grid h-11 place-items-center rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-700 transition hover:bg-slate-50">View orders</a>
+      <button type="button" (click)="newOrder()"
+        class="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-brand-600 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition hover:bg-brand-700">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+        New request
+      </button>
+    </div>
   </div>
 
+} @else if (step() === 'review') {
 
-  <div class="mt-6 grid grid-cols-2 gap-2">
+  <!-- ======================= STEP 2: REVIEW & SEND ======================= -->
+  <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
 
-    <a routerLink="/orders"
-      class="grid h-11 place-items-center rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-      View orders
-    </a>
+    <section class="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div>
+          <h2 class="text-sm font-semibold text-slate-900">{{ lines().length }} {{ lines().length === 1 ? 'product' : 'products' }} · {{ objectName() }}</h2>
+          <p class="mt-0.5 text-xs text-slate-400">"After" = shelf + already coming + this request.</p>
+        </div>
+        <button type="button" (click)="backToProducts()" class="rounded-lg px-3 py-2 text-xs font-semibold text-brand-600 ring-1 ring-brand-200 hover:bg-brand-50">+ Add more</button>
+      </div>
 
-    <button type="button" (click)="newOrder()"
-      class="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-brand-600 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition hover:bg-brand-700">
+      <div class="hidden grid-cols-[minmax(180px,1fr)_80px_80px_150px_110px_40px] gap-3 bg-slate-50 px-5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400 md:grid">
+        <div>Product</div><div class="text-right">Shelf</div><div class="text-right">Coming</div><div class="text-center">Request</div><div class="text-right">After</div><div></div>
+      </div>
 
-      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-        stroke-linecap="round">
-        <path d="M12 5v14M5 12h14" />
-      </svg>
+      <div class="divide-y divide-slate-100">
+        @for (line of lines(); track line.id) {
+          <div class="px-4 py-3 sm:px-5">
+            <div class="grid grid-cols-[1fr_auto] items-center gap-3 md:grid-cols-[minmax(180px,1fr)_80px_80px_150px_110px_40px]">
+              <div class="min-w-0">
+                <div class="truncate text-sm font-semibold text-slate-900">{{ line.name }}</div>
+                <div class="truncate text-[11px] text-slate-400">
+                  <span class="font-mono">{{ line.sku }}</span>
+                  @if (line.dailyRate > 0) { · {{ line.dailyRate | number: '1.0-1' }}/day }
+                  <span class="md:hidden"> · shelf {{ line.onHand }}@if (line.incoming) { · coming {{ line.incoming }} }</span>
+                </div>
+              </div>
+              <div class="hidden text-right text-sm tabular-nums text-slate-600 md:block">{{ line.onHand }}</div>
+              <div class="hidden text-right text-sm tabular-nums md:block" [class.text-blue-600]="line.incoming" [class.text-slate-300]="!line.incoming">{{ line.incoming || '—' }}</div>
 
-      New order
-    </button>
+              <div class="flex items-center justify-center rounded-lg bg-slate-100 p-0.5">
+                <button type="button" (click)="add(line, -1)" aria-label="Minus one"
+                  class="grid h-8 w-8 place-items-center rounded-md text-slate-600 transition hover:bg-white hover:shadow-sm active:scale-90">
+                  <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14" /></svg>
+                </button>
+                <input type="number" min="0" inputmode="numeric" [value]="line.qty" (change)="onQtyInput(line.id, $any($event.target).value)"
+                  class="w-12 bg-transparent text-center text-sm font-semibold tabular-nums text-slate-900 outline-none" [class.bump]="bumpId() === line.id" />
+                <button type="button" (click)="add(line, 1)" aria-label="Plus one"
+                  class="grid h-8 w-8 place-items-center rounded-md text-slate-600 transition hover:bg-white hover:shadow-sm active:scale-90">
+                  <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                </button>
+              </div>
 
+              <div class="col-span-2 flex items-center justify-between gap-2 md:col-span-1 md:block md:text-right">
+                <span class="text-sm font-semibold tabular-nums text-slate-900">{{ line.after }}</span>
+                <span class="rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 md:mt-1 md:inline-block" [class]="afterTone(line.daysAfter)">
+                  {{ line.daysAfter === null ? 'no sales pace' : daysText(line.after, line.daysAfter, line.sold30) }}
+                </span>
+              </div>
+
+              <button type="button" (click)="remove(line.id)" title="Remove"
+                class="hidden h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 md:grid">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </div>
+
+            @if (isOverstock(line.daysAfter)) {
+              <div class="mt-2 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 ring-1 ring-amber-200">
+                <span>More than {{ targetDays }} days of stock. {{ targetQty(line) === 0 ? 'Incoming stock already covers it.' : targetQty(line) + ' would be enough.' }}</span>
+                @if (targetQty(line) > 0) {
+                  <button type="button" (click)="onQtyInput(line.id, '' + targetQty(line))" class="shrink-0 rounded-md bg-white px-2 py-0.5 font-semibold ring-1 ring-amber-300 hover:bg-amber-100">Use {{ targetQty(line) }}</button>
+                } @else {
+                  <button type="button" (click)="remove(line.id)" class="shrink-0 rounded-md bg-white px-2 py-0.5 font-semibold ring-1 ring-amber-300 hover:bg-amber-100">Remove</button>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <aside class="space-y-4 lg:sticky lg:top-4">
+      <section class="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+        <h2 class="text-sm font-semibold text-slate-900">Request summary</h2>
+        <div class="mt-4 space-y-2 text-sm">
+          <div class="flex justify-between"><span class="text-slate-500">Location</span><b class="truncate pl-3">{{ objectName() }}</b></div>
+          <div class="flex justify-between"><span class="text-slate-500">Products</span><b>{{ lines().length }}</b></div>
+          <div class="flex justify-between"><span class="text-slate-500">Units</span><b>{{ totalUnits() }}</b></div>
+          @if (overstockCount()) {
+            <div class="flex justify-between text-amber-700"><span>Above {{ targetDays }} days</span><b>{{ overstockCount() }}</b></div>
+          }
+        </div>
+
+        <label class="mt-5 block text-xs font-medium text-slate-600">Comment for the admin (optional)</label>
+        <textarea rows="3" [value]="comment()" (input)="comment.set($any($event.target).value)"
+          placeholder="e.g. promotion next week, please deliver before Friday"
+          class="mt-1 w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"></textarea>
+
+        @if (error()) {
+          <div class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">{{ error() }}</div>
+        }
+
+        <button type="button" (click)="submit()" [disabled]="saving() || totalUnits() === 0"
+          class="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 text-base font-semibold text-white shadow-lg shadow-brand-600/25 transition hover:bg-brand-700 active:scale-[.99] disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
+          @if (saving()) {
+            <svg class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".25" stroke-width="3" /><path d="M21 12a9 9 0 00-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+            Sending…
+          } @else {
+            Submit request
+            <kbd class="hidden rounded-md bg-white/15 px-1.5 py-0.5 text-[11px] font-medium text-white/80 sm:inline">{{ shortcut }}</kbd>
+          }
+        </button>
+        <p class="mt-2 text-center text-[11px] text-slate-400">Goes to the admin as Pending · supplier and price are set on approval</p>
+        <button type="button" (click)="clear()" class="mt-3 block w-full text-center text-xs text-slate-400 hover:text-slate-600">Clear request</button>
+      </section>
+    </aside>
   </div>
-
-</div>
 
 } @else {
 
-<!-- ======================= ATTENTION BANNER ======================= -->
-@if (!productsLoading() && needing().length > 0) {
-
-<div
-  class="row-in mb-5 flex flex-col gap-3 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-700 px-5 py-4 text-white shadow-lg shadow-brand-600/20 sm:flex-row sm:items-center sm:justify-between">
-
-  <div class="flex min-w-0 items-center gap-3">
-
-    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15">
-
-      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-        stroke-linejoin="round">
-        <path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8L12 14.6 7 18.2l1.9-5.8L4 8.8h6.1z" />
-      </svg>
-
-    </span>
-
-
-    <p class="min-w-0 text-sm leading-relaxed text-white/90">
-
-      <b class="text-white">
-        {{ needing().length }}
-        {{ needing().length === 1 ? 'product needs' : 'products need' }}
-        attention
-      </b>
-
-      at {{ objectName() }}.
-
+  <!-- ======================= STEP 1: PRODUCTS ======================= -->
+  @if (!productsLoading() && needing().length > 0) {
+    <div class="row-in mb-5 flex flex-col gap-3 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-700 px-5 py-4 text-white shadow-lg shadow-brand-600/20 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex min-w-0 items-center gap-3">
+        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8L12 14.6 7 18.2l1.9-5.8L4 8.8h6.1z" /></svg>
+        </span>
+        <p class="min-w-0 text-sm leading-relaxed text-white/90">
+          <b class="text-white">{{ needing().length }} {{ needing().length === 1 ? 'product needs' : 'products need' }} attention</b>
+          at {{ objectName() }}.
+          @if (suggestedProducts().length > 0) {
+            Suggested: <b class="text-white">{{ suggestedUnits() }} units</b> to cover {{ targetDays }} days.
+          } @else {
+            No automatic quantity suggestion yet because there is no recent sales history.
+          }
+        </p>
+      </div>
       @if (suggestedProducts().length > 0) {
-      Suggested:
-      <b class="text-white">
-        {{ suggestedUnits() }} units
-      </b>
-      to cover {{ targetDays }} days.
-      } @else {
-      No automatic quantity suggestion yet because there is no recent sales history.
+        <button type="button" (click)="addAllSuggested()"
+          class="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg bg-white px-3.5 py-2 text-xs font-semibold text-brand-700 shadow-sm transition hover:bg-brand-50 sm:self-auto">
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+          Add {{ suggestedUnits() }} suggested units
+        </button>
       }
-
-    </p>
-
-  </div>
-
-
-  @if (suggestedProducts().length > 0) {
-
-  <button type="button" (click)="addAllSuggested()"
-    class="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg bg-white px-3.5 py-2 text-xs font-semibold text-brand-700 shadow-sm transition hover:bg-brand-50 sm:self-auto">
-
-    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
-      stroke-linecap="round">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-
-    Add {{ suggestedUnits() }} suggested units
-  </button>
-
+    </div>
   }
 
-</div>
-
-}
-
-
-<div class="grid gap-6 lg:grid-cols-[1fr_380px]">
-
-  <!-- ======================= LEFT: PRODUCTS ======================= -->
-  <section class="min-w-0">
-
-    <!-- ======================= BARCODE ORDERING ======================= -->
-    <div class="mb-3 rounded-2xl bg-slate-900 p-4 text-white shadow-lg shadow-slate-900/10">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div class="flex min-w-0 flex-1 items-center gap-3">
-          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10">
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 5v14M7 5v14M11 5v14M15 5v14M17 5v14M20 5v14" />
-            </svg>
-          </span>
-          <div class="min-w-0">
-            <div class="text-sm font-semibold">Barcode ordering</div>
-            <div class="mt-0.5 text-xs text-slate-300">
-              Scan products repeatedly to add units to this order.
-            </div>
-          </div>
-        </div>
-
-        <div class="relative w-full sm:w-96">
-          <input id="order-product-search" type="text" autocomplete="off" inputmode="numeric" [value]="search()"
-            (input)="onSearchInput($any($event.target).value)" (keydown.enter)="onSearchEnter($event)"
-            placeholder="Scan barcode or enter SKU"
-            class="h-11 w-full rounded-xl border border-white/20 bg-white pl-4 pr-24 font-mono text-sm text-slate-900 outline-none transition placeholder:font-sans placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-400/20" />
-          <kbd
-            class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
-            Enter
-          </kbd>
+  <!-- Barcode -->
+  <div class="mb-3 rounded-2xl bg-slate-900 p-4 text-white shadow-lg shadow-slate-900/10">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div class="flex min-w-0 flex-1 items-center gap-3">
+        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v14M7 5v14M11 5v14M15 5v14M17 5v14M20 5v14" /></svg>
+        </span>
+        <div class="min-w-0">
+          <div class="text-sm font-semibold">Barcode ordering</div>
+          <div class="mt-0.5 text-xs text-slate-300">Scan products repeatedly to add units to this request.</div>
         </div>
       </div>
-
-      @if (scanFeedback(); as feedback) {
+      <div class="relative w-full sm:w-96">
+        <input id="order-product-search" type="text" autocomplete="off" inputmode="numeric" [value]="search()"
+          (input)="onSearchInput($any($event.target).value)" (keydown.enter)="onSearchEnter($event)"
+          placeholder="Scan barcode or enter SKU"
+          class="h-11 w-full rounded-xl border border-white/20 bg-white pl-4 pr-24 font-mono text-sm text-slate-900 outline-none transition placeholder:font-sans placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-400/20" />
+        <kbd class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">Enter</kbd>
+      </div>
+    </div>
+    @if (scanFeedback(); as feedback) {
       <div class="mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm ring-1"
-        [class]="feedback.ok
-          ? 'bg-green-500/15 text-green-200 ring-green-400/30'
-          : 'bg-red-500/15 text-red-200 ring-red-400/30'">
-        @if (feedback.ok) {
-        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <path d="M5 12l4 4L19 6" />
-        </svg>
-        } @else {
-        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 8v5M12 17h.01" />
-        </svg>
-        }
+        [class]="feedback.ok ? 'bg-green-500/15 text-green-200 ring-green-400/30' : 'bg-red-500/15 text-red-200 ring-red-400/30'">
         {{ feedback.message }}
       </div>
-      }
-    </div>
-
-    <!-- Search and stock filters -->
-    <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div class="relative flex-1">
-        <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-          <circle cx="11" cy="11" r="7" />
-          <path d="m21 21-4.3-4.3" />
-        </svg>
-        <input type="text" [value]="search()" (input)="onSearchInput($any($event.target).value)"
-          placeholder="Search product, SKU, barcode or category"
-          class="h-11 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10" />
-      </div>
-      <div class="inline-flex h-11 w-fit rounded-xl bg-white p-1 ring-1 ring-slate-200">
-
-        <button type="button" (click)="onlyNeeded.set(false)" class="rounded-lg px-3 text-xs font-medium transition"
-          [class]="!onlyNeeded()
-              ? 'bg-slate-900 text-white'
-              : 'text-slate-600 hover:bg-slate-50'">
-
-          All {{ products().length }}
-
-        </button>
-
-
-        <button type="button" (click)="onlyNeeded.set(true)" [disabled]="needing().length === 0"
-          class="rounded-lg px-3 text-xs font-medium transition disabled:cursor-default" [class]="onlyNeeded()
-              ? 'bg-slate-900 text-white'
-              : needing().length === 0
-                ? 'text-slate-300'
-                : 'text-slate-600 hover:bg-slate-50'">
-
-          Needs attention {{ needing().length }}
-
-        </button>
-
-      </div>
-    </div>
-
-    @if (productsLoading()) {
-
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-
-      @for (i of [1,2,3,4,5,6]; track i) {
-      <div class="sk h-44 rounded-2xl"></div>
-      }
-
-    </div>
-
-    } @else if (products().length === 0) {
-
-    <app-empty-state title="No products here" subtitle="Assign products to this location under Locations first." />
-
-    } @else if (filtered().length === 0) {
-
-    <div class="rounded-2xl bg-white px-6 py-12 text-center ring-1 ring-slate-200">
-
-      <p class="text-sm font-medium text-slate-900">
-        No products match the current filters
-      </p>
-
-      <button type="button" (click)="search.set(''); onlyNeeded.set(false)"
-        class="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-        Show all
-      </button>
-
-    </div>
-
-    } @else {
-
-    <div class="grid grid-cols-1 gap-3 p-1 sm:grid-cols-2 xl:grid-cols-3">
-
-      @for (product of filtered(); track product.id; let i = $index) {
-
-      @let productTone = tone(product.urgency);
-      @let quantity = qty(product.id);
-
-      <div class="row-in relative flex flex-col rounded-2xl bg-white p-4 transition" [class]="quantity > 0
-                ? 'ring-2 ring-brand-500'
-                : 'ring-1 ring-slate-200 hover:shadow-md hover:ring-slate-300'" [style.animation-delay.ms]="delay(i)">
-
-        @if (quantity > 0) {
-
-        <span
-          class="pop absolute -right-1.5 -top-1.5 grid h-7 min-w-7 place-items-center rounded-full bg-brand-600 px-2 text-xs font-bold tabular-nums text-white shadow-md ring-2 ring-white"
-          [class.bump]="bumpId() === product.id">
-
-          +{{ quantity }}
-
-        </span>
-
-        }
-
-
-        <div class="flex items-start gap-2.5">
-
-          <span class="mt-0.5 h-9 w-1 shrink-0 rounded-full" [style.background]="productTone.hex">
-          </span>
-
-          <div class="min-w-0 flex-1">
-
-            <div class="truncate text-sm font-semibold text-slate-900">
-              {{ product.name }}
-            </div>
-
-            <div class="truncate text-[11px] text-slate-400">
-
-              <span class="font-mono">
-                {{ product.sku }}
-              </span>
-
-              @if (product.category) {
-              · {{ product.category }}
-              }
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <div class="mt-4 grid grid-cols-2 gap-2">
-
-          <div>
-
-            <div class="text-2xl font-semibold leading-none tabular-nums" [class]="productTone.text">
-              {{ product.onHand }}
-            </div>
-
-            <div class="mt-1 text-[10px] uppercase tracking-wide text-slate-400">
-              on shelf
-            </div>
-
-          </div>
-
-
-          <div class="text-right">
-
-            <div class="text-sm font-semibold" [class]="productTone.text">
-              {{ daysText(product.onHand, product.daysLeft, product.sold30) }}
-            </div>
-
-            <div class="mt-1 text-[10px] tabular-nums text-slate-400">
-
-              @if (product.dailyRate > 0) {
-              {{ product.dailyRate | number: '1.0-1' }}/day
-              · {{ product.sold30 }} sold in 30d
-
-              @if (product.lowData) {
-              <span class="text-amber-600">
-                · low data
-              </span>
-              }
-              } @else {
-              no sales · 30d
-              }
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        @if (product.incoming > 0) {
-
-        <div class="mt-3 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium" [class]="coveredByIncoming(product)
-                    ? 'bg-green-50 text-green-700'
-                    : 'bg-blue-50 text-blue-700'">
-
-          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 3h15v13H1zM16 8h4l3 3v5h-7" />
-            <circle cx="5.5" cy="18.5" r="2.5" />
-            <circle cx="18.5" cy="18.5" r="2.5" />
-          </svg>
-
-          {{ product.incoming }} already on the way
-
-          @if (coveredByIncoming(product)) {
-          · covers it
-          }
-
-        </div>
-
-        }
-
-
-        <div class="mt-auto flex items-center gap-2 pt-4">
-
-          @if (
-          product.suggest > 0 &&
-          quantity !== product.suggest
-          ) {
-
-          <button type="button" (click)="addSuggested(product)"
-            class="flex-1 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700 active:scale-[.98]">
-
-            {{ quantity > 0 ? 'Set to' : 'Add' }}
-            +{{ product.suggest }}
-            · {{ targetDays }}d
-
-          </button>
-
-          }
-
-
-          @if (quantity === 0) {
-
-          <button type="button" (click)="add(product)" aria-label="Add one"
-            class="rounded-lg px-3 py-2 text-xs font-medium text-brand-700 ring-1 ring-brand-200 transition hover:bg-brand-50 active:scale-[.98]"
-            [class.flex-1]="product.suggest === 0">
-
-            {{ product.suggest > 0 ? '+1' : 'Add manually' }}
-
-          </button>
-
-          } @else {
-
-          <div class="flex items-center rounded-lg bg-slate-100 p-0.5" [class.flex-1]="
-                      product.suggest === 0 ||
-                      quantity === product.suggest
-                    ">
-
-            <button type="button" (click)="add(product, -1)" aria-label="Minus one"
-              class="grid h-8 w-8 place-items-center rounded-md text-slate-600 transition hover:bg-white hover:shadow-sm active:scale-90">
-
-              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
-                stroke-linecap="round">
-                <path d="M5 12h14" />
-              </svg>
-
-            </button>
-
-
-            <span class="flex-1 px-1 text-center text-sm font-semibold tabular-nums text-slate-900">
-              {{ quantity }}
-            </span>
-
-
-            <button type="button" (click)="add(product, 1)" aria-label="Plus one"
-              class="grid h-8 w-8 place-items-center rounded-md text-slate-600 transition hover:bg-white hover:shadow-sm active:scale-90">
-
-              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
-                stroke-linecap="round">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-
-            </button>
-
-          </div>
-
-          }
-
-        </div>
-
-      </div>
-
-      }
-
-    </div>
-
     }
+  </div>
 
-  </section>
+  <!-- Search + filter -->
+  <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div class="relative flex-1">
+      <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+      <input type="text" [value]="search()" (input)="onSearchInput($any($event.target).value)"
+        placeholder="Search product, SKU, barcode or category"
+        class="h-11 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10" />
+    </div>
+    <div class="inline-flex h-11 w-fit rounded-xl bg-white p-1 ring-1 ring-slate-200">
+      <button type="button" (click)="onlyNeeded.set(false)" class="rounded-lg px-3 text-xs font-medium transition"
+        [class]="!onlyNeeded() ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'">All {{ products().length }}</button>
+      <button type="button" (click)="onlyNeeded.set(true)" [disabled]="needing().length === 0"
+        class="rounded-lg px-3 text-xs font-medium transition disabled:cursor-default"
+        [class]="onlyNeeded() ? 'bg-slate-900 text-white' : needing().length === 0 ? 'text-slate-300' : 'text-slate-600 hover:bg-slate-50'">
+        Needs attention {{ needing().length }}
+      </button>
+    </div>
+  </div>
 
+  @if (error()) {
+    <div class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">{{ error() }}</div>
+  }
 
-  <!-- ======================= RIGHT: ORDER BASKET ======================= -->
-  <aside class="lg:sticky lg:top-20 lg:self-start">
-
-    <div class="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
-
-      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-
-        <div class="flex items-center gap-2">
-
-          <span class="text-sm font-semibold text-slate-900">
-            Order
-          </span>
-
-          @if (lines().length) {
-          <span class="rounded-full bg-brand-600 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-white">
-            {{ lines().length }}
-          </span>
+  @if (productsLoading()) {
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      @for (i of [1,2,3,4,5,6,7,8]; track i) { <div class="sk h-44 rounded-2xl"></div> }
+    </div>
+  } @else if (products().length === 0) {
+    <app-empty-state title="No products here" subtitle="Assign products to this location under Locations first." />
+  } @else if (filtered().length === 0) {
+    <div class="rounded-2xl bg-white px-6 py-12 text-center ring-1 ring-slate-200">
+      <p class="text-sm font-medium text-slate-900">No products match the current filters</p>
+      <button type="button" (click)="search.set(''); onlyNeeded.set(false)"
+        class="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Show all</button>
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 gap-3 p-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" [class.pb-24]="totalUnits() > 0">
+      @for (product of filtered(); track product.id; let i = $index) {
+        @let productTone = tone(product.urgency);
+        @let quantity = qty(product.id);
+        <div class="row-in relative flex flex-col rounded-2xl bg-white p-4 transition"
+          [class]="quantity > 0 ? 'ring-2 ring-brand-500' : 'ring-1 ring-slate-200 hover:shadow-md hover:ring-slate-300'"
+          [style.animation-delay.ms]="delay(i)">
+          @if (quantity > 0) {
+            <span class="pop absolute -right-1.5 -top-1.5 grid h-7 min-w-7 place-items-center rounded-full bg-brand-600 px-2 text-xs font-bold tabular-nums text-white shadow-md ring-2 ring-white"
+              [class.bump]="bumpId() === product.id">+{{ quantity }}</span>
           }
 
-        </div>
-
-        <span class="text-xs text-slate-400">
-          {{ objectName() }}
-        </span>
-
-      </div>
-
-
-      @if (lines().length === 0) {
-
-      <div class="flex flex-col items-center px-5 py-10 text-center">
-
-        <span class="grid h-14 w-14 place-items-center rounded-2xl bg-slate-50 text-slate-300 ring-1 ring-slate-200">
-
-          <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path
-              d="M21 16V8a2 2 0 00-1-1.7l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.7l7 4a2 2 0 002 0l7-4a2 2 0 001-1.7z" />
-            <path d="M3.3 7 12 12l8.7-5M12 22V12" />
-          </svg>
-
-        </span>
-
-        <p class="mt-3 text-sm font-medium text-slate-700">
-          Nothing in this order yet
-        </p>
-
-        <p class="mt-1 text-xs text-slate-400">
-          Add a suggestion or enter a quantity manually.
-        </p>
-
-      </div>
-
-      } @else {
-
-      <ul class="max-h-[50vh] divide-y divide-slate-100 overflow-y-auto">
-
-        @for (line of lines(); track line.id) {
-
-        <li class="row-in px-5 py-3">
-
-          <div class="flex items-center gap-3">
-
+          <div class="flex items-start gap-2.5">
+            <span class="mt-0.5 h-9 w-1 shrink-0 rounded-full" [style.background]="productTone.hex"></span>
             <div class="min-w-0 flex-1">
-
-              <div class="truncate text-sm font-medium text-slate-900">
-                {{ line.name }}
-              </div>
-
-              <div class="mt-0.5 font-mono text-[11px] tabular-nums text-slate-400">
-
-                {{ line.onHand }} shelf
-
-                @if (line.incoming) {
-                + {{ line.incoming }} coming
-                }
-
-                +
-
-                <span class="text-green-600">
-                  {{ line.qty }}
-                </span>
-
-                =
-
-                <span class="font-semibold text-slate-700">
-                  {{ line.after }}
-                </span>
-
-              </div>
-
+              <div class="truncate text-sm font-semibold text-slate-900">{{ product.name }}</div>
+              <div class="truncate text-[11px] text-slate-400"><span class="font-mono">{{ product.sku }}</span>@if (product.category) { · {{ product.category }} }</div>
             </div>
+          </div>
 
-
-            <div class="flex shrink-0 items-center rounded-lg bg-slate-100 p-0.5">
-
-              <button type="button" (click)="add(line, -1)" aria-label="Minus one"
-                class="grid h-7 w-7 place-items-center rounded-md text-slate-600 transition hover:bg-white hover:shadow-sm active:scale-90">
-
-                @if (line.qty === 1) {
-
-                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
-                </svg>
-
-                } @else {
-
-                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
-                  stroke-linecap="round">
-                  <path d="M5 12h14" />
-                </svg>
-
-                }
-
-              </button>
-
-
-              <input type="number" min="0" inputmode="numeric" [value]="line.qty"
-                (change)="onQtyInput(line.id, $any($event.target).value)"
-                class="w-10 bg-transparent text-center text-sm font-semibold tabular-nums text-slate-900 outline-none"
-                [class.bump]="bumpId() === line.id" />
-
-
-              <button type="button" (click)="add(line, 1)" aria-label="Plus one"
-                class="grid h-7 w-7 place-items-center rounded-md text-slate-600 transition hover:bg-white hover:shadow-sm active:scale-90">
-
-                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
-                  stroke-linecap="round">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-
-              </button>
-
+          <div class="mt-4 grid grid-cols-2 gap-2">
+            <div>
+              <div class="text-2xl font-semibold leading-none tabular-nums" [class]="productTone.text">{{ product.onHand }}</div>
+              <div class="mt-1 text-[10px] uppercase tracking-wide text-slate-400">on shelf</div>
             </div>
-
+            <div class="text-right">
+              <div class="text-sm font-semibold" [class]="productTone.text">{{ daysText(product.onHand, product.daysLeft, product.sold30) }}</div>
+              <div class="mt-1 text-[10px] tabular-nums text-slate-400">
+                @if (product.dailyRate > 0) {
+                  {{ product.dailyRate | number: '1.0-1' }}/day · {{ product.sold30 }} sold in 30d
+                  @if (product.lowData) { <span class="text-amber-600">· low data</span> }
+                } @else { no sales · 30d }
+              </div>
+            </div>
           </div>
 
-
-          <div class="mt-1.5 flex flex-wrap items-center justify-end gap-1.5">
-
-            @if (line.daysAfter !== null) {
-
-            <span class="font-mono text-[10px] tabular-nums text-slate-400">
-              {{ line.after }}
-              ÷
-              {{ line.dailyRate | number: '1.0-1' }}/day
-            </span>
-
-            }
-
-            <span class="rounded-full px-2 py-0.5 text-[10px] font-medium ring-1" [class]="afterTone(line.daysAfter)">
-
-              {{
-              line.daysAfter === null
-              ? 'no sales pace'
-              : 'covers ' + daysText(
-              line.after,
-              line.daysAfter,
-              line.sold30
-              )
-              }}
-
-            </span>
-
-          </div>
-
-
-          @if (isOverstock(line.daysAfter)) {
-
-          <div
-            class="mt-2 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 ring-1 ring-amber-200">
-
-            <span>
-              More than {{ targetDays }} days needed.
-
-              {{
-              targetQty(line) === 0
-              ? 'Incoming stock already covers it.'
-              : targetQty(line) + ' would be enough.'
-              }}
-            </span>
-
-
-            @if (targetQty(line) > 0) {
-
-            <button type="button" (click)="onQtyInput(line.id, '' + targetQty(line))"
-              class="shrink-0 rounded-md bg-white px-2 py-0.5 font-semibold ring-1 ring-amber-300 transition hover:bg-amber-100">
-              Use {{ targetQty(line) }}
-            </button>
-
-            } @else {
-
-            <button type="button" (click)="remove(line.id)"
-              class="shrink-0 rounded-md bg-white px-2 py-0.5 font-semibold ring-1 ring-amber-300 transition hover:bg-amber-100">
-              Remove
-            </button>
-
-            }
-
-          </div>
-
+          @if (product.incoming > 0) {
+            <div class="mt-3 flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium"
+              [class]="coveredByIncoming(product) ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'">
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>
+              {{ product.incoming }} already on the way @if (coveredByIncoming(product)) { · covers it }
+            </div>
           }
 
-        </li>
-
-        }
-
-      </ul>
-
-      }
-
-
-      <div class="border-t border-slate-100 bg-slate-50 px-5 pb-5 pt-4">
-        <div class="mb-4">
-          <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Supplier <span class="text-red-500">*</span>
-          </label>
-
-          @if (suppliers().length === 0) {
-          <div class="rounded-xl bg-amber-50 px-3 py-2.5 text-xs text-amber-800 ring-1 ring-amber-200">
-            No active suppliers are available.
-
-            @if (isAdmin()) {
-            <a routerLink="/suppliers" class="ml-1 font-semibold underline underline-offset-2">
-              Add a supplier
-            </a>
-            }routerLink="/data"
-          </div>
-          } @else {
-          <select [value]="selectedSupplierId() ?? ''"
-            (change)="selectedSupplierId.set($any($event.target).value || null); error.set(null)"
-            class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
-            <option value="" disabled>Select supplier…</option>
-
-            @for (supplier of suppliers(); track supplier.id) {
-            <option [value]="supplier.id">
-              {{ supplier.name }}
-            </option>
+          <div class="mt-auto flex items-center gap-2 pt-4">
+            @if (product.suggest > 0 && quantity !== product.suggest) {
+              <button type="button" (click)="addSuggested(product)"
+                class="flex-1 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700 active:scale-[.98]">
+                {{ quantity > 0 ? 'Set to' : 'Add' }} +{{ product.suggest }} · {{ targetDays }}d
+              </button>
             }
-          </select>
-          @if (selectedSupplier(); as supplier) {
-  @if (supplier.order_email) {
-    <p class="mt-1.5 truncate text-[11px] text-slate-400">
-      Purchase order contact: {{ supplier.order_email }}
-    </p>
+            @if (quantity === 0) {
+              <button type="button" (click)="add(product)" aria-label="Add one"
+                class="rounded-lg px-3 py-2 text-xs font-medium text-brand-700 ring-1 ring-brand-200 transition hover:bg-brand-50 active:scale-[.98]"
+                [class.flex-1]="product.suggest === 0">
+                {{ product.suggest > 0 ? '+1' : 'Add manually' }}
+              </button>
+            } @else {
+              <div class="flex items-center rounded-lg bg-slate-100 p-0.5" [class.flex-1]="product.suggest === 0 || quantity === product.suggest">
+                <button type="button" (click)="add(product, -1)" aria-label="Minus one"
+                  class="grid h-8 w-8 place-items-center rounded-md text-slate-600 transition hover:bg-white hover:shadow-sm active:scale-90">
+                  <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14" /></svg>
+                </button>
+                <span class="flex-1 px-1 text-center text-sm font-semibold tabular-nums text-slate-900">{{ quantity }}</span>
+                <button type="button" (click)="add(product, 1)" aria-label="Plus one"
+                  class="grid h-8 w-8 place-items-center rounded-md text-slate-600 transition hover:bg-white hover:shadow-sm active:scale-90">
+                  <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ======================= STICKY SUMMARY BAR ======================= -->
+  @if (totalUnits() > 0) {
+    <div class="pop sticky bottom-4 z-20 mt-4">
+      <div class="flex flex-col gap-3 rounded-2xl bg-slate-900 px-5 py-3 text-white shadow-2xl shadow-slate-900/30 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex min-w-0 items-center gap-4">
+          <div>
+            <div class="text-[11px] text-slate-400">Request · {{ objectName() }}</div>
+            <div class="text-lg font-semibold tabular-nums">
+              {{ lines().length }} {{ lines().length === 1 ? 'product' : 'products' }}
+              <span class="text-slate-500">·</span>
+              {{ totalUnits() }} units
+            </div>
+          </div>
+          @if (overstockCount()) {
+            <span class="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-medium text-amber-300 ring-1 ring-amber-400/30">{{ overstockCount() }} above {{ targetDays }} days</span>
+          }
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" (click)="clear()" class="rounded-lg px-3 py-2 text-xs font-medium text-slate-300 hover:bg-white/10">Clear</button>
+          <button type="button" (click)="goReview()"
+            class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-brand-50">
+            Review request
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </button>
+        </div>
+      </div>
+    </div>
   }
 }
-          }
-        </div>
-        @if (lines().length) {
-
-        <textarea [value]="comment()" (input)="comment.set($any($event.target).value)" rows="2"
-          placeholder="Comment for the approver (optional)"
-          class="mb-3 w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
-            </textarea>
-
-        }
-
-
-        @if (error()) {
-
-        <div class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-100">
-          {{ error() }}
-        </div>
-
-        }
-
-
-        <div class="mb-3 flex items-end justify-between">
-
-          <span class="text-sm text-slate-500">
-
-            {{ lines().length }}
-            {{ lines().length === 1 ? 'product' : 'products' }}
-
-            @if (lines().length) {
-            ·
-            <button type="button" (click)="clear()"
-              class="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline">
-              clear
-            </button>
-            }
-
-          </span>
-
-
-          <span>
-
-            <span class="text-3xl font-semibold leading-none tabular-nums text-slate-900">
-              {{ totalUnits() }}
-            </span>
-
-            <span class="ml-1 text-sm text-slate-400">
-              units
-            </span>
-
-          </span>
-
-        </div>
-
-
-        <button type="button" (click)="submit()" [disabled]="saving() || totalUnits() === 0 || !selectedSupplierId()"
-          class="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 text-base font-semibold text-white shadow-lg shadow-brand-600/25 transition hover:bg-brand-700 active:scale-[.99] disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
-
-          @if (saving()) {
-
-          <svg class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
-
-            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".25" stroke-width="3" />
-
-            <path d="M21 12a9 9 0 00-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
-
-          </svg>
-
-          Placing order…
-
-          } @else {
-
-          Place order
-
-          @if (totalUnits()) {
-          <kbd class="hidden rounded-md bg-white/15 px-1.5 py-0.5 text-[11px] font-medium text-white/80 sm:inline">
-            {{ shortcut }}
-          </kbd>
-          }
-
-          }
-
-        </button>
-
-
-        <p class="mt-2 text-center text-[11px] text-slate-400">
-          Goes to the admin as Pending · stock changes on delivery
-        </p>
-
-      </div>
-
-    </div>
-
-  </aside>
-
-</div>
-
-}
-

@@ -80,6 +80,7 @@ export class StockCountService {
       p_items: lines.map((l) => ({
         product_id: l.product_id,
         counted_qty: l.counted_qty,
+        reason_code: l.reason_code,
         reason: l.reason,
       })),
     });
@@ -114,9 +115,8 @@ export class StockCountService {
   private friendly(msg: string): string {
     if (msg.includes('DEMO_READONLY'))
       return 'This action is disabled in the demo account.';
-    if (msg.includes('A reason is required'))
-      if (msg.includes('A reason is required'))
-        return 'Add a reason for every product whose counted quantity differs from the expected.';
+    if (msg.includes('A reason is required') || msg.includes('Invalid count reason'))
+      return 'Pick a reason for every product whose counted quantity differs from the expected.';
     if (msg.includes('at least one product'))
       return 'Count at least one product before submitting.';
     if (msg.includes('violates row-level security'))

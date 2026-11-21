@@ -21,7 +21,13 @@ export interface OrderItem {
   order_id: string;
   product_id: string;
   quantity: number;
-  product?: { name: string; sku: string };
+
+  unit_cost: number | null;
+
+  product?: {
+    name: string;
+    sku: string;
+  };
 }
 
 export interface OrderSupplier {
@@ -49,6 +55,7 @@ export interface Order {
   object?: { name: string };
   supplier?: OrderSupplier | null;
   order_items?: OrderItem[];
+  currency: string | null;
 }
 
 export interface NewOrderLine {

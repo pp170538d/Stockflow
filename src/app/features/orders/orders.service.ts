@@ -30,58 +30,59 @@ export class OrdersService {
   readonly totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize())));
 
   async load(params: Partial<OrdersQuery> = {}): Promise<void> {
-  const page = params.page ?? this.page();
-  const pageSize = params.pageSize ?? this.pageSize();
-  const status = params.status ?? '';
-  const objectId = params.objectId ?? '';
-  const search = (params.search ?? '').trim();
-  const exceptionsOnly = params.exceptionsOnly ?? false;
+    const page = params.page ?? this.page();
+    const pageSize = params.pageSize ?? this.pageSize();
+    const status = params.status ?? '';
+    const objectId = params.objectId ?? '';
+    const search = (params.search ?? '').trim();
+    const exceptionsOnly = params.exceptionsOnly ?? false;
 
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
 
-  this.loading.set(true);
-  this.error.set(null);
+    this.loading.set(true);
+    this.error.set(null);
 
-  let exceptionOrderIds: string[] = [];
+    let exceptionOrderIds: string[] = [];
 
-  if (exceptionsOnly) {
-    const { data: exceptionRows, error: exceptionError } =
-      await supabase
-        .from('order_fulfillment')
-        .select('order_id')
-        .neq('variance', 0);
+    if (exceptionsOnly) {
+      const { data: exceptionRows, error: exceptionError } =
+        await supabase.rpc('delivery_exceptions', {
+          p_status: 'open',
+          p_object_id: objectId || null,
+          p_delivery_id: null,
+        });
 
-    if (exceptionError) {
-      this.error.set(exceptionError.message);
-      this.orders.set([]);
-      this.total.set(0);
-      this.page.set(1);
-      this.loading.set(false);
-      return;
+      if (exceptionError) {
+        this.error.set(exceptionError.message);
+        this.orders.set([]);
+        this.total.set(0);
+        this.page.set(1);
+        this.loading.set(false);
+        return;
+      }
+
+      exceptionOrderIds = [
+        ...new Set(
+          ((exceptionRows ?? []) as { order_id: string }[])
+            .map((row) => row.order_id)
+            .filter((id): id is string => !!id)
+        ),
+      ];
+
+      if (exceptionOrderIds.length === 0) {
+        this.orders.set([]);
+        this.total.set(0);
+        this.page.set(1);
+        this.pageSize.set(pageSize);
+        this.loading.set(false);
+        return;
+      }
     }
 
-    exceptionOrderIds = [
-      ...new Set(
-        (exceptionRows ?? []).map(
-          (row) => row.order_id as string
-        )
-      ),
-    ];
-
-    if (exceptionOrderIds.length === 0) {
-      this.orders.set([]);
-      this.total.set(0);
-      this.page.set(1);
-      this.pageSize.set(pageSize);
-      this.loading.set(false);
-      return;
-    }
-  }
-
-  let query = supabase
-    .from('orders')
-    .select(`
+    let query = supabase
+      .from('orders')
+      .select(`
       id,
       order_number,
       object_id,
@@ -106,80 +107,81 @@ export class OrdersService {
         active
       ),
       order_items (
-        id,
-        order_id,
-        product_id,
-        quantity,
-        product:products (
-          name,
-          sku
-        )
-      )
+  id,
+  order_id,
+  product_id,
+  quantity,
+  unit_cost,
+  product:products (
+    name,
+    sku
+  )
+)
     `, {
-      count: 'exact',
-    })
-    .order('created_at', {
-      ascending: false,
-    });
+        count: 'exact',
+      })
+      .order('created_at', {
+        ascending: false,
+      });
 
-  if (exceptionsOnly) {
-    query = query
-      .eq('status', 'DELIVERED')
-      .in('id', exceptionOrderIds);
-  } else if (status) {
-    query = query.eq(
-      'status',
-      status
+    if (exceptionsOnly) {
+      query = query
+        .eq('status', 'DELIVERED')
+        .in('id', exceptionOrderIds);
+    } else if (status) {
+      query = query.eq(
+        'status',
+        status
+      );
+    }
+
+    if (objectId) {
+      query = query.eq(
+        'object_id',
+        objectId
+      );
+    }
+
+    if (search) {
+      const escaped = search.replace(
+        /[%_,()]/g,
+        ''
+      );
+
+      query = query.or(
+        `order_number.ilike.%${escaped}%,comment.ilike.%${escaped}%`
+      );
+    }
+
+    query = query.range(from, to);
+
+    const {
+      data,
+      error,
+      count,
+    } = await query;
+
+    if (error) {
+      this.error.set(error.message);
+      this.orders.set([]);
+      this.total.set(0);
+      this.loading.set(false);
+      return;
+    }
+
+    this.orders.set(
+      (data ?? []) as unknown as Order[]
     );
-  }
 
-  if (objectId) {
-    query = query.eq(
-      'object_id',
-      objectId
-    );
-  }
-
-  if (search) {
-    const escaped = search.replace(
-      /[%_,()]/g,
-      ''
-    );
-
-    query = query.or(
-      `order_number.ilike.%${escaped}%,comment.ilike.%${escaped}%`
-    );
-  }
-
-  query = query.range(from, to);
-
-  const {
-    data,
-    error,
-    count,
-  } = await query;
-
-  if (error) {
-    this.error.set(error.message);
-    this.orders.set([]);
-    this.total.set(0);
+    this.page.set(page);
+    this.pageSize.set(pageSize);
+    this.total.set(count ?? 0);
     this.loading.set(false);
-    return;
   }
-
-  this.orders.set(
-    (data ?? []) as unknown as Order[]
-  );
-
-  this.page.set(page);
-  this.pageSize.set(pageSize);
-  this.total.set(count ?? 0);
-  this.loading.set(false);
-}
 
   async create(
     objectId: string,
-    supplierId: string,
+    supplierId: string | null,
     comment: string | null,
     lines: NewOrderLine[]
   ): Promise<{ order: CreatedOrder | null; error: string | null }> {

@@ -12,20 +12,23 @@ import { BadgeComponent } from '../../shared/ui/badge.component';
 import { DrawerComponent } from '../../shared/ui/drawer.component';
 import { ToastService } from '../../shared/ui/toast.service';
 import { ConfirmService } from '../../shared/ui/confirm.service';
+import {
+  DELIVERY_OVER_REASONS, DELIVERY_SHORT_REASONS, DeliveryReasonCode, ReasonOption,
+} from '../../core/stock/reason-codes';
 
 /**
- * Cross-field validator: a reason is REQUIRED whenever the delivered
- * quantity differs from the ordered quantity (short OR over). This mirrors
- * the DB rule exactly, so the user never hits a raw Postgres exception.
+ * A reason CODE is required whenever delivered ≠ ordered (mirrors the DB rule),
+ * and it must fit the direction (short vs over). The note stays optional.
  */
 function reasonRequiredOnVariance(group: AbstractControl): ValidationErrors | null {
   const ordered = group.get('ordered_qty')?.value ?? 0;
   const delivered = group.get('delivered_qty')?.value;
-  const reason = (group.get('reason')?.value ?? '').trim();
-  if (delivered !== null && delivered !== ordered && !reason) {
-    return { reasonRequired: true };
-  }
-  return null;
+  if (delivered === null || delivered === '' || delivered === undefined) return null;
+  const diff = Number(delivered) - ordered;
+  if (diff === 0) return null;
+  const code = group.get('reason_code')?.value as string;
+  const allowed = (diff < 0 ? DELIVERY_SHORT_REASONS : DELIVERY_OVER_REASONS).map((r) => r.code as string);
+  return code && allowed.includes(code) ? null : { reasonRequired: true };
 }
 
 @Component({
@@ -48,7 +51,7 @@ export class ConfirmDeliveryComponent {
 
   readonly form: FormGroup = this.fb.group({
     carrier: [''],
-    received_by: [''],
+    received_by: ['', [Validators.required]],
     note: [''],
     lines: this.fb.array([]),
   });
@@ -93,6 +96,7 @@ private async build(order: Order): Promise<void> {
             f.ordered_qty,
             [Validators.required, Validators.min(0)],
           ],
+          reason_code: [''],
           reason: [''],
         },
         { validators: reasonRequiredOnVariance }
@@ -131,6 +135,19 @@ private async build(order: Order): Promise<void> {
     if (v === 0) return 'Exact';
     if (v < 0) return `Short ${Math.abs(v)}`;
     return `Over ${v}`;
+  }
+
+  reasonOptions(row: AbstractControl): ReasonOption<DeliveryReasonCode>[] {
+    return this.variance(row) < 0 ? DELIVERY_SHORT_REASONS : DELIVERY_OVER_REASONS;
+  }
+
+  selectedReason(row: AbstractControl): string {
+    return row.get('reason_code')?.value ?? '';
+  }
+
+  setReason(row: AbstractControl, code: DeliveryReasonCode): void {
+    row.get('reason_code')?.setValue(code);
+    row.markAsTouched();
   }
 
   /** Whether this row currently needs a reason (drives the field showing). */
@@ -180,6 +197,7 @@ private async build(order: Order): Promise<void> {
     const lines: DeliveryLineInput[] = (v.lines as any[]).map((l) => ({
       order_item_id: l.order_item_id,
       delivered_qty: Number(l.delivered_qty),
+      reason_code: Number(l.delivered_qty) !== Number(l.ordered_qty) ? (l.reason_code || null) : null,
       reason: (l.reason ?? '').trim() || null,
     }));
 

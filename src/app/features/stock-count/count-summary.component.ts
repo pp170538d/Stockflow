@@ -4,6 +4,7 @@ import { StockCountService } from './stock-count.service';
 import { StockCountSummary } from './stock-count.model';
 import { BadgeComponent } from '../../shared/ui/badge.component';
 import { DrawerComponent } from '../../shared/ui/drawer.component';
+import { reasonLabel } from '../../core/stock/reason-codes';
 
 /**
  * Read-only reconciliation view for a single past stock count.
@@ -29,6 +30,10 @@ export class CountSummaryComponent {
       const c = this.count();
       if (this.open() && c) void this.svc.loadItems(c.count_id);
     });
+  }
+
+  label(code: string | null): string {
+    return reasonLabel(code);
   }
 
   variance(v: number | null): number {

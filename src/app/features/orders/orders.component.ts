@@ -205,6 +205,11 @@ export class OrdersComponent implements OnInit {
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
   // =========================================================
+  // Admin review before approval
+  // =========================================================
+  readonly reviewId = signal<string | null>(null);
+
+  // =========================================================
   // Confirm delivery drawer
   // =========================================================
 
@@ -868,6 +873,19 @@ export class OrdersComponent implements OnInit {
     this.toast.info(
       `${order.order_number} rejected.`
     );
+  }
+
+  openReview(order: Order): void {
+    this.reviewId.set(order.id);
+  }
+
+  closeReview(): void {
+    this.reviewId.set(null);
+  }
+
+  onReviewed(): void {
+    this.reload(this.svc.page());
+    void this.loadCounts();
   }
 
   // =========================================================

@@ -54,10 +54,13 @@
             </div>
             <app-badge [tone]="varianceTone(i.variance)">{{ varianceLabel(i.variance) }}</app-badge>
           </div>
-          @if (i.reason) {
+          @if (i.reason_code || i.reason) {
             <div class="mt-2 border-t border-slate-100 pt-2">
               <span class="text-[10px] uppercase tracking-wide text-slate-400">Reason</span>
-              <p class="text-sm text-slate-600">{{ i.reason }}</p>
+              <p class="text-sm text-slate-600">
+                @if (i.reason_code) { <b class="font-medium text-slate-800">{{ label(i.reason_code) }}</b> }
+                @if (i.reason && i.reason !== label(i.reason_code)) { <span>{{ i.reason_code ? ' · ' : '' }}{{ i.reason }}</span> }
+              </p>
             </div>
           }
         </div>
