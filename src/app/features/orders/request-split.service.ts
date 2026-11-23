@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
+import { IdempotencyKey } from '../../core/idempotency';
 import { ApproveRequestResult, RequestSuggestion, SupplierOption } from './request-split.model';
 
 interface CatalogRow {
@@ -14,6 +15,7 @@ interface CatalogRow {
 
 @Injectable({ providedIn: 'root' })
 export class RequestSplitService {
+  private readonly approveKey = new IdempotencyKey();
   /** Suggested supplier + rounded quantity per request line. */
   async suggestions(orderId: string): Promise<{ data: RequestSuggestion[]; error: string | null }> {
     const { data, error } = await supabase.rpc('request_supplier_suggestions', { p_order_id: orderId });
@@ -116,8 +118,10 @@ export class RequestSplitService {
     const { data, error } = await supabase.rpc('approve_request', {
       p_order_id: orderId,
       p_lines: lines,
+      p_idempotency_key: this.approveKey.for({ orderId, lines }),
     });
     if (error) return { data: null, error: friendly(error.message) };
+    this.approveKey.done();
     return { data: data as ApproveRequestResult, error: null };
   }
 }
@@ -136,3 +140,4 @@ function friendly(msg: string): string {
     return 'Network issue — check your connection and try again.';
   return 'Could not complete the action. Please try again.';
 }
+

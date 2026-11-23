@@ -1,9 +1,11 @@
 import { Injectable, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
 import { Product, ProductInput } from './product.model';
+import { IdempotencyKey } from '../../core/idempotency';
 
 @Injectable({ providedIn: 'root' })
 export class ProductsService {
+  private readonly createKey = new IdempotencyKey();
   readonly products = signal<Product[]>([]);
   readonly loading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
@@ -24,8 +26,13 @@ export class ProductsService {
   async create(input: ProductInput): Promise<string | null> {
     // INSERT is different from UPDATE: a failing WITH CHECK does raise 42501,
     // so a null error here really means the row was written.
-    const { error } = await supabase.from('products').insert(input);
+    // Client-generated id = idempotency key: a retry hits the same primary
+    // key and is ignored instead of creating a second product.
+    const { error } = await supabase
+      .from('products')
+      .upsert({ ...input, id: this.createKey.for(input) }, { onConflict: 'id', ignoreDuplicates: true });
     if (error) return this.friendly(error.message);
+    this.createKey.done();
     await this.load();
     return null;
   }
@@ -108,3 +115,4 @@ export class ProductsService {
   return msg;
 }
 }
+

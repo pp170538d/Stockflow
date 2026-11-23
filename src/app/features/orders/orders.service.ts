@@ -2,6 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
 import { Order, OrderStatus, NewOrderLine } from './order.model';
 import { demoFriendly } from '../../core/demo-error';
+import { IdempotencyKey } from '../../core/idempotency';
 
 export interface OrdersQuery {
   page: number;
@@ -21,6 +22,7 @@ const BLOCKED = 'This action is disabled in the demo account.';
 
 @Injectable({ providedIn: 'root' })
 export class OrdersService {
+  private readonly createKey = new IdempotencyKey();
   readonly orders = signal<Order[]>([]);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -185,14 +187,17 @@ export class OrdersService {
     comment: string | null,
     lines: NewOrderLine[]
   ): Promise<{ order: CreatedOrder | null; error: string | null }> {
+    const items = lines.map((l) => ({ product_id: l.product_id, quantity: l.quantity }));
     const { data: orderId, error } = await supabase.rpc('create_order_with_items', {
       p_object_id: objectId,
       p_comment: comment,
-      p_items: lines.map((l) => ({ product_id: l.product_id, quantity: l.quantity })),
+      p_items: items,
       p_supplier_id: supplierId,
+      p_idempotency_key: this.createKey.for({ objectId, supplierId, comment, items }),
     });
 
     if (error) return { order: null, error: friendly(error.message) };
+    this.createKey.done();
     if (!orderId) return { order: null, error: 'The order was created but its ID was not returned.' };
 
     const { data: created, error: readError } = await supabase
@@ -236,7 +241,8 @@ function friendly(message: string): string {
   if (demo !== message) return demo;
   if (message.includes('Select a supplier')) return 'Select a supplier before approving this order.';
   if (message.includes('Inactive supplier')) return 'This supplier is inactive. Choose an active supplier.';
-  if (message.includes('Complete Settings')) return 'Complete Settings → Company profile before approving purchase orders.';
+  if (message.includes('Complete Settings')) return 'Complete Settings ? Company profile before approving purchase orders.';
   if (message.includes('Supplier does not exist')) return 'The selected supplier is no longer available.';
   return message;
 }
+

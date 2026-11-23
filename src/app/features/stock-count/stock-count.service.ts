@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
+import { IdempotencyKey } from '../../core/idempotency';
 import {
   StockCount, StockCountItem, StockCountSummary, StockCountLineInput,
 } from './stock-count.model';
@@ -15,6 +16,7 @@ export interface CountableRow {
 
 @Injectable({ providedIn: 'root' })
 export class StockCountService {
+  private readonly countKey = new IdempotencyKey();
   readonly countable = signal<CountableRow[]>([]);
   readonly summaries = signal<StockCountSummary[]>([]);
   readonly items = signal<StockCountItem[]>([]);
@@ -73,16 +75,18 @@ export class StockCountService {
   ): Promise<string | null> {
     this.saving.set(true);
     this.error.set(null);
+    const items = lines.map((l) => ({
+      product_id: l.product_id,
+      counted_qty: l.counted_qty,
+      reason_code: l.reason_code,
+      reason: l.reason,
+    }));
     const { error } = await supabase.rpc('record_stock_count', {
       p_object_id: objectId,
       p_counted_by: countedBy,
       p_note: note,
-      p_items: lines.map((l) => ({
-        product_id: l.product_id,
-        counted_qty: l.counted_qty,
-        reason_code: l.reason_code,
-        reason: l.reason,
-      })),
+      p_items: items,
+      p_idempotency_key: this.countKey.for({ objectId, countedBy, note, items }),
     });
     this.saving.set(false);
     if (error) {
@@ -90,6 +94,7 @@ export class StockCountService {
       this.error.set(msg);
       return msg;
     }
+    this.countKey.done();
     return null;
   }
 
@@ -126,3 +131,4 @@ export class StockCountService {
     return 'Could not record the stock count. Please try again.';
   }
 }
+

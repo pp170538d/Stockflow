@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
+import { IdempotencyKey } from '../../core/idempotency';
 
 export interface TransferProduct {
   productId: string;
@@ -34,6 +35,7 @@ interface InventoryRow {
 
 @Injectable({ providedIn: 'root' })
 export class StockTransferService {
+  private readonly transferKey = new IdempotencyKey();
   readonly products = signal<TransferProduct[]>([]);
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -247,6 +249,9 @@ export class StockTransferService {
       p_to_object_id: destinationObjectId,
       p_reason: cleanReason,
       p_items: clean,
+      p_idempotency_key: this.transferKey.for({
+        sourceObjectId, destinationObjectId, cleanReason, clean,
+      }),
     });
 
     this.saving.set(false);
@@ -257,6 +262,8 @@ export class StockTransferService {
         error: this.friendly(error.message),
       };
     }
+
+    this.transferKey.done();
 
     return {
       reference: typeof data === 'string' ? data : null,

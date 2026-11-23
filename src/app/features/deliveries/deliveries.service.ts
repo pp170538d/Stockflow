@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
+import { IdempotencyKey } from '../../core/idempotency';
 import {
   DeliveryException, DeliveryLineInput, GoodsReceipt, OrderFulfillment, Resolution,
 } from './delivery.model';
@@ -15,6 +16,8 @@ export interface OrderVariance {
 
 @Injectable({ providedIn: 'root' })
 export class DeliveriesService {
+  private readonly recordKey = new IdempotencyKey();
+  private readonly resolveKey = new IdempotencyKey();
   readonly fulfillment = signal<OrderFulfillment[]>([]);
   readonly receipt = signal<GoodsReceipt | null>(null);
   readonly loading = signal<boolean>(false);
@@ -117,10 +120,12 @@ export class DeliveriesService {
       p_line_ids: lineIds,
       p_resolution: resolution,
       p_note: note,
+      p_idempotency_key: this.resolveKey.for({ lineIds, resolution, note }),
     });
     this.resolving.set(false);
 
     if (error) return { error: this.friendly(error.message) };
+    this.resolveKey.done();
 
     const deliveryId = this.receipt()?.delivery.id;
     if (deliveryId) await this.refreshReceipt(deliveryId);
@@ -138,17 +143,19 @@ export class DeliveriesService {
   ): Promise<string | null> {
     this.saving.set(true);
     this.error.set(null);
+    const items = lines.map((l) => ({
+      order_item_id: l.order_item_id,
+      delivered_qty: l.delivered_qty,
+      reason_code: l.reason_code,
+      reason: l.reason,
+    }));
     const { error } = await supabase.rpc('record_delivery', {
       p_order_id: orderId,
       p_carrier: carrier,
       p_received_by: receivedBy,
       p_note: note,
-      p_items: lines.map((l) => ({
-        order_item_id: l.order_item_id,
-        delivered_qty: l.delivered_qty,
-        reason_code: l.reason_code,
-        reason: l.reason,
-      })),
+      p_items: items,
+      p_idempotency_key: this.recordKey.for({ orderId, carrier, receivedBy, note, items }),
     });
     this.saving.set(false);
     if (error) {
@@ -156,6 +163,7 @@ export class DeliveriesService {
       this.error.set(msg);
       return msg;
     }
+    this.recordKey.done();
     return null;
   }
 
@@ -183,3 +191,4 @@ export class DeliveriesService {
     return 'Could not complete the action. Please try again.';
   }
 }
+

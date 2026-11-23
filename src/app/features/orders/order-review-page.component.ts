@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { supabase } from '../../core/supabase/supabase.client';
+import { IdempotencyKey } from '../../core/idempotency';
 import { ToastService } from '../../shared/ui/toast.service';
 import { ConfirmService } from '../../shared/ui/confirm.service';
 import { RequestSplitComponent } from './request-split.component';
@@ -28,6 +29,7 @@ interface ProductOption { id: string; sku: string; name: string; cost_price: num
   templateUrl: './order-review-page.component.html',
 })
 export class OrderReviewPageComponent implements OnInit {
+  private readonly reviewKey = new IdempotencyKey();
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private toast = inject(ToastService);
@@ -202,15 +204,21 @@ export class OrderReviewPageComponent implements OnInit {
       });
       if (!ok) return;
     }
+    if (this.saving()) return;
     this.saving.set(true);
-    const { error } = await supabase.rpc('review_order', {
+    const payload = {
       p_order_id: this.orderId(), p_supplier_id: this.supplierId() || null,
       p_comment: this.comment(),
       p_lines: this.lines().map(l => ({ order_item_id: l.order_item_id, product_id: l.product_id, quantity: l.quantity, unit_cost: l.unit_cost })),
       p_approve: approve,
+    };
+    const { error } = await supabase.rpc('review_order', {
+      ...payload,
+      p_idempotency_key: this.reviewKey.for(payload),
     });
     this.saving.set(false);
     if (error) { this.toast.error(error.message); return; }
+    this.reviewKey.done();
     this.toast.success(approve ? `${this.orderNumber()} approved.` : 'Changes saved.');
     if (approve) await this.router.navigate(['/orders'], { queryParams: { focus: this.orderId() } });
     else await this.load(this.orderId());
@@ -218,3 +226,4 @@ export class OrderReviewPageComponent implements OnInit {
 
   signedDiff(l: ReviewLine): string { const d=l.quantity-l.requested_qty; return d>0?`+${d}`:`${d}`; }
 }
+

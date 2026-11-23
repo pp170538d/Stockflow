@@ -1,5 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
+import { IdempotencyKey } from '../../core/idempotency';
 import { runway } from '../../core/stock/runway';
 import {
   InventoryItem, InventoryRow, StockMovement, MovementEvent, INSIGHT_DAYS,
@@ -26,11 +27,12 @@ const SPARK_H = 28;
 
 @Injectable({ providedIn: 'root' })
 export class InventoryService {
+  private readonly movementKey = new IdempotencyKey();
   readonly rows = signal<InventoryRow[]>([]);
   readonly items = signal<InventoryItem[]>([]);
   readonly movements = signal<StockMovement[]>([]);
 
-  /** movement_id → balance right after that movement (for the history timeline). */
+  /** movement_id ? balance right after that movement (for the history timeline). */
   readonly balances = signal<Map<string, number>>(new Map());
 
   readonly loading = signal<boolean>(false);
@@ -175,22 +177,23 @@ export class InventoryService {
     productId: string,
     event: MovementEvent,
     signedQty: number,
-    createdBy: string,
+    _createdBy: string, // kept for callers; the database uses auth.uid()
     note: string | null
   ): Promise<string | null> {
     if (signedQty === 0) return 'Quantity cannot be zero.';
 
-    const { error } = await supabase.from('stock_movements').insert({
-      object_id: objectId,
-      product_id: productId,
-      event,
-      quantity: signedQty,
-      reference: 'manual',
-      note,
-      created_by: createdBy,
+    const payload = { objectId, productId, event, signedQty, note };
+    const { error } = await supabase.rpc('record_movement', {
+      p_object_id: objectId,
+      p_product_id: productId,
+      p_event: event,
+      p_quantity: signedQty,
+      p_note: note,
+      p_idempotency_key: this.movementKey.for(payload),
     });
 
     if (error) return this.friendly(error.message);
+    this.movementKey.done();
 
     await this.loadInventory(objectId, { silent: true });
     return null;
@@ -201,7 +204,9 @@ export class InventoryService {
   if (msg.includes('Insufficient stock')) return msg;
   if (msg.includes('register import')) return msg;
   if (msg.includes('cannot be in the future')) return msg;
-  if (msg.includes('violates row-level security'))
+  if (msg.includes('Only admins can record adjustments')) return msg;
+  if (msg.includes('can only be recorded through its workflow')) return msg;
+  if (msg.includes('violates row-level security') || msg.includes('own store') || msg.includes('permission'))
     return "You don't have permission to record a movement for this object.";
   if (msg.includes('violates foreign key'))
     return 'That product or object no longer exists. Please refresh and try again.';
@@ -215,7 +220,7 @@ export class InventoryService {
 // helpers
 // ---------------------------------------------------------------------
 
-/** Local midnight, INSIGHT_DAYS - 1 days ago → window includes today. */
+/** Local midnight, INSIGHT_DAYS - 1 days ago ? window includes today. */
 function windowStart(): Date {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -287,3 +292,4 @@ function spark(series: number[]): { line: string; area: string } {
   }
   return { line, area: `${line} V${SPARK_H} H0 Z` };
 }
+

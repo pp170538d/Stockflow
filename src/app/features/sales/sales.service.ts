@@ -1,5 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
+import { IdempotencyKey } from '../../core/idempotency';
 
 export interface SaleRow {
   id: string;
@@ -82,6 +83,7 @@ interface SalesSummaryRecord {
 
 @Injectable({ providedIn: 'root' })
 export class SalesService {
+  private readonly saleKey = new IdempotencyKey();
   readonly rows = signal<SaleRow[]>([]);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -297,38 +299,34 @@ if (since !== null) q = q.gte('occurred_at', since);
 
   /**
    * One sale = several SALE movements sharing one reference ("sale:<uuid>").
-   * A single insert → one statement, so either every line is written or none.
+   * Written by the record_sale RPC in one transaction: every line or none.
+   * A retry with the same idempotency key returns the first result.
    * Returns the reference on success, or an error message.
    */
   async recordSale(
     objectId: string,
     lines: SaleLineInput[],
     note: string | null,
-    createdBy: string
+    _createdBy?: string // kept for callers; the database uses auth.uid()
   ): Promise<{ reference: string | null; error: string | null }> {
     const clean = lines
-  .filter((l) => l.qty > 0)
-  .sort((a, b) => a.productId.localeCompare(b.productId));
+      .filter((l) => l.qty > 0)
+      .sort((a, b) => a.productId.localeCompare(b.productId))
+      .map((l) => ({ product_id: l.productId, qty: Math.abs(l.qty) }));
     if (!clean.length) return { reference: null, error: 'Add at least one product.' };
 
-    const reference = `sale:${newId()}`;
     this.saving.set(true);
-
-    const { error } = await supabase.from('stock_movements').insert(
-      clean.map((l) => ({
-        object_id: objectId,
-        product_id: l.productId,
-        event: 'SALE',
-        quantity: -Math.abs(l.qty),
-        reference,
-        note,
-        created_by: createdBy,
-      }))
-    );
-
+    const { data, error } = await supabase.rpc('record_sale', {
+      p_object_id: objectId,
+      p_lines: clean,
+      p_note: note,
+      p_idempotency_key: this.saleKey.for({ objectId, clean, note }),
+    });
     this.saving.set(false);
+
     if (error) return { reference: null, error: this.friendly(error.message) };
-    return { reference, error: null };
+    this.saleKey.done();
+    return { reference: (data as { reference: string } | null)?.reference ?? null, error: null };
   }
 
   private friendly(msg: string): string {
@@ -355,7 +353,3 @@ function sinceIso(rangeDays: number | null): string | null {
   return d.toISOString();
 }
 
-function newId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
-  return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}`;
-}

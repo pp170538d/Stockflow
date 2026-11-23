@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
+import { IdempotencyKey } from '../../core/idempotency';
 import {
   Supplier, SupplierInput, SupplierCatalogStatus, SupplierCatalogResult,
   SupplierCatalogCandidatesResult, SupplierCatalogPatch, SupplierPerformance,
@@ -7,6 +8,7 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class SuppliersService {
+  private readonly saveKey = new IdempotencyKey();
   readonly suppliers = signal<Supplier[]>([]);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -32,8 +34,10 @@ export class SuppliersService {
     const { error } = await supabase.rpc('save_supplier', {
       p_id: id,
       p_data: input,
+      p_idempotency_key: this.saveKey.for({ id, input }),
     });
     if (error) return friendly(error.message);
+    this.saveKey.done();
     await this.load();
     return null;
   }
@@ -109,3 +113,4 @@ function friendly(message: string): string {
   if (message.includes('Only admin')) return 'Only an admin can manage suppliers.';
   return message;
 }
+

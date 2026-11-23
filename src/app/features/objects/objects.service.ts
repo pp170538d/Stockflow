@@ -2,6 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
 import { BusinessObject, ObjectInput } from './object.model';
 import { demoFriendly } from '../../core/demo-error';
+import { IdempotencyKey } from '../../core/idempotency';
 
 /**
  * An UPDATE blocked by a row-level security policy does NOT raise an error in
@@ -13,6 +14,7 @@ const BLOCKED = 'This action is disabled in the demo account.';
 
 @Injectable({ providedIn: 'root' })
 export class ObjectsService {
+  private readonly createKey = new IdempotencyKey();
   readonly objects = signal<BusinessObject[]>([]);
   readonly loading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
@@ -37,8 +39,12 @@ export class ObjectsService {
 
   /** Create a new object. INSERT does raise on a failing WITH CHECK. */
   async create(input: ObjectInput): Promise<string | null> {
-    const { error } = await supabase.from('objects').insert(input);
+    // Client-generated id = idempotency key (retry is ignored, not duplicated).
+    const { error } = await supabase
+      .from('objects')
+      .upsert({ ...input, id: this.createKey.for(input) }, { onConflict: 'id', ignoreDuplicates: true });
     if (error) return demoFriendly(error.message);
+    this.createKey.done();
     await this.load();
     return null;
   }
@@ -88,3 +94,4 @@ export class ObjectsService {
     return null;
   }
 }
+
