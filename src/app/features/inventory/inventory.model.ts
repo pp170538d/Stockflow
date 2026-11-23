@@ -30,12 +30,12 @@ export interface InventoryRow {
   product_id: string;
   quantity: number;
   updated_at: string;
-  product?: { name: string; sku: string; category: string | null };
+  product?: { name: string; sku: string; barcode: string | null; category: string | null };
 }
 
 /** Inventory row enriched with 30-day behaviour. */
 export interface InventoryItem extends InventoryRow {
-  /** Daily closing balance, oldest → today (length = INSIGHT_DAYS). */
+  /** Daily closing balance, oldest ? today (length = INSIGHT_DAYS). */
   series: number[];
   sparkLine: string;
   sparkArea: string;

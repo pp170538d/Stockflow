@@ -35,11 +35,11 @@
 
     <a routerLink="/reports" [queryParams]="{ tab: 'margin', days: p.days }"
       class="group block rounded-2xl bg-white p-4 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-200">
-      <div class="text-xs font-medium text-slate-500">Revenue · {{ p.days }}d</div>
+      <div class="text-xs font-medium text-slate-500">Net revenue · {{ p.days }}d</div>
       <div class="mt-1.5 text-2xl font-semibold tabular-nums text-slate-900">
         {{ p.revenue | number:'1.0-0' }} <span class="text-sm font-medium text-slate-400">{{ p.currency }}</span>
       </div>
-      <div class="mt-1 text-xs text-slate-400">{{ (p.price_coverage ?? 0) | percent:'1.0-0' }} price coverage</div>
+      <div class="mt-1 text-xs text-slate-400">Excl. VAT · {{ (p.price_coverage ?? 0) | percent:'1.0-0' }} price coverage</div>
       <div class="mt-2 text-[11px] font-medium text-brand-600 opacity-0 transition group-hover:opacity-100">Sales & margin report →</div>
     </a>
 
@@ -49,7 +49,7 @@
       <div class="mt-1.5 text-2xl font-semibold tabular-nums text-emerald-700">
         {{ p.margin | number:'1.0-0' }} <span class="text-sm font-medium text-slate-400">{{ p.currency }}</span>
       </div>
-      <div class="mt-1 text-xs text-slate-400">{{ p.gross_margin_pct === null ? '—' : (p.gross_margin_pct | number:'1.0-1') + '% margin' }}</div>
+      <div class="mt-1 text-xs text-slate-400">{{ p.gross_margin_pct === null ? '—' : (p.gross_margin_pct | number:'1.0-1') + '% of net revenue' }}</div>
       <div class="mt-2 text-[11px] font-medium text-brand-600 opacity-0 transition group-hover:opacity-100">Sales & margin report →</div>
     </a>
   </section>

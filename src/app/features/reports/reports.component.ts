@@ -9,6 +9,9 @@ import { reasonLabel } from '../../core/stock/reason-codes';
 
 type Tab = 'performance' | 'margin' | 'accuracy';
 type ClassName = 'fast' | 'normal' | 'slow' | 'dead' | 'stockout' | 'idle';
+type PerfSortKey = 'product'|'location'|'onHand'|'sold'|'avgStock'|'turnover'|'days'|'value'|'history'|'class';
+type MarginSortKey = 'product'|'location'|'units'|'revenue'|'cogs'|'margin'|'marginPct'|'coverage';
+type SortDir = 'asc'|'desc';
 
 interface PerformanceRow {
   object_id:string; object_name:string; product_id:string; sku:string; product_name:string; category:string|null;
@@ -69,6 +72,10 @@ export class ReportsComponent implements OnInit {
   readonly loading=signal(false);
   readonly error=signal<string|null>(null);
   readonly exporting=signal(false);
+  readonly perfSort=signal<PerfSortKey>('class');
+  readonly perfSortDir=signal<SortDir>('asc');
+  readonly marginSort=signal<MarginSortKey>('margin');
+  readonly marginSortDir=signal<SortDir>('desc');
   readonly ranges=[7,30,90,365];
   readonly classes:ClassName[]=['fast','normal','slow','dead','stockout','idle'];
 
@@ -77,7 +84,43 @@ export class ReportsComponent implements OnInit {
     const q=this.search().trim().toLowerCase(), c=this.classFilter();
     return this.rows().filter(r=>(!c||r.class===c)&&(!q||r.product_name.toLowerCase().includes(q)||r.sku.toLowerCase().includes(q)||r.object_name.toLowerCase().includes(q)));
   });
-  readonly marginRows=computed(()=>[...this.filtered()].filter(r=>r.sold>0).sort((a,b)=>(b.margin??-Infinity)-(a.margin??-Infinity)));
+  readonly performanceRows=computed(()=>{
+    const key=this.perfSort(), sign=this.perfSortDir()==='asc'?1:-1;
+    const rank:Record<ClassName,number>={stockout:0,dead:1,slow:2,normal:3,fast:4,idle:5};
+    return [...this.filtered()].sort((a,b)=>{
+      let cmp=0;
+      switch(key){
+        case 'product':cmp=a.product_name.localeCompare(b.product_name)||a.sku.localeCompare(b.sku);break;
+        case 'location':cmp=a.object_name.localeCompare(b.object_name)||a.product_name.localeCompare(b.product_name);break;
+        case 'onHand':cmp=a.on_hand-b.on_hand;break;
+        case 'sold':cmp=a.sold-b.sold;break;
+        case 'avgStock':cmp=a.avg_stock-b.avg_stock;break;
+        case 'turnover':cmp=(a.turnover??-Infinity)-(b.turnover??-Infinity);break;
+        case 'days':cmp=(a.days_of_stock??Infinity)-(b.days_of_stock??Infinity);break;
+        case 'value':cmp=(a.stock_value??-Infinity)-(b.stock_value??-Infinity);break;
+        case 'history':cmp=a.history_coverage-b.history_coverage;break;
+        case 'class':cmp=rank[a.class]-rank[b.class];break;
+      }
+      return cmp*sign||a.product_name.localeCompare(b.product_name)||a.object_name.localeCompare(b.object_name);
+    });
+  });
+  readonly marginRows=computed(()=>{
+    const key=this.marginSort(), sign=this.marginSortDir()==='asc'?1:-1;
+    return [...this.filtered()].filter(r=>r.sold>0).sort((a,b)=>{
+      let cmp=0;
+      switch(key){
+        case 'product':cmp=a.product_name.localeCompare(b.product_name)||a.sku.localeCompare(b.sku);break;
+        case 'location':cmp=a.object_name.localeCompare(b.object_name)||a.product_name.localeCompare(b.product_name);break;
+        case 'units':cmp=a.sold-b.sold;break;
+        case 'revenue':cmp=(a.revenue??-Infinity)-(b.revenue??-Infinity);break;
+        case 'cogs':cmp=(a.cogs??-Infinity)-(b.cogs??-Infinity);break;
+        case 'margin':cmp=(a.margin??-Infinity)-(b.margin??-Infinity);break;
+        case 'marginPct':cmp=(this.marginPct(a)??-Infinity)-(this.marginPct(b)??-Infinity);break;
+        case 'coverage':cmp=(a.priced_share??-Infinity)-(b.priced_share??-Infinity);break;
+      }
+      return cmp*sign||a.product_name.localeCompare(b.product_name)||a.object_name.localeCompare(b.object_name);
+    });
+  });
   readonly accuracyIssues=computed(()=>{
     const a=this.accuracy(); if(!a) return 0;
     return a.counts.short_lines+a.counts.over_lines+a.deliveries.short_lines+a.deliveries.over_lines;
@@ -128,6 +171,12 @@ export class ReportsComponent implements OnInit {
     void this.router.navigate([],{relativeTo:this.route,queryParams:{object:id||null},queryParamsHandling:'merge',replaceUrl:true});
     void this.load();
   }
+  setPerfSort(key:PerfSortKey):void{if(this.perfSort()===key)this.perfSortDir.update(d=>d==='asc'?'desc':'asc');else{this.perfSort.set(key);this.perfSortDir.set(key==='product'||key==='location'||key==='days'||key==='class'?'asc':'desc');}}
+  setMarginSort(key:MarginSortKey):void{if(this.marginSort()===key)this.marginSortDir.update(d=>d==='asc'?'desc':'asc');else{this.marginSort.set(key);this.marginSortDir.set(key==='product'||key==='location'?'asc':'desc');}}
+  perfSortMark(key:PerfSortKey):string{return this.perfSort()===key?(this.perfSortDir()==='asc'?'↑':'↓'):'↕';}
+  marginSortMark(key:MarginSortKey):string{return this.marginSort()===key?(this.marginSortDir()==='asc'?'↑':'↓'):'↕';}
+  perfSortAria(key:PerfSortKey):'ascending'|'descending'|'none'{return this.perfSort()===key?(this.perfSortDir()==='asc'?'ascending':'descending'):'none';}
+  marginSortAria(key:MarginSortKey):'ascending'|'descending'|'none'{return this.marginSort()===key?(this.marginSortDir()==='asc'?'ascending':'descending'):'none';}
   marginPct(r:PerformanceRow):number|null{return r.revenue?((r.margin??0)/r.revenue)*100:null;}
   classLabel(c:ClassName):string{return({fast:'Fast',normal:'Normal',slow:'Slow',dead:'Dead',stockout:'Stockout',idle:'Idle'})[c];}
   classTone(c:ClassName):string{return({fast:'bg-sky-50 text-sky-700 ring-sky-200',normal:'bg-emerald-50 text-emerald-700 ring-emerald-200',slow:'bg-amber-50 text-amber-700 ring-amber-200',dead:'bg-violet-50 text-violet-700 ring-violet-200',stockout:'bg-red-50 text-red-700 ring-red-200',idle:'bg-slate-100 text-slate-600 ring-slate-200'})[c];}
@@ -142,16 +191,17 @@ export class ReportsComponent implements OnInit {
     let rows:any[]=[]; let sheet='Report';
     if(this.tab()==='margin'){
       sheet='Sales margin';
-      rows=this.marginRows().map(r=>({Location:r.object_name,SKU:r.sku,Product:r.product_name,'Units sold':r.sold,Revenue:r.revenue,COGS:r.cogs,Margin:r.margin,'Margin %':this.marginPct(r),Currency:this.summary()?.currency}));
+      rows=this.marginRows().map(r=>({Location:r.object_name,SKU:r.sku,Product:r.product_name,'Units sold':r.sold,'Net revenue (excl. VAT)':r.revenue,COGS:r.cogs,Margin:r.margin,'Margin % of net revenue':this.marginPct(r),Currency:this.summary()?.currency}));
     }else if(this.tab()==='accuracy'){
       sheet='Stock accuracy';
       rows=(this.accuracy()?.top_issues??[]).map(r=>({Location:r.object_name,SKU:r.sku,Product:r.product_name,'Count issues':r.count_issues,'Delivery issues':r.delivery_issues,'Total issues':r.total_issues,'Variance exposure':r.issue_value,Currency:this.accuracy()?.currency,'Last issue':r.last_issue_at}));
     }else{
       sheet='Performance';
-      rows=this.filtered().map(r=>({Location:r.object_name,SKU:r.sku,Product:r.product_name,'On hand':r.on_hand,Sold:r.sold,'Avg stock':r.avg_stock,Turnover:r.turnover,'Days of stock':r.days_of_stock,'Stock value':r.stock_value,Class:this.classLabel(r.class),History:`${r.history_days}/${r.requested_days}`,Currency:this.summary()?.currency}));
+      rows=this.performanceRows().map(r=>({Location:r.object_name,SKU:r.sku,Product:r.product_name,'On hand':r.on_hand,Sold:r.sold,'Avg stock':r.avg_stock,Turnover:r.turnover,'Days of stock':r.days_of_stock,'Stock value':r.stock_value,Class:this.classLabel(r.class),History:`${r.history_days}/${r.requested_days}`,Currency:this.summary()?.currency}));
     }
     const ws=XLSX.utils.json_to_sheet(rows); ws['!cols']=Object.keys(rows[0]??{Report:''}).map(k=>({wch:Math.max(12,k.length+2)}));
     const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,sheet);
     XLSX.writeFile(wb,`stockflow-${this.tab()}-${this.days()}d.xlsx`); this.exporting.set(false);
   }
 }
+

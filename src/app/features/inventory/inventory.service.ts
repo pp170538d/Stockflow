@@ -1,7 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
-import { IdempotencyKey } from '../../core/idempotency';
 import { runway } from '../../core/stock/runway';
+import { IdempotencyKey } from '../../core/idempotency';
 import {
   InventoryItem, InventoryRow, StockMovement, MovementEvent, INSIGHT_DAYS,
 } from './inventory.model';
@@ -21,6 +21,22 @@ interface WindowMovement {
 }
 
 
+/** A price this product was really sold at (last 90 days) — the only valid return prices. */
+export interface ReturnPriceOption {
+  unit_price: number;
+  sold: number;
+  returned: number;
+  available: number;
+  last_sold_at: string;
+  currency: string;
+}
+
+/** Extra data a RETURN needs: the fiscal receipt and the price printed on it. */
+export interface ReturnDetails {
+  unitPrice: number | null;
+  receiptNo: string | null;
+}
+
 const DAY = 86_400_000;
 const SPARK_W = 100;
 const SPARK_H = 28;
@@ -28,6 +44,7 @@ const SPARK_H = 28;
 @Injectable({ providedIn: 'root' })
 export class InventoryService {
   private readonly movementKey = new IdempotencyKey();
+
   readonly rows = signal<InventoryRow[]>([]);
   readonly items = signal<InventoryItem[]>([]);
   readonly movements = signal<StockMovement[]>([]);
@@ -60,7 +77,7 @@ export class InventoryService {
     const [inv, mov] = await Promise.all([
       supabase
         .from('inventory')
-        .select('*, product:products ( name, sku, category )')
+        .select('*, product:products ( name, sku, barcode, category )')
         .eq('object_id', objectId),
       supabase
         .from('stock_movements')
@@ -171,24 +188,52 @@ export class InventoryService {
     await this.loadMovements(objectId, productId, { ...params, page: this.movementsPage() - 1 });
   }
 
-  /** Record a movement. `signedQty` is already signed by the caller. */
+  /** Prices this product was sold at in this store (last 90 days), newest first. */
+  async loadReturnOptions(objectId: string, productId: string): Promise<ReturnPriceOption[]> {
+    const { data, error } = await supabase.rpc('return_price_options', {
+      p_object_id: objectId,
+      p_product_id: productId,
+    });
+    if (error || !data) return [];
+    return (data as any[]).map((r) => ({
+      unit_price: Number(r.unit_price),
+      sold: Number(r.sold),
+      returned: Number(r.returned),
+      available: Number(r.available),
+      last_sold_at: r.last_sold_at,
+      currency: r.currency,
+    }));
+  }
+
+  /**
+   * Record a movement through the record_movement RPC.
+   * `signedQty` is already signed by the caller. A RETURN also needs
+   * the fiscal receipt number and the price from that receipt.
+   */
   async recordMovement(
     objectId: string,
     productId: string,
     event: MovementEvent,
     signedQty: number,
     _createdBy: string, // kept for callers; the database uses auth.uid()
-    note: string | null
+    note: string | null,
+    ret: ReturnDetails | null = null
   ): Promise<string | null> {
     if (signedQty === 0) return 'Quantity cannot be zero.';
 
-    const payload = { objectId, productId, event, signedQty, note };
+    const isReturn = event === 'RETURN';
+    const unitPrice = isReturn ? ret?.unitPrice ?? null : null;
+    const receiptNo = isReturn ? ret?.receiptNo?.trim() || null : null;
+    const payload = { objectId, productId, event, signedQty, note, unitPrice, receiptNo };
+
     const { error } = await supabase.rpc('record_movement', {
       p_object_id: objectId,
       p_product_id: productId,
       p_event: event,
       p_quantity: signedQty,
       p_note: note,
+      p_unit_price: unitPrice,
+      p_receipt_no: receiptNo,
       p_idempotency_key: this.movementKey.for(payload),
     });
 
@@ -204,6 +249,7 @@ export class InventoryService {
   if (msg.includes('Insufficient stock')) return msg;
   if (msg.includes('register import')) return msg;
   if (msg.includes('cannot be in the future')) return msg;
+  if (/fiscal receipt|not sold at|can still be returned|already used to return/.test(msg)) return msg;
   if (msg.includes('Only admins can record adjustments')) return msg;
   if (msg.includes('can only be recorded through its workflow')) return msg;
   if (msg.includes('violates row-level security') || msg.includes('own store') || msg.includes('permission'))
@@ -292,4 +338,3 @@ function spark(series: number[]): { line: string; area: string } {
   }
   return { line, area: `${line} V${SPARK_H} H0 Z` };
 }
-

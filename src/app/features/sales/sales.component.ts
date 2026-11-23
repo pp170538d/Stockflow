@@ -29,6 +29,15 @@ interface SaleGroup {
   note: string | null;
   lines: SaleRow[];
   units: number;
+  /** Paid incl. VAT; null when no line has a price. */
+  amount: number | null;
+}
+
+/** Receipt totals. Prices are final (incl. VAT); VAT is taken out of them. */
+export interface SaleTotals {
+  gross: number;
+  net: number;
+  vat: { rate: number; amount: number }[];
 }
 
 /** Shelf health after a sale — same thresholds as Inventory. */
@@ -44,6 +53,8 @@ const TONE_RANK: Record<Tone, number> = {
 
 interface CartLine extends SellableProduct {
   qty: number;
+  /** qty × shelf price, incl. VAT. */
+  lineTotal: number;
   after: number;
   daysAfter: number | null;
   tone: Tone;
@@ -57,6 +68,7 @@ interface LastSale {
   objectName: string;
   units: number;
   lines: CartLine[];
+  totals: SaleTotals;
 }
 
 const DAY = 86_400_000;
@@ -427,6 +439,7 @@ readonly reportLocations = computed(() => [
       if (ref && last && last.ref === ref) {
         last.lines.push(r);
         last.units += r.units;
+        if (r.amount !== null) last.amount = (last.amount ?? 0) + r.amount;
         continue;
       }
 
@@ -438,6 +451,7 @@ readonly reportLocations = computed(() => [
         note: r.note,
         lines: [r],
         units: r.units,
+        amount: r.amount,
       });
     }
 
@@ -548,6 +562,7 @@ readonly reportLocations = computed(() => [
         return {
           ...p,
           qty,
+          lineTotal: round2(qty * (p.sellPrice ?? 0)),
           after,
           daysAfter,
           tone,
@@ -555,6 +570,8 @@ readonly reportLocations = computed(() => [
         };
       });
   });
+
+  readonly totals = computed<SaleTotals>(() => totalsOf(this.cartLines()));
 
   readonly cartUnits = computed(() =>
     this.cartLines().reduce((s, l) => s + l.qty, 0)
@@ -690,6 +707,10 @@ readonly reportLocations = computed(() => [
   }
 
   addToCart(p: SellableProduct, delta: number): void {
+    if (delta > 0 && p.sellPrice === null) {
+      this.saleError.set(`${p.name} has no price. Set a sell price in Products first.`);
+      return;
+    }
     const next = Math.max(
       0,
       Math.min(p.onHand, this.qty(p) + delta)
@@ -803,7 +824,7 @@ readonly reportLocations = computed(() => [
           this.qty(p) < p.onHand
       ) ??
       list.find(
-        (p) => this.qty(p) < p.onHand
+        (p) => this.qty(p) < p.onHand && p.sellPrice !== null
       );
 
     if (!target) {
@@ -862,6 +883,7 @@ readonly reportLocations = computed(() => [
         0
       ),
       lines: snapshot,
+      totals: this.totals(),
     });
 
     this.saleStep.set('done');
@@ -875,6 +897,31 @@ readonly reportLocations = computed(() => [
       2300
     );
   }
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Shelf prices already include VAT (net + VAT = final).
+ * VAT is taken out per rate: vat = gross − gross / (1 + rate).
+ */
+function totalsOf(lines: { lineTotal: number; vatRate: number }[]): SaleTotals {
+  const byRate = new Map<number, number>();
+  for (const l of lines) byRate.set(l.vatRate, (byRate.get(l.vatRate) ?? 0) + l.lineTotal);
+
+  let gross = 0;
+  let vatSum = 0;
+  const vat: { rate: number; amount: number }[] = [];
+  for (const [rate, g] of [...byRate.entries()].sort((a, b) => b[0] - a[0])) {
+    const amount = round2(g - g / (1 + rate / 100));
+    vat.push({ rate, amount });
+    gross += g;
+    vatSum += amount;
+  }
+  gross = round2(gross);
+  return { gross, net: round2(gross - vatSum), vat: vat.filter((v) => v.rate > 0) };
 }
 
 function startOfToday(): Date {

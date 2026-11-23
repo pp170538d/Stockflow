@@ -7,7 +7,7 @@ import {
 } from '@angular/forms';
 import { supabase } from '../../core/supabase/supabase.client';
 import { AuthService } from '../../core/auth/auth.service';
-import { InventoryService } from './inventory.service';
+import { InventoryService, ReturnPriceOption } from './inventory.service';
 import {
   InventoryItem, MovementEvent, MANUAL_EVENTS, Urgency, INSIGHT_DAYS, StockMovement,
 } from './inventory.model';
@@ -21,9 +21,20 @@ import { runwayLabel } from '../../core/stock/runway';
 import { LocationPickerComponent } from '../../shared/ui/location-picker.component';
 
 type Filter = 'all' | 'reorder' | 'soon' | 'healthy' | 'idle';
-type Sort = 'urgency' | 'days' | 'onhand' | 'sold' | 'name';
+type Sort = 'urgency' | 'onhandAsc' | 'onhandDesc' | 'nameAsc' | 'nameDesc';
 
 const RANK: Record<Urgency, number> = { out: 0, critical: 1, warning: 2, healthy: 3, idle: 4 };
+
+/** "70", "70,00", 70 -> 70; empty or invalid -> null. Always 2 decimals. */
+function toPrice(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(String(v).trim().replace(',', '.'));
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
+}
+
+function samePrice(a: number, b: number): boolean {
+  return Math.abs(a - b) < 0.005;
+}
 
 /** A signed correction can be + or -, but never 0. */
 function notZero(control: AbstractControl): ValidationErrors | null {
@@ -91,7 +102,7 @@ function notZero(control: AbstractControl): ValidationErrors | null {
   animation: flash 2.6s cubic-bezier(.2, .8, .2, 1);
 }
 
-    /* Sparkline reveals left → right; the line itself stays solid. */
+    /* Sparkline reveals left ? right; the line itself stays solid. */
     .spark { animation: reveal 1s cubic-bezier(.2,.8,.2,1) .15s backwards; }
     @keyframes reveal {
       from { clip-path: inset(-4px 100% -4px -4px); }
@@ -127,6 +138,7 @@ export class InventoryComponent implements OnInit {
 
   // ---------- list controls ----------
   readonly search = signal('');
+  readonly scanError = signal<string | null>(null);
   readonly filter = signal<Filter>('all');
   readonly sort = signal<Sort>('urgency');
   readonly flashId = signal<string | null>(null);
@@ -139,13 +151,6 @@ export class InventoryComponent implements OnInit {
     { key: 'idle', label: 'No sales' },
   ];
 
-  readonly sorts: { key: Sort; label: string }[] = [
-    { key: 'urgency', label: 'Most urgent' },
-    { key: 'days', label: 'Days left' },
-    { key: 'onhand', label: 'On hand' },
-    { key: 'sold', label: 'Most sold' },
-    { key: 'name', label: 'Name' },
-  ];
 
   private matches(i: InventoryItem, f: Filter): boolean {
     switch (f) {
@@ -197,6 +202,7 @@ export class InventoryComponent implements OnInit {
       (!q ||
         (i.product?.name ?? '').toLowerCase().includes(q) ||
         (i.product?.sku ?? '').toLowerCase().includes(q) ||
+        (i.product?.barcode ?? '').toLowerCase().includes(q) ||
         (i.product?.category ?? '').toLowerCase().includes(q)));
 
     const name = (i: InventoryItem) => i.product?.name ?? '';
@@ -204,35 +210,103 @@ export class InventoryComponent implements OnInit {
 
     return [...list].sort((a, b) => {
       switch (this.sort()) {
-        case 'days': return days(a) - days(b);
-        case 'onhand': return b.quantity - a.quantity;
-        case 'sold': return b.sold30 - a.sold30;
-        case 'name': return name(a).localeCompare(name(b));
+        case 'onhandAsc': return a.quantity - b.quantity || name(a).localeCompare(name(b));
+        case 'onhandDesc': return b.quantity - a.quantity || name(a).localeCompare(name(b));
+        case 'nameAsc': return name(a).localeCompare(name(b));
+        case 'nameDesc': return name(b).localeCompare(name(a));
         default:
           return RANK[a.urgency] - RANK[b.urgency] || days(a) - days(b) || name(a).localeCompare(name(b));
       }
     });
   });
 
+  onInventoryScanInput(value: string): void {
+    this.search.set(value);
+    this.scanError.set(null);
+  }
+
+  onInventoryScanEnter(event: Event): void {
+    event.preventDefault();
+    const raw=this.search().trim();
+    if(!raw)return;
+    const q=raw.toLowerCase();
+    const all=this.svc.items();
+    const exact=all.find(i=>(i.product?.barcode??'')===raw||(i.product?.sku??'').toLowerCase()===q);
+    if(exact){
+      this.search.set(exact.product?.barcode??exact.product?.sku??raw);
+      this.scanError.set(null);
+      setTimeout(()=>document.querySelector(`[data-product-id="${exact.product_id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'}));
+      return;
+    }
+    this.scanError.set(`No inventory product matches "${raw}".`);
+  }
+
+  setHeaderSort(key:'name'|'onhand'):void {
+    const current=this.sort();
+    if(key==='name') this.sort.set(current==='nameAsc'?'nameDesc':'nameAsc');
+    else this.sort.set(current==='onhandDesc'?'onhandAsc':'onhandDesc');
+  }
+  productSortMark():string{return this.sort()==='nameAsc'?'↑':this.sort()==='nameDesc'?'↓':'↕';}
+  onHandSortMark():string{return this.sort()==='onhandAsc'?'↑':this.sort()==='onhandDesc'?'↓':'↕';}
+
   // ---------- record-movement drawer ----------
   readonly drawerOpen = signal(false);
   readonly assignableProducts = signal<Product[]>([]);
   readonly saving = signal(false);
   readonly formError = signal<string | null>(null);
+  /** Stores on register import get sales and returns from the file, never by hand. */
+  readonly isImportStore = computed(() =>
+    this.objects().find((o) => o.id === this.selectedObjectId())?.sales_source === 'import');
+
   readonly manualEvents = computed(() =>
-    this.isAdmin() ? MANUAL_EVENTS : MANUAL_EVENTS.filter((e) => e !== 'ADJUSTMENT')
-  );
+    MANUAL_EVENTS.filter((e) =>
+      (this.isAdmin() || e !== 'ADJUSTMENT') &&
+      !(this.isImportStore() && (e === 'SALE' || e === 'RETURN'))));
+
+  // ---------- return (fiscal receipt + real sale price) ----------
+  readonly returnOptions = signal<ReturnPriceOption[]>([]);
+  readonly returnOptionsLoading = signal(false);
+  private returnOptionsFor = '';
 
   readonly form = this.fb.nonNullable.group({
     product_id: ['', [Validators.required]],
     event: ['SALE' as MovementEvent, [Validators.required]],
     quantity: [1, [Validators.required, Validators.min(1)]],
     note: [''],
+    unit_price: [null as number | string | null],
+    receipt_no: [''],
   });
 
   private readonly formValue = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
 
-  /** Live "25 → 22" preview before anything is written. */
+  /** The sold price that matches what was typed from the receipt. */
+  readonly selectedReturn = computed(() => {
+    const v = this.formValue() as { event?: MovementEvent; unit_price?: number | string | null };
+    const price = toPrice(v.unit_price);
+    if (v.event !== 'RETURN' || price === null) return null;
+    return this.returnOptions().find((o) => samePrice(o.unit_price, price)) ?? null;
+  });
+
+  /** Up to 3 most recent prices as one-tap shortcuts; anything else is typed from the receipt. */
+  readonly quickPrices = computed(() => this.returnOptions().filter((o) => o.available > 0).slice(0, 3));
+
+  /** Live check of the typed price: valid / already fully returned / never sold at it. */
+  readonly priceCheck = computed(() => {
+    const v = this.formValue() as { event?: MovementEvent; unit_price?: number | string | null };
+    const price = toPrice(v.unit_price);
+    if (v.event !== 'RETURN' || price === null || this.returnOptionsLoading()) return null;
+    const match = this.returnOptions().find((o) => samePrice(o.unit_price, price));
+    if (match) {
+      return { kind: match.available > 0 ? 'ok' as const : 'used' as const, option: match, closest: [] as ReturnPriceOption[] };
+    }
+    const closest = this.returnOptions()
+      .filter((o) => o.available > 0)
+      .sort((a, b) => Math.abs(a.unit_price - price) - Math.abs(b.unit_price - price))
+      .slice(0, 3);
+    return { kind: 'unknown' as const, option: null, closest };
+  });
+
+  /** Live "25 ? 22" preview before anything is written. */
   readonly preview = computed(() => {
     const v = this.formValue() as { product_id?: string; event?: MovementEvent; quantity?: number };
     if (!v.product_id) return null;
@@ -264,6 +338,10 @@ export class InventoryComponent implements OnInit {
         ? [Validators.required, notZero]
         : [Validators.required, Validators.min(1)]);
       qty.updateValueAndValidity();
+      void this.refreshReturnOptions();
+    });
+    this.form.controls.product_id.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      void this.refreshReturnOptions();
     });
   }
 
@@ -486,10 +564,10 @@ export class InventoryComponent implements OnInit {
   }
 
   signed(n: number): string {
-    return n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '0';
+    return n > 0 ? `+${n}` : n < 0 ? `-${Math.abs(n)}` : '0';
   }
 
-  /** "delivery:742aca49-c6a8-…" → "Delivery #742aca49" */
+  /** "delivery:742aca49-c6a8-…" ? "Delivery #742aca49" */
   refLabel(ref: string): string {
     const [kind, id] = ref.split(':');
     if (!id) return ref;
@@ -553,7 +631,16 @@ export class InventoryComponent implements OnInit {
     const objectId = this.selectedObjectId();
     if (!objectId) return;
     this.formError.set(null);
-    this.form.reset({ product_id: productId, event: 'SALE', quantity: 1, note: '' });
+    this.returnOptions.set([]);
+    this.returnOptionsFor = '';
+    this.form.reset({
+      product_id: productId,
+      event: this.manualEvents()[0] ?? 'WRITE_OFF',
+      quantity: 1,
+      note: '',
+      unit_price: null,
+      receipt_no: '',
+    });
 
     const { data } = await supabase
       .from('object_products')
@@ -567,6 +654,32 @@ export class InventoryComponent implements OnInit {
 
   closeDrawer(): void {
     this.drawerOpen.set(false);
+  }
+
+  /** Load the prices this product was really sold at, when RETURN is selected. */
+  private async refreshReturnOptions(): Promise<void> {
+    const objectId = this.selectedObjectId();
+    const { event, product_id } = this.form.getRawValue();
+    if (event !== 'RETURN' || !objectId || !product_id) {
+      this.returnOptions.set([]);
+      this.returnOptionsFor = '';
+      return;
+    }
+    const key = `${objectId}:${product_id}`;
+    if (key === this.returnOptionsFor) return;
+    this.returnOptionsFor = key;
+    this.form.controls.unit_price.setValue(null);
+    this.returnOptionsLoading.set(true);
+    const options = await this.svc.loadReturnOptions(objectId, product_id);
+    if (key !== this.returnOptionsFor) return;            // user switched product meanwhile
+    this.returnOptions.set(options);
+    this.returnOptionsLoading.set(false);
+    // only one price ever = nothing to type
+    if (options.length === 1) this.form.controls.unit_price.setValue(options[0].unit_price.toFixed(2));
+  }
+
+  pickReturnPrice(o: ReturnPriceOption): void {
+    this.form.controls.unit_price.setValue(o.unit_price.toFixed(2));
   }
 
   async save(): Promise<void> {
@@ -590,6 +703,23 @@ export class InventoryComponent implements OnInit {
       return;
     }
 
+    if (v.event === 'RETURN') {
+      if (!v.receipt_no.trim()) {
+        this.formError.set('Enter the fiscal receipt number.');
+        return;
+      }
+      const opt = this.selectedReturn();
+      if (!opt) {
+        this.formError.set(toPrice(v.unit_price) === null
+          ? 'Enter the price printed on the fiscal receipt.'
+          : 'This product was not sold at that price here in the last 90 days.');
+        return;
+      }
+      if (v.quantity > opt.available) {
+        this.formError.set('That is more than was sold at this price. Check the quantity on the receipt.');
+        return;
+      }
+    }
     if (v.event === 'WRITE_OFF' || v.event === 'SALE') {
       const onHand = this.svc.rows().find((r) => r.product_id === v.product_id)?.quantity ?? 0;
       if (Math.abs(v.quantity) > onHand) {
@@ -602,7 +732,8 @@ export class InventoryComponent implements OnInit {
     this.saving.set(true);
     this.formError.set(null);
     const err = await this.svc.recordMovement(
-      objectId, v.product_id, v.event, signed, profile.id, v.note.trim() || null);
+      objectId, v.product_id, v.event, signed, profile.id, v.note.trim() || null,
+      v.event === 'RETURN' ? { unitPrice: toPrice(v.unit_price), receiptNo: v.receipt_no } : null);
     this.saving.set(false);
 
     if (err) {

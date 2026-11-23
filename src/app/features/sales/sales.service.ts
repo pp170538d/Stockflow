@@ -14,6 +14,8 @@ export interface SaleRow {
   createdAt: string;
   /** "sale:<uuid>" when the line belongs to a multi-product sale. */
   reference: string | null;
+  /** What the customer paid for this line, incl. VAT (null = no price recorded). */
+  amount: number | null;
 }
 
 /** Lightweight sale line used for the chart, top products and KPIs. */
@@ -39,6 +41,10 @@ export interface SellableProduct {
   sold30: number;
   /** Average units per day over the last 30 days. */
   dailyRate: number;
+  /** Shelf price incl. VAT (what the customer pays). null = no price set. */
+  sellPrice: number | null;
+  /** VAT rate in %, e.g. 20. */
+  vatRate: number;
 }
 export interface SaleLineInput {
   productId: string;
@@ -71,6 +77,7 @@ interface SalesFeedRecord {
   created_at: string;
   occurred_at: string;
   unit_price: number | null;
+  gross: number | null;
   revenue: number | null;
   margin: number | null;
 }
@@ -105,6 +112,17 @@ export class SalesService {
   readonly sellableLoading = signal(false);
   readonly saving = signal(false);
 
+  /** Company currency (company profile), e.g. RSD. */
+  readonly currency = signal('RSD');
+  private currencyLoaded = false;
+
+  private async ensureCurrency(): Promise<void> {
+    if (this.currencyLoaded) return;
+    this.currencyLoaded = true;
+    const { data } = await supabase.rpc('app_currency');
+    if (typeof data === 'string' && data) this.currency.set(data);
+  }
+
   async load(params: Partial<SalesQuery> = {}): Promise<void> {
     const page = params.page ?? this.page();
     const pageSize = params.pageSize ?? this.pageSize();
@@ -118,6 +136,7 @@ export class SalesService {
 
     this.loading.set(true);
     this.error.set(null);
+    void this.ensureCurrency();
 
     let query = supabase
   .from('sales_feed')
@@ -187,6 +206,9 @@ export class SalesService {
         note: r.note,
         createdAt: r.occurred_at ?? r.created_at,
         reference: refs.get(r.id) ?? null,
+        amount: r.gross !== null && r.gross !== undefined
+          ? Number(r.gross)
+          : r.unit_price !== null ? (r.units ?? 0) * Number(r.unit_price) : null,
       }))
     );
     this.page.set(page);
@@ -258,11 +280,12 @@ if (since !== null) q = q.gte('occurred_at', since);
   /** What can be sold in this store right now, with 30-day sales pace per product. */
   async loadSellable(objectId: string): Promise<void> {
     this.sellableLoading.set(true);
+    void this.ensureCurrency();
 
     const [inv, mov] = await Promise.all([
       supabase
         .from('inventory')
-        .select('product_id, quantity, product:products ( name, sku, barcode, active )')
+        .select('product_id, quantity, product:products ( name, sku, barcode, active, sell_price, vat_rate )')
         .eq('object_id', objectId),
       supabase
         .from('stock_movements')
@@ -290,6 +313,9 @@ if (since !== null) q = q.gte('occurred_at', since);
           onHand: Number(r.quantity) || 0,
           sold30,
           dailyRate: sold30 / 30,
+          sellPrice: r.product.sell_price === null || r.product.sell_price === undefined
+            ? null : Number(r.product.sell_price),
+          vatRate: Number(r.product.vat_rate ?? 20),
         };
       });
 
@@ -352,4 +378,3 @@ function sinceIso(rangeDays: number | null): string | null {
   d.setDate(d.getDate() - (rangeDays - 1));
   return d.toISOString();
 }
-
