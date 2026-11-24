@@ -1,225 +1,26 @@
-import { Component, computed, inject, input, output, effect } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { Component, computed, effect, inject, input, output } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import {
-  FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators,
-  AbstractControl, ValidationErrors,
-} from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { DeliveriesService } from './deliveries.service';
-import { DeliveryLineInput } from './delivery.model';
+import { DeliveryLineInput, DeliveryMetaInput, DispatchDocumentType } from './delivery.model';
 import { Order } from '../orders/order.model';
-import { BadgeComponent } from '../../shared/ui/badge.component';
 import { DrawerComponent } from '../../shared/ui/drawer.component';
 import { ToastService } from '../../shared/ui/toast.service';
 import { ConfirmService } from '../../shared/ui/confirm.service';
-import {
-  DELIVERY_OVER_REASONS, DELIVERY_SHORT_REASONS, DeliveryReasonCode, ReasonOption,
-} from '../../core/stock/reason-codes';
-
-/**
- * A reason CODE is required whenever delivered ≠ ordered (mirrors the DB rule),
- * and it must fit the direction (short vs over). The note stays optional.
- */
-function reasonRequiredOnVariance(group: AbstractControl): ValidationErrors | null {
-  const ordered = group.get('ordered_qty')?.value ?? 0;
-  const delivered = group.get('delivered_qty')?.value;
-  if (delivered === null || delivered === '' || delivered === undefined) return null;
-  const diff = Number(delivered) - ordered;
-  if (diff === 0) return null;
-  const code = group.get('reason_code')?.value as string;
-  const allowed = (diff < 0 ? DELIVERY_SHORT_REASONS : DELIVERY_OVER_REASONS).map((r) => r.code as string);
-  return code && allowed.includes(code) ? null : { reasonRequired: true };
-}
-
-@Component({
-  selector: 'app-confirm-delivery',
-  standalone: true,
-  imports: [DatePipe, ReactiveFormsModule, BadgeComponent, DrawerComponent],
-  templateUrl: './confirm-delivery.component.html',
-})
+const REASONS = [{ code: 'SUPPLIER_SHORT', label: 'Supplier short' }, { code: 'SUPPLIER_OVER', label: 'Supplier over' }, { code: 'DAMAGED', label: 'Damaged' }, { code: 'WRONG_ITEM', label: 'Wrong item' }, { code: 'OTHER', label: 'Other' }] as const;
+function lineValid(g: AbstractControl): ValidationErrors | null { const o = Number(g.get('ordered_qty')?.value ?? 0), p = Number(g.get('physical_qty')?.value), a = Number(g.get('accepted_qty')?.value); if (!Number.isFinite(p) || !Number.isFinite(a) || p < 0 || a < 0 || a > p) return { quantities: true }; return (p !== o || a < p) && !g.get('reason_code')?.value ? { reasonRequired: true } : null; }
+@Component({ selector: 'app-confirm-delivery', standalone: true, imports: [ReactiveFormsModule, DrawerComponent], templateUrl: './confirm-delivery.component.html' })
 export class ConfirmDeliveryComponent {
-  private fb = inject(FormBuilder);
-  readonly svc = inject(DeliveriesService);
-  private toast = inject(ToastService);
-  private confirm = inject(ConfirmService);
-
-  /** The APPROVED order to deliver (passed in by the Orders page). */
-  readonly order = input<Order | null>(null);
-  readonly open = input<boolean>(false);
-  readonly close = output<void>();
-  readonly delivered = output<string>();   // emits a summary message on success
-
-  readonly form: FormGroup = this.fb.group({
-    carrier: [''],
-    received_by: ['', [Validators.required]],
-    note: [''],
-    lines: this.fb.array([]),
-  });
-
-  /**
-   * Mirror of the form's value as a signal. This is the fix for the footer
-   * summary bug: a `computed` can't see mutations inside a FormArray on its
-   * own, but subscribing to valueChanges (via toSignal) gives it a reactive
-   * dependency that fires on every edit.
-   */
-  private readonly formValue = toSignal(this.form.valueChanges, { initialValue: this.form.value });
-
-  get lines(): FormArray {
-    return this.form.get('lines') as FormArray;
-  }
-
-  constructor() {
-    // Rebuild the line rows whenever the drawer opens for an order.
-    effect(() => {
-      const o = this.order();
-      if (this.open() && o) {
-  void this.build(o);
-}
-    });
-  }
-
-  /** Load the fulfillment view and seed one row per order line (pre-filled). */
-private async build(order: Order): Promise<void> {
-  await this.svc.loadFulfillment(order.id);
-
-  this.lines.clear();
-
-  for (const f of this.svc.fulfillment()) {
-    this.lines.push(
-      this.fb.group(
-        {
-          order_item_id: [f.order_item_id],
-          product_name: [f.product?.name ?? 'Product'],
-          product_sku: [f.product?.sku ?? ''],
-          ordered_qty: [f.ordered_qty],
-          delivered_qty: [
-            f.ordered_qty,
-            [Validators.required, Validators.min(0)],
-          ],
-          reason_code: [''],
-          reason: [''],
-        },
-        { validators: reasonRequiredOnVariance }
-      )
-    );
-  }
-
-  const carrier =
-    order.supplier_snapshot?.name ??
-    order.supplier?.name ??
-    '';
-
-  this.form.patchValue({
-    carrier,
-    received_by: '',
-    note: '',
-  });
-}
-
-  /** Live variance for a row: delivered − ordered. */
-  variance(row: AbstractControl): number {
-    const ordered = row.get('ordered_qty')?.value ?? 0;
-    const delivered = row.get('delivered_qty')?.value ?? 0;
-    return delivered - ordered;
-  }
-
-  varianceTone(row: AbstractControl): 'success' | 'warning' | 'info' {
-    const v = this.variance(row);
-    if (v === 0) return 'success';   // exact
-    if (v < 0) return 'warning';     // short
-    return 'info';                   // over
-  }
-
-  varianceLabel(row: AbstractControl): string {
-    const v = this.variance(row);
-    if (v === 0) return 'Exact';
-    if (v < 0) return `Short ${Math.abs(v)}`;
-    return `Over ${v}`;
-  }
-
-  reasonOptions(row: AbstractControl): ReasonOption<DeliveryReasonCode>[] {
-    return this.variance(row) < 0 ? DELIVERY_SHORT_REASONS : DELIVERY_OVER_REASONS;
-  }
-
-  selectedReason(row: AbstractControl): string {
-    return row.get('reason_code')?.value ?? '';
-  }
-
-  setReason(row: AbstractControl, code: DeliveryReasonCode): void {
-    row.get('reason_code')?.setValue(code);
-    row.markAsTouched();
-  }
-
-  /** Whether this row currently needs a reason (drives the field showing). */
-  needsReason(row: AbstractControl): boolean {
-    return this.variance(row) !== 0;
-  }
-
-  /**
-   * Summary counts for the footer. Now reads `formValue()` first so the
-   * computed re-runs on every quantity edit (fixes "0 lines: 0 exact").
-   */
-  readonly summary = computed(() => {
-    const v = this.formValue() as { lines?: Array<{ ordered_qty: number; delivered_qty: number }> };
-    const rows = v?.lines ?? [];
-    let exact = 0, short = 0, over = 0;
-    for (const r of rows) {
-      const diff = (r.delivered_qty ?? 0) - (r.ordered_qty ?? 0);
-      if (diff === 0) exact++; else if (diff < 0) short++; else over++;
-    }
-    return { exact, short, over, total: rows.length };
-  });
-
-  async submit(): Promise<void> {
-    const o = this.order();
-    if (!o) return;
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-
-    const s = this.summary();
-    const hasVariance = s.short > 0 || s.over > 0;
-
-    // Confirm before recording — extra-clear when there's a discrepancy,
-    // since a delivery is final and updates stock.
-    const ok = await this.confirm.ask({
-      title: 'Confirm delivery?',
-      message: hasVariance
-        ? `This records the delivery and updates stock. ${s.short} line(s) short, ${s.over} over — this can’t be undone.`
-        : 'This records the delivery and updates stock. It can’t be undone.',
-      confirmLabel: 'Confirm delivery',
-      tone: hasVariance ? 'danger' : 'default',
-    });
-    if (!ok) return;
-
-    const v = this.form.getRawValue();
-    const lines: DeliveryLineInput[] = (v.lines as any[]).map((l) => ({
-      order_item_id: l.order_item_id,
-      delivered_qty: Number(l.delivered_qty),
-      reason_code: Number(l.delivered_qty) !== Number(l.ordered_qty) ? (l.reason_code || null) : null,
-      reason: (l.reason ?? '').trim() || null,
-    }));
-
-    const err = await this.svc.record(
-      o.id,
-      (v.carrier ?? '').trim() || null,
-      (v.received_by ?? '').trim() || null,
-      (v.note ?? '').trim() || null,
-      lines
-    );
-
-    if (err) {
-      // Service already set svc.error() for the inline banner; also toast it.
-      this.toast.error(err);
-      return;
-    }
-
-    // Build a human summary for the success toast.
-    const msg = hasVariance
-      ? `Delivery recorded — stock updated (${s.short} short, ${s.over} over).`
-      : 'Delivery recorded — stock updated.';
-    this.delivered.emit(msg);
-    this.close.emit();
-  }
+    private fb = inject(FormBuilder); readonly svc = inject(DeliveriesService); private toast = inject(ToastService); private confirm = inject(ConfirmService);
+    readonly order = input<Order | null>(null); readonly open = input(false); readonly close = output<void>(); readonly delivered = output<string>(); readonly reasons = REASONS;
+    readonly form: FormGroup = this.fb.group({ carrier: [''], received_by: ['', [Validators.required]], dispatch_document_type: [''], dispatch_document_number: [''], dispatch_external_id: [''], physical_receipt_at: [''], note: [''], lines: this.fb.array([]) });
+    private formValue = toSignal(this.form.valueChanges, { initialValue: this.form.value }); get lines() { return this.form.get('lines') as FormArray; }
+    constructor() { effect(() => { const o = this.order(); if (this.open() && o) void this.build(o); }); }
+    private async build(o: Order) { await this.svc.loadFulfillment(o.id); this.lines.clear(); for (const f of this.svc.fulfillment()) this.lines.push(this.fb.group({ order_item_id: [f.order_item_id], product_name: [f.product?.name ?? 'Product'], product_sku: [f.product?.sku ?? ''], ordered_qty: [f.ordered_qty], physical_qty: [f.ordered_qty, [Validators.required, Validators.min(0)]], accepted_qty: [f.ordered_qty, [Validators.required, Validators.min(0)]], reason_code: [''], reason: [''] }, { validators: lineValid })); const local = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16); this.form.patchValue({ carrier: o.supplier_snapshot?.name ?? o.supplier?.name ?? '', received_by: '', dispatch_document_type: '', dispatch_document_number: '', dispatch_external_id: '', physical_receipt_at: local, note: '' }); }
+    ordered(r: AbstractControl) { return Number(r.get('ordered_qty')?.value ?? 0) } physical(r: AbstractControl) { return Number(r.get('physical_qty')?.value ?? 0) } accepted(r: AbstractControl) { return Number(r.get('accepted_qty')?.value ?? 0) } rejected(r: AbstractControl) { return Math.max(this.physical(r) - this.accepted(r), 0) } variance(r: AbstractControl) { return this.physical(r) - this.ordered(r) }
+    onPhysical(r: AbstractControl) { const p = this.physical(r), a = this.accepted(r); if (a > p) r.get('accepted_qty')?.setValue(p); r.updateValueAndValidity(); } onAccepted(r: AbstractControl) { r.updateValueAndValidity(); }
+    needsReason(r: AbstractControl) { return this.variance(r) !== 0 || this.rejected(r) > 0 } setReason(r: AbstractControl, c: string) { r.get('reason_code')?.setValue(c); r.updateValueAndValidity(); }
+    status(r: AbstractControl) { const v = this.variance(r), rej = this.rejected(r); if (rej) return `${rej} rejected`; if (v < 0) return `Short ${-v}`; if (v > 0) return `Over ${v}`; return 'Exact'; }
+    readonly summary = computed(() => { const rows = (this.formValue() as any).lines ?? []; let exact = 0, short = 0, over = 0, rejected = 0, accepted = 0, physical = 0; for (const r of rows) { const o = +r.ordered_qty || 0, p = +r.physical_qty || 0, a = +r.accepted_qty || 0; physical += p; accepted += a; rejected += Math.max(p - a, 0); if (p < o) short++; else if (p > o) over++; else if (a === p) exact++; } return { total: rows.length, exact, short, over, rejected, physical, accepted }; });
+    async submit() { const o = this.order(); if (!o) return; if (this.form.invalid) { this.form.markAllAsTouched(); return; } const s = this.summary(); const issue = s.short + s.over + s.rejected > 0; const ok = await this.confirm.ask({ title: 'Confirm physical receipt?', message: `Physical ${s.physical}, accepted into stock ${s.accepted}, rejected ${s.rejected}. ${issue ? 'Differences will remain open for resolution. ' : ''}This cannot be undone.`, confirmLabel: 'Record receipt', tone: issue ? 'danger' : 'default' }); if (!ok) return; const v = this.form.getRawValue(); const lines: DeliveryLineInput[] = v.lines.map((l: any) => ({ order_item_id: l.order_item_id, physical_qty: +l.physical_qty, accepted_qty: +l.accepted_qty, reason_code: this.needsReason({ get: (k: string) => ({ value: l[k] }) } as any) ? l.reason_code || null : null, reason: (l.reason ?? '').trim() || null })); const meta: DeliveryMetaInput = { carrier: v.carrier?.trim() || null, receivedBy: v.received_by?.trim() || null, note: v.note?.trim() || null, dispatchDocumentType: (v.dispatch_document_type || null) as DispatchDocumentType | null, dispatchDocumentNumber: v.dispatch_document_number?.trim() || null, dispatchExternalId: v.dispatch_external_id?.trim() || null, physicalReceiptAt: v.physical_receipt_at ? new Date(v.physical_receipt_at).toISOString() : null }; const err = await this.svc.record(o.id, meta, lines); if (err) { this.toast.error(err); return; } this.delivered.emit(`Receipt recorded - ${s.accepted} accepted into stock${s.rejected ? `, ${s.rejected} rejected` : ''}.`); this.close.emit(); }
 }

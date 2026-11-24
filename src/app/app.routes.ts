@@ -48,19 +48,19 @@ export const routes: Routes = [
                     import('./features/objects/objects.component').then((m) => m.ObjectsComponent),
             },
             {
-    path: 'suppliers',
-    canActivate: [adminGuard],
-    loadComponent: () =>
-        import('./features/suppliers/suppliers.component')
-            .then((m) => m.SuppliersComponent),
-},
-{
-    path: 'suppliers/:id/products',
-    canActivate: [adminGuard],
-    loadComponent: () =>
-        import('./features/suppliers/supplier-catalog.component')
-            .then((m) => m.SupplierCatalogComponent),
-},
+                path: 'suppliers',
+                canActivate: [adminGuard],
+                loadComponent: () =>
+                    import('./features/suppliers/suppliers.component')
+                        .then((m) => m.SuppliersComponent),
+            },
+            {
+                path: 'suppliers/:id/products',
+                canActivate: [adminGuard],
+                loadComponent: () =>
+                    import('./features/suppliers/supplier-catalog.component')
+                        .then((m) => m.SupplierCatalogComponent),
+            },
             {
                 path: 'products',
                 loadComponent: () =>
@@ -70,6 +70,12 @@ export const routes: Routes = [
                 path: 'data', canActivate: [adminGuard],
                 loadComponent: () =>
                     import('./features/data/data.component').then((m) => m.DataComponent),
+            },
+            {
+                path: 'orders/:id/receive',
+                loadComponent: () =>
+                    import('./features/deliveries/receive-delivery-page.component')
+                        .then(m => m.ReceiveDeliveryPageComponent),
             },
             {
                 path: 'orders/:id/review',

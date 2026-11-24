@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { supabase } from '../../core/supabase/supabase.client';
 import { AuthService } from '../../core/auth/auth.service';
 import { ToastService } from '../../shared/ui/toast.service';
+import { COMPLIANCE_PROFILES, ComplianceProfile, ComplianceService } from '../../core/compliance/compliance';
 
 interface CompanyProfile {
   id: string;
@@ -16,6 +17,7 @@ interface CompanyProfile {
   registration_number: string | null;
   email: string | null;
   phone: string | null;
+  compliance_profile: ComplianceProfile | null;
   updated_at: string;
 }
 
@@ -29,6 +31,8 @@ export class SettingsComponent implements OnInit {
   readonly auth = inject(AuthService);
   private router = inject(Router);
   private toast = inject(ToastService);
+  private compliance = inject(ComplianceService);
+  readonly complianceProfiles = COMPLIANCE_PROFILES;
 
   // Profile
   readonly fullName = signal('');
@@ -49,6 +53,7 @@ export class SettingsComponent implements OnInit {
   readonly companyRegistrationNumber = signal('');
   readonly companyEmail = signal('');
   readonly companyPhone = signal('');
+  readonly companyCompliance = signal<ComplianceProfile>('NONE');
 
   // Password
   readonly newPassword = signal('');
@@ -85,7 +90,7 @@ export class SettingsComponent implements OnInit {
     this.companyError.set(null);
     const { data, error } = await supabase
       .from('company_profile')
-      .select('id, name, address, city, postal_code, country, tax_id, registration_number, email, phone, updated_at')
+      .select('id, name, address, city, postal_code, country, tax_id, registration_number, email, phone, compliance_profile, updated_at')
       .maybeSingle();
     this.companyLoading.set(false);
 
@@ -105,6 +110,7 @@ export class SettingsComponent implements OnInit {
     this.companyRegistrationNumber.set(c.registration_number ?? '');
     this.companyEmail.set(c.email ?? '');
     this.companyPhone.set(c.phone ?? '');
+    this.companyCompliance.set(c.compliance_profile ?? 'NONE');
   }
 
   async saveCompany(): Promise<void> {
@@ -129,6 +135,7 @@ export class SettingsComponent implements OnInit {
         registration_number: this.companyRegistrationNumber().trim(),
         email: this.companyEmail().trim(),
         phone: this.companyPhone().trim(),
+        compliance_profile: this.companyCompliance(),
       },
     });
 
@@ -141,6 +148,7 @@ export class SettingsComponent implements OnInit {
 
     this.companyMsg.set('Company profile updated ✓');
     this.toast.success('Company profile updated.');
+    this.compliance.set(this.companyCompliance());
     await this.loadCompany();
   }
 
@@ -169,7 +177,7 @@ export class SettingsComponent implements OnInit {
       this.toast.error('Could not change password — try again.');
     } else {
       this.passwordMsg.set('Password changed ✓');
-      this.toast.success('Password changed. 🔒');
+      this.toast.success('Password changed.');
       this.newPassword.set('');
       this.confirmPassword.set('');
     }

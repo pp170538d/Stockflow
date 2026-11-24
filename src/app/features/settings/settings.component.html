@@ -53,7 +53,15 @@
         <span class="mb-1.5 block text-sm font-medium text-slate-700">Country</span>
         <input type="text" [ngModel]="companyCountry()" (ngModelChange)="companyCountry.set($event)" [disabled]="auth.isDemo()" class="field" />
       </label>
-      <div></div>
+      <label>
+        <span class="mb-1.5 block text-sm font-medium text-slate-700">Compliance profile</span>
+        <select [ngModel]="companyCompliance()" (ngModelChange)="companyCompliance.set($event)" [disabled]="auth.isDemo()" class="field">
+          @for (p of complianceProfiles; track p.value) { <option [value]="p.value">{{ p.label }}</option> }
+        </select>
+        <span class="mt-1 block text-xs text-slate-400">
+          @for (p of complianceProfiles; track p.value) { @if (p.value === companyCompliance()) { {{ p.hint }} } }
+        </span>
+      </label>
       <label>
         <span class="mb-1.5 block text-sm font-medium text-slate-700">Tax ID / PIB</span>
         <input type="text" [ngModel]="companyTaxId()" (ngModelChange)="companyTaxId.set($event)" [disabled]="auth.isDemo()" class="field" />

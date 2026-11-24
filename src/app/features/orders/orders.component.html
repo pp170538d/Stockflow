@@ -67,96 +67,66 @@
 <!-- ======================= TOOLBAR ======================= -->
 <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
   <div class="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 sm:pb-0">
-  <button
-    type="button"
-    (click)="showAll()"
-    class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
-    [class]="
+    <button type="button" (click)="showAll()"
+      class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition" [class]="
       statusFilter() === '' && !exceptionsOnly()
         ? 'bg-slate-900 text-white'
         : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
-    "
-  >
-    All
+    ">
+      All
 
-    <span
-      class="rounded-full px-1.5 text-[10px] tabular-nums"
-      [class]="
+      <span class="rounded-full px-1.5 text-[10px] tabular-nums" [class]="
         statusFilter() === '' && !exceptionsOnly()
           ? 'bg-white/20'
           : 'bg-slate-100 text-slate-500'
-      "
-    >
-      {{ countsTotal() }}
-    </span>
-  </button>
+      ">
+        {{ countsTotal() }}
+      </span>
+    </button>
 
-  @for (s of statuses; track s) {
-    <button
-      type="button"
-      (click)="onStatusChange(s)"
-      class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
-      [class]="
+    @for (s of statuses; track s) {
+    <button type="button" (click)="onStatusChange(s)"
+      class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition" [class]="
         statusFilter() === s && !exceptionsOnly()
           ? 'bg-slate-900 text-white'
           : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
-      "
-    >
+      ">
       {{ meta[s].label }}
 
-      <span
-        class="rounded-full px-1.5 text-[10px] tabular-nums"
-        [class]="
+      <span class="rounded-full px-1.5 text-[10px] tabular-nums" [class]="
           statusFilter() === s && !exceptionsOnly()
             ? 'bg-white/20'
             : 'bg-slate-100 text-slate-500'
-        "
-      >
+        ">
         {{ counts()[s] }}
       </span>
     </button>
-  }
+    }
 
-  <button
-    type="button"
-    (click)="showExceptions()"
-    class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
-    [class]="
+    <button type="button" (click)="showExceptions()"
+      class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition" [class]="
       exceptionsOnly()
         ? 'bg-amber-600 text-white'
         : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100'
-    "
-    title="Delivery differences that still need a decision"
-  >
-    <svg
-      class="h-3.5 w-3.5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 9v4" />
-      <path d="M12 17h.01" />
-      <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
-    </svg>
+    " title="Orders with open receiving exceptions or goods still held for disposition">
+      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 9v4" />
+        <path d="M12 17h.01" />
+        <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+      </svg>
 
-    Needs resolution
+      Needs resolution
 
-    <span
-      class="rounded-full px-1.5 text-[10px] tabular-nums"
-      [class]="
+      <span class="rounded-full px-1.5 text-[10px] tabular-nums" [class]="
         exceptionsOnly()
           ? 'bg-white/20 text-white'
           : 'bg-amber-100 text-amber-700'
-      "
-    >
-      {{ exceptionCount() }}
-    </span>
-  </button>
-</div>
+      ">
+        {{ exceptionCount() }}
+      </span>
+    </button>
+  </div>
 
   <div class="flex flex-col gap-2 sm:flex-row">
     <div class="relative w-full sm:w-64">
@@ -166,7 +136,7 @@
         <path d="m21 21-4.3-4.3" />
       </svg>
       <input type="text" [value]="search()" (input)="onSearch($any($event.target).value)"
-        placeholder="Order number or comment"
+        placeholder="ORD, GRN or CLM"
         class="h-11 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10" />
     </div>
     @if (auth.isAdmin()) {
@@ -198,38 +168,32 @@
 } @else if (svc.error()) {
 <div class="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{{ svc.error() }}</div>
 } @else if (svc.orders().length === 0) {
-  <div class="mt-4">
-    @if (exceptionsOnly()) {
-      <app-empty-state
-        title="Nothing to resolve"
-        subtitle="All delivery differences have been resolved."
-      />
-    } @else {
-      <app-empty-state
-        title="No orders here"
-        subtitle="Try another filter, or create a new request."
-      >
-        <a
-          routerLink="/orders/new"
-          class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
-        >
-          + {{ auth.isAdmin() ? 'New order' : 'New request' }}
-        </a>
-      </app-empty-state>
-    }
-  </div>
+<div class="mt-4">
+  @if (exceptionsOnly()) {
+  <app-empty-state title="Nothing to resolve" subtitle="All delivery differences have been resolved." />
+  } @else {
+  <app-empty-state title="No orders here" subtitle="Try another filter, or create a new request.">
+    <a routerLink="/orders/new"
+      class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700">
+      + {{ auth.isAdmin() ? 'New order' : 'New request' }}
+    </a>
+  </app-empty-state>
+  }
+</div>
 } @else {
 
 <!-- ======================= MOBILE: cards ======================= -->
 <div class="mt-4 space-y-3 lg:hidden">
   @for (o of svc.orders(); track o.id; let i = $index) {
-  <article [attr.data-order-id]="o.id" class="row-in rounded-2xl bg-white p-4 ring-1 ring-slate-200" [class.row-flash]="flashId() === o.id"
-    [style.animation-delay.ms]="delay(i)">
+  <article [attr.data-order-id]="o.id" class="row-in rounded-2xl bg-white p-4 ring-1 ring-slate-200"
+    [class.row-flash]="flashId() === o.id" [style.animation-delay.ms]="delay(i)">
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
-        <div class="font-mono text-sm font-semibold tracking-wide text-slate-900">
-          {{ o.order_number }}
+        <div class="flex items-center gap-1.5">
+          @if (isPurchaseOrder(o)) { <span class="rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-blue-600 ring-1 ring-blue-100">PO</span> }
+          <span class="font-mono text-sm font-semibold tracking-wide text-slate-900">{{ o.order_number }}</span>
         </div>
+        @if (grn(o); as receiptNo) { <button type="button" (click)="openSummary(o)" class="mt-0.5 block font-mono text-[11px] font-medium text-brand-600 hover:underline">{{ receiptNo }}</button> }
 
         <div class="mt-0.5 truncate text-xs text-slate-400">
           {{ o.object?.name || '—' }}
@@ -258,7 +222,7 @@
     </div>
     <div class="mt-1.5 flex justify-between text-[10px] font-medium uppercase tracking-wide text-slate-400">
       <span>Requested</span>
-      <span [class.text-red-500]="o.status === 'REJECTED'">{{ o.status === 'REJECTED' ? 'Rejected' : 'Ordered'
+      <span [class.text-red-500]="o.status === 'REJECTED'">{{ o.status === 'REJECTED' ? 'Rejected' : 'PO'
         }}</span>
       <span>Received</span>
     </div>
@@ -312,10 +276,10 @@
         }
 
         @if (o.status === 'APPROVED') {
-        <button type="button" (click)="openDeliver(o)"
+        <a [routerLink]="['/orders', o.id, 'receive']"
           class="rounded-lg bg-status-delivered px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:opacity-90">
-          Confirm delivery
-        </button>
+          Receive goods
+        </a>
         }
 
         @if (o.status === 'DELIVERED') {
@@ -335,7 +299,7 @@
   <table class="w-full text-left text-sm">
     <thead class="border-b border-slate-200 bg-slate-50/60 text-[11px] uppercase tracking-wide text-slate-400">
       <tr>
-        <th class="px-5 py-3 font-medium">Order</th>
+        <th class="px-5 py-3 font-medium">Document</th>
         <th class="w-[240px] px-4 py-3 font-medium">Progress</th>
         <th class="px-4 py-3 font-medium">Items</th>
         <th class="px-4 py-3 font-medium">Created</th>
@@ -344,17 +308,19 @@
     </thead>
     <tbody class="divide-y divide-slate-100">
       @for (o of svc.orders(); track o.id; let i = $index) {
-      <tr [attr.data-order-id]="o.id" class="row-in align-middle transition hover:bg-slate-50/70" [class.row-flash]="flashId() === o.id"
-        [style.animation-delay.ms]="delay(i)">
+      <tr [attr.data-order-id]="o.id" class="row-in align-middle transition hover:bg-slate-50/70"
+        [class.row-flash]="flashId() === o.id" [style.animation-delay.ms]="delay(i)">
 
         <!-- order -->
         <td class="px-5 py-4">
           <div class="flex items-center gap-3">
             <span class="h-9 w-1 shrink-0 rounded-full" [class]="meta[o.status].dot"></span>
             <div class="min-w-0">
-              <div class="font-mono text-sm font-semibold tracking-wide text-slate-900">
-                {{ o.order_number }}
+              <div class="flex items-center gap-1.5">
+                @if (isPurchaseOrder(o)) { <span class="rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-blue-600 ring-1 ring-blue-100">PO</span> }
+                <span class="font-mono text-sm font-semibold tracking-wide text-slate-900">{{ o.order_number }}</span>
               </div>
+              @if (grn(o); as receiptNo) { <button type="button" (click)="openSummary(o)" class="mt-0.5 block font-mono text-[11px] font-medium text-brand-600 hover:underline">{{ receiptNo }}</button> }
 
               <div class="truncate text-xs text-slate-500">
                 {{ o.object?.name || '—' }}
@@ -386,7 +352,8 @@
             </div>
             <div class="mt-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-slate-400">
               <span>Requested</span>
-              <span [class.text-red-500]="o.status === 'REJECTED'">{{ o.status === 'REJECTED' ? 'Rejected' : 'Ordered' }}</span>
+              <span [class.text-red-500]="o.status === 'REJECTED'">{{ o.status === 'REJECTED' ? 'Rejected' : 'PO'
+                }}</span>
               <span>Received</span>
             </div>
           </div>
@@ -476,10 +443,10 @@
               }
 
               @if (o.status === 'APPROVED') {
-              <button type="button" (click)="openDeliver(o)"
+              <a [routerLink]="['/orders', o.id, 'receive']"
                 class="rounded-lg bg-status-delivered px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:opacity-90">
-                Confirm delivery
-              </button>
+                Receive goods
+              </a>
               }
 
               @if (o.status === 'DELIVERED') {
@@ -522,10 +489,6 @@
 </div>
 }
 }
-
-<!-- Confirm delivery drawer -->
-<app-confirm-delivery [open]="deliverDrawerOpen()" [order]="deliveringOrder()" (close)="closeDeliver()"
-  (delivered)="onDelivered($event)" />
 
 <!-- View receipt drawer -->
 <app-delivery-summary [open]="summaryDrawerOpen()" [order]="summaryOrder()" (close)="closeSummary()"

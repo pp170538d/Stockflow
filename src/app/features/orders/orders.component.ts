@@ -20,7 +20,6 @@ import { BusinessObject } from '../objects/object.model';
 
 import { LocationPickerComponent } from '../../shared/ui/location-picker.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
-import { ConfirmDeliveryComponent } from '../deliveries/confirm-delivery.component';
 import { DeliverySummaryComponent } from '../deliveries/delivery-summary.component';
 
 import { ToastService } from '../../shared/ui/toast.service';
@@ -44,7 +43,6 @@ interface StatusMeta {
     DatePipe,
     RouterLink,
     EmptyStateComponent,
-    ConfirmDeliveryComponent,
     DeliverySummaryComponent,
     LocationPickerComponent,
   ],
@@ -201,6 +199,7 @@ export class OrdersComponent implements OnInit {
    * Used for the flash animation after status updates.
    */
   readonly flashId = signal<string | null>(null);
+  readonly operational = signal<Record<string,{grn:string|null;held:number;openClaims:number;openRejected:number}>>({});
 
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -235,8 +234,8 @@ export class OrdersComponent implements OnInit {
     },
 
     APPROVED: {
-      label: 'Ordered',
-      hint: 'On the way to the store',
+      label: 'Purchase orders',
+      hint: 'Approved · awaiting receipt',
       chip: 'bg-blue-50 text-blue-700 ring-blue-200',
       text: 'text-blue-600',
       dot: 'bg-status-approved',
@@ -274,6 +273,7 @@ export class OrdersComponent implements OnInit {
         .map((order) => order.id);
 
       void this.deliveries.loadVariances(deliveredIds);
+      void this.loadOperationalRefs(this.svc.orders().map((o) => o.id));
     });
   }
 
@@ -461,63 +461,45 @@ export class OrdersComponent implements OnInit {
 
   this.counts.set(next);
 
-  // -------------------------------------------------------
-  // OPEN DELIVERY DIFFERENCES
-  //
-  // IMPORTANT:
-  // This counts OPEN discrepancy LINES, not:
-  // - historical differences
-  // - resolved differences
-  // - number of affected orders
-  //
-  // Example:
-  // ORD-20 -> 1 open line
-  // ORD-11 -> 2 open lines
-  // Badge   -> Needs resolution 3
-  // -------------------------------------------------------
+  // Needs resolution counts affected ORDERS, not individual lines.
+  // An order needs action when it has an open receipt exception OR physical held goods.
+  const [{ data: openRows, error: openError }, { data: heldRows, error: heldError }] = await Promise.all([
+    supabase.rpc('delivery_exceptions', {
+      p_status: 'open', p_object_id: objectId, p_delivery_id: null,
+    }),
+    (() => {
+      let q = supabase.from('held_stock_overview')
+        .select('delivery_id, object_id, remaining_qty')
+        .gt('remaining_qty', 0);
+      if (objectId) q = q.eq('object_id', objectId);
+      return q;
+    })(),
+  ]);
 
-  const {
-    data: openRows,
-    error: openError,
-  } = await supabase.rpc(
-    'delivery_exceptions',
-    {
-      p_status: 'open',
-      p_object_id: objectId,
-      p_delivery_id: null,
-    }
-  );
-
-  if (openError) {
-    console.error(
-      'Could not load open delivery differences',
-      openError
-    );
-
+  if (openError || heldError) {
+    console.error('Could not load orders needing resolution', openError ?? heldError);
     this.exceptionCount.set(0);
-
     return;
   }
 
-  const rows =
-    (openRows ?? []) as Array<{
-      line_id: string | null;
-    }>;
-
-  const uniqueOpenLineIds =
-    new Set(
-      rows
-        .map((row) => row.line_id)
-        .filter(
-          (id): id is string =>
-            typeof id === 'string' &&
-            id.length > 0
-        )
-    );
-
-  this.exceptionCount.set(
-    uniqueOpenLineIds.size
+  const actionOrderIds = new Set<string>(
+    ((openRows ?? []) as Array<{ order_id: string | null }>)
+      .map((row) => row.order_id)
+      .filter((id): id is string => !!id)
   );
+  const heldDeliveryIds = [...new Set(
+    ((heldRows ?? []) as Array<{ delivery_id: string | null }>)
+      .map((row) => row.delivery_id)
+      .filter((id): id is string => !!id)
+  )];
+  if (heldDeliveryIds.length) {
+    const { data: heldDeliveries } = await supabase
+      .from('deliveries').select('order_id').in('id', heldDeliveryIds);
+    for (const row of (heldDeliveries ?? []) as Array<{ order_id: string }>) {
+      if (row.order_id) actionOrderIds.add(row.order_id);
+    }
+  }
+  this.exceptionCount.set(actionOrderIds.size);
 }
 
   // =========================================================
@@ -576,15 +558,11 @@ export class OrdersComponent implements OnInit {
 
   onSearch(value: string): void {
     this.search.set(value);
-
-    if (this.searchTimer) {
-      clearTimeout(this.searchTimer);
-    }
-
-    this.searchTimer = setTimeout(
-      () => this.reload(1),
-      250
-    );
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(async () => {
+      if (await this.resolveDocumentSearch(value)) return;
+      this.reload(1);
+    }, 250);
   }
 
   previous(): void {
@@ -603,6 +581,39 @@ export class OrdersComponent implements OnInit {
       search: this.search(),
       exceptionsOnly: this.exceptionsOnly(),
     });
+  }
+
+  private async loadOperationalRefs(orderIds: string[]): Promise<void> {
+    if (!orderIds.length) { this.operational.set({}); return; }
+    const { data: receipts } = await supabase.from('deliveries').select('id, order_id, delivery_number').in('order_id', orderIds);
+    const deliveryIds = (receipts ?? []).map((r: any) => r.id as string);
+    const [{data: held}, {data: claims}, {data: rejected}] = await Promise.all([
+      deliveryIds.length ? supabase.from('held_stock_overview').select('delivery_id, remaining_qty').in('delivery_id', deliveryIds) : Promise.resolve({data:[]} as any),
+      supabase.from('supplier_claims').select('order_id, status').in('order_id', orderIds),
+      deliveryIds.length ? supabase.from('delivery_items').select('delivery_id, rejected_qty, resolution_status').in('delivery_id', deliveryIds) : Promise.resolve({data:[]} as any),
+    ]);
+    const next: Record<string,{grn:string|null;held:number;openClaims:number;openRejected:number}> = {};
+    const owners = new Map<string,string>();
+    orderIds.forEach(id => next[id]={grn:null,held:0,openClaims:0,openRejected:0});
+    for (const r of (receipts ?? []) as any[]) { if(next[r.order_id]) next[r.order_id].grn=r.delivery_number; owners.set(r.id,r.order_id); }
+    for (const r of (held ?? []) as any[]) { const id=owners.get(r.delivery_id); if(id&&next[id]) next[id].held += Number(r.remaining_qty??0); }
+    for (const r of (claims ?? []) as any[]) if(next[r.order_id]&&['AWAITING_SUPPLIER','REPLACEMENT_PROMISED'].includes(r.status)) next[r.order_id].openClaims++;
+    for (const r of (rejected ?? []) as any[]) {
+      const id=owners.get(r.delivery_id);
+      if(id&&next[id]&&Number(r.rejected_qty??0)>0&&String(r.resolution_status??'open')==='open') next[id].openRejected += Number(r.rejected_qty);
+    }
+    this.operational.set(next);
+  }
+  grn(o:Order):string|null { return this.operational()[o.id]?.grn ?? null; }
+  heldUnits(o:Order):number { return this.operational()[o.id]?.held ?? 0; }
+  openClaims(o:Order):number { return this.operational()[o.id]?.openClaims ?? 0; }
+  openRejected(o:Order):number { return this.operational()[o.id]?.openRejected ?? 0; }
+  isPurchaseOrder(o:Order):boolean { return o.status==='APPROVED'||o.status==='DELIVERED'; }
+  private async resolveDocumentSearch(raw:string):Promise<boolean> {
+    const q=raw.trim(); if(!q) return false;
+    if(/^GRN-/i.test(q)){const{data}=await supabase.from('deliveries').select('order_id').ilike('delivery_number',q).maybeSingle();if(data?.order_id){await this.focusOrder(data.order_id);return true;}}
+    if(/^CLM-/i.test(q)){const{data}=await supabase.from('supplier_claims').select('order_id').ilike('claim_number',q).maybeSingle();if(data?.order_id){await this.focusOrder(data.order_id);return true;}}
+    return false;
   }
 
   // =========================================================
@@ -813,10 +824,14 @@ export class OrdersComponent implements OnInit {
       );
     }
 
-    const label = parts.join(' · ');
-    return variance.open > 0
-      ? `${label} · ${variance.open} to resolve`
-      : `${label} · resolved`;
+    const rejected = this.openRejected(order);
+    const held = this.heldUnits(order);
+    const claims = this.openClaims(order);
+    if (rejected > 0) parts.push(`${rejected} rejected`);
+    if (held > 0) parts.push(`${held} HELD`);
+    if (claims > 0) parts.push(`${claims} claim${claims === 1 ? '' : 's'} open`);
+    if (!parts.length && variance.open > 0) parts.push(`${variance.open} to resolve`);
+    return parts.length ? parts.join(' · ') : 'resolved';
   }
 
   private flash(id: string): void {
