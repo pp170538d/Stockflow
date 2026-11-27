@@ -20,63 +20,39 @@
   </a>
 </div>
 
-<!-- ======================= PIPELINE ======================= -->
-<div class="grid grid-cols-2 gap-3 lg:grid-cols-[1fr_auto_1fr_auto_1fr_0.8fr] lg:items-stretch">
-  @for (s of flow; track s; let si = $index) {
-  @if (si > 0) {
-  <div class="hidden items-center text-slate-300 lg:flex" aria-hidden="true">
-    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-      stroke-linejoin="round">
-      <path d="M5 12h14M13 6l6 6-6 6" />
-    </svg>
-  </div>
-  }
-  <button type="button" (click)="onStatusChange(s)"
-    class="rounded-2xl p-4 text-left ring-1 transition hover:-translate-y-0.5 hover:shadow-md"
-    [class]="statusFilter() === s ? meta[s].card : 'bg-white ring-slate-200'">
-    <div class="flex items-center gap-2 text-xs font-medium text-slate-500">
-      <span class="relative flex h-2 w-2">
-        @if (s === 'PENDING' && counts()['PENDING'] > 0) {
-        <span class="step-ping absolute inset-0 rounded-full" [class]="meta[s].dot"></span>
-        }
-        <span class="relative h-2 w-2 rounded-full" [class]="meta[s].dot"></span>
-      </span>
-      {{ meta[s].label }}
-    </div>
-    <div class="mt-1.5 text-2xl font-semibold tabular-nums" [class]="counts()[s] ? 'text-slate-900' : 'text-slate-300'">
-      {{ counts()[s] }}</div>
-    <div class="mt-0.5 text-xs text-slate-400">
-      {{ cardHint(s) }}
-    </div>
+<!-- ======================= WORKLOAD ======================= -->
+<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+  <button type="button" (click)="onStatusChange('PENDING')" class="rounded-2xl bg-white p-3 text-left ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md sm:p-4">
+    <div class="flex items-center gap-2 text-xs font-medium text-slate-500"><span class="h-2 w-2 rounded-full bg-amber-500"></span>Needs review</div><div class="mt-1 text-2xl font-semibold">{{workload().needs_review}}</div><div class="hidden text-xs text-slate-400 sm:block">Purchase requests</div>
   </button>
-  }
-
-  <button type="button" (click)="onStatusChange('REJECTED')"
-    class="rounded-2xl p-4 text-left ring-1 transition hover:-translate-y-0.5 hover:shadow-md"
-    [class]="statusFilter() === 'REJECTED' ? meta['REJECTED'].card : 'bg-white ring-slate-200'">
-    <div class="flex items-center gap-2 text-xs font-medium text-slate-500">
-      <span class="h-2 w-2 rounded-full bg-status-rejected"></span>
-      Rejected
-    </div>
-    <div class="mt-1.5 text-2xl font-semibold tabular-nums"
-      [class]="counts()['REJECTED'] ? 'text-slate-900' : 'text-slate-300'">{{ counts()['REJECTED'] }}</div>
-    <div class="mt-0.5 text-xs text-slate-400">closed</div>
+  <button type="button" (click)="onStatusChange('APPROVED')" class="rounded-2xl bg-white p-3 text-left ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md sm:p-4">
+    <div class="flex items-center gap-2 text-xs font-medium text-slate-500"><span class="h-2 w-2 rounded-full bg-blue-500"></span>Awaiting receipt</div><div class="mt-1 text-2xl font-semibold">{{workload().awaiting_receipt}}</div><div class="hidden text-xs text-slate-400 sm:block">Approved purchase orders</div>
+  </button>
+  <button type="button" (click)="showExceptions()" class="rounded-2xl bg-amber-50 p-3 text-left ring-1 ring-amber-200 transition hover:-translate-y-0.5 hover:shadow-md sm:p-4">
+    <div class="flex items-center gap-2 text-xs font-medium text-amber-700"><span class="h-2 w-2 rounded-full bg-amber-500"></span>Needs resolution</div><div class="mt-1 text-2xl font-semibold text-amber-900">{{workload().needs_resolution}}</div><div class="hidden text-xs text-amber-700/70 sm:block">Receiving differences or held goods</div>
+  </button>
+  <button type="button" (click)="showReceivedThisMonth()"
+    class="rounded-2xl bg-green-50 p-3 text-left transition hover:-translate-y-0.5 hover:shadow-md sm:p-4"
+    [class]="receivedThisMonth() ? 'ring-2 ring-green-500 shadow-md' : 'ring-1 ring-green-200'">
+    <div class="flex items-center gap-2 text-xs font-medium text-green-700"><span class="h-2 w-2 rounded-full bg-green-500"></span>Received this month</div><div class="mt-1 text-2xl font-semibold text-green-900">{{workload().received_this_month}}</div><div class="hidden text-xs text-green-700/70 sm:block">Completed goods receipts</div>
   </button>
 </div>
 
 <!-- ======================= TOOLBAR ======================= -->
-<div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-  <div class="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 sm:pb-0">
+<div class="mt-5 space-y-3">
+  <div class="flex flex-wrap gap-1.5">
+    <button type="button" (click)="showWorkQueue()" class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition" [class]="workQueue() ? 'bg-brand-600 text-white' : 'bg-brand-50 text-brand-700 ring-1 ring-brand-200 hover:bg-brand-100'">Work queue <span class="rounded-full px-1.5 text-[10px]" [class]="workQueue()?'bg-white/20':'bg-brand-100'">{{workload().needs_review+workload().awaiting_receipt+workload().needs_resolution}}</span></button>
+
     <button type="button" (click)="showAll()"
       class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition" [class]="
-      statusFilter() === '' && !exceptionsOnly()
+      statusFilter() === '' && !exceptionsOnly() && !workQueue() && !receivedThisMonth()
         ? 'bg-slate-900 text-white'
         : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
     ">
       All
 
       <span class="rounded-full px-1.5 text-[10px] tabular-nums" [class]="
-        statusFilter() === '' && !exceptionsOnly()
+        statusFilter() === '' && !exceptionsOnly() && !workQueue() && !receivedThisMonth()
           ? 'bg-white/20'
           : 'bg-slate-100 text-slate-500'
       ">
@@ -128,8 +104,8 @@
     </button>
   </div>
 
-  <div class="flex flex-col gap-2 sm:flex-row">
-    <div class="relative w-full sm:w-64">
+  <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
+    <div class="relative w-full sm:w-80">
       <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <circle cx="11" cy="11" r="7" />
@@ -169,7 +145,10 @@
 <div class="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{{ svc.error() }}</div>
 } @else if (svc.orders().length === 0) {
 <div class="mt-4">
-  @if (exceptionsOnly()) {
+  @if (receivedThisMonth()) {
+  <app-empty-state title="No receipts this month"
+    subtitle="Completed goods receipts for the current month will appear here." />
+  } @else if (exceptionsOnly()) {
   <app-empty-state title="Nothing to resolve" subtitle="All delivery differences have been resolved." />
   } @else {
   <app-empty-state title="No orders here" subtitle="Try another filter, or create a new request.">
@@ -228,10 +207,30 @@
     </div>
 
     <div class="mt-4 flex flex-wrap gap-1.5">
-      @for (it of o.order_items; track it.id) {
-      <span class="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
-        <span class="font-semibold tabular-nums">{{ it.quantity }}×</span> {{ it.product?.name || 'Product' }}
-      </span>
+      @for (it of o.order_items; track it.id; let ii = $index) {
+        @if (ii < 3) {
+        <span class="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+          <span class="font-semibold tabular-nums">{{ it.quantity }}×</span> {{ it.product?.name || 'Product' }}
+        </span>
+        }
+      }
+      @if ((o.order_items?.length ?? 0) > 3) {
+        @if (o.status === 'DELIVERED') {
+        <button type="button" (click)="openSummary(o)"
+          class="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 transition hover:bg-brand-100">
+          +{{ (o.order_items?.length ?? 0) - 3 }} more
+        </button>
+        } @else if (o.status === 'APPROVED') {
+        <a [routerLink]="['/orders', o.id, 'receive']"
+          class="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 transition hover:bg-brand-100">
+          +{{ (o.order_items?.length ?? 0) - 3 }} more
+        </a>
+        } @else {
+        <a [routerLink]="['/orders', o.id, 'review']"
+          class="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 transition hover:bg-brand-100">
+          +{{ (o.order_items?.length ?? 0) - 3 }} more
+        </a>
+        }
       }
     </div>
 
@@ -239,14 +238,17 @@
     <p class="mt-2 text-xs italic text-slate-500">"{{ o.comment }}"</p>
     }
 
-    @if (o.status === 'DELIVERED' && variance(o)) {
+    @if (workQueue()) {
+    <button type="button" (click)="o.status === 'DELIVERED' ? openSummary(o) : null"
+      class="mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+      [class]="queueTone(o)">
+      {{ queueLabel(o) }}
+      @if (queueAge(o)) { <span class="opacity-60">· {{ queueAge(o) }}</span> }
+    </button>
+    } @else if (o.status === 'DELIVERED' && variance(o)) {
     <button type="button" (click)="openSummary(o)"
       class="mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition"
       [class]="variance(o)!.open > 0 ? (variance(o)!.short > 0 ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-blue-50 text-blue-700 hover:bg-blue-100') : 'bg-slate-100 text-slate-500 hover:bg-slate-200'">
-      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" />
-      </svg>
       {{ varianceLabel(o) }}
     </button>
     }
@@ -303,7 +305,7 @@
         <th class="w-[240px] px-4 py-3 font-medium">Progress</th>
         <th class="px-4 py-3 font-medium">Items</th>
         <th class="px-4 py-3 font-medium">Created</th>
-        <th class="px-5 py-3 text-right font-medium">Next step</th>
+        <th class="w-[136px] px-4 py-3 text-right font-medium 2xl:w-[180px]">Next step</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-slate-100">
@@ -357,14 +359,17 @@
               <span>Received</span>
             </div>
           </div>
-          @if (o.status === 'DELIVERED' && variance(o)) {
+          @if (workQueue()) {
+          <button type="button" (click)="o.status === 'DELIVERED' ? openSummary(o) : null"
+            class="mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+            [class]="queueTone(o)">
+            {{ queueLabel(o) }}
+            @if (queueAge(o)) { <span class="opacity-60">· {{ queueAge(o) }}</span> }
+          </button>
+          } @else if (o.status === 'DELIVERED' && variance(o)) {
           <button type="button" (click)="openSummary(o)" title="Delivered with a discrepancy — click to view"
             class="mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition"
             [class]="variance(o)!.open > 0 ? (variance(o)!.short > 0 ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-blue-50 text-blue-700 hover:bg-blue-100') : 'bg-slate-100 text-slate-500 hover:bg-slate-200'">
-            <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" />
-            </svg>
             {{ varianceLabel(o) }}
           </button>
           }
@@ -412,9 +417,9 @@
 
         <!-- next step -->
         <!-- next step -->
-        <td class="px-5 py-4">
+        <td class="w-[136px] px-4 py-4 2xl:w-[180px]">
           <div class="flex flex-col items-end gap-1.5">
-            <div class="flex flex-wrap justify-end gap-2">
+            <div class="flex flex-col items-stretch gap-2 2xl:items-end">
               @if (auth.isAdmin() && o.status === 'PENDING') {
               <button type="button" (click)="reject(o)"
                 class="rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 ring-1 ring-red-200 transition hover:bg-red-50">
@@ -427,37 +432,33 @@
               </a>
               }
 
-              @if (o.status === 'APPROVED' || o.status === 'DELIVERED') {
-              <button type="button" (click)="printOrder(o)"
-                class="inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 transition hover:bg-slate-50"
-                title="Open the purchase order for printing or saving as PDF">
-                <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M6 9V2h12v7" />
-                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                  <path d="M6 14h12v8H6z" />
-                </svg>
-
-                Print / Save PDF
-              </button>
-              }
-
               @if (o.status === 'APPROVED') {
               <a [routerLink]="['/orders', o.id, 'receive']"
-                class="rounded-lg bg-status-delivered px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:opacity-90">
-                Receive goods
+                class="w-full whitespace-nowrap rounded-lg bg-status-delivered px-2.5 py-1.5 text-center text-xs font-semibold text-white shadow-sm transition hover:opacity-90 2xl:w-auto">
+                <span class="2xl:hidden">Receive</span><span class="hidden 2xl:inline">Receive goods</span>
               </a>
               }
 
               @if (o.status === 'DELIVERED') {
               <button type="button" (click)="openSummary(o)"
-                class="rounded-lg px-3 py-1.5 text-xs font-medium text-brand-700 ring-1 ring-brand-200 transition hover:bg-brand-50">
-                View receipt
+                class="w-full whitespace-nowrap rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700 2xl:w-auto">
+                <span class="2xl:hidden">Receipt</span><span class="hidden 2xl:inline">View receipt</span>
+              </button>
+              }
+
+              @if (o.status === 'APPROVED' || o.status === 'DELIVERED') {
+              <button type="button" (click)="printOrder(o)"
+                class="inline-flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 transition hover:bg-slate-50 2xl:w-auto"
+                title="Open the purchase order for printing or saving as PDF">
+                <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v8H6z" />
+                </svg>
+                <span class="2xl:hidden">Print PO</span><span class="hidden 2xl:inline">Print purchase order</span>
               </button>
               }
             </div>
 
-            <span class="text-[11px] font-medium" [class]="meta[o.status].text">
+            <span class="hidden text-[11px] font-medium 2xl:block" [class]="meta[o.status].text">
               {{ nextHint(o) }}
             </span>
           </div>

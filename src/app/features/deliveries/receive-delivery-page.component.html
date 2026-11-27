@@ -1,22 +1,467 @@
-<div class="mx-auto max-w-[1500px]">
-  @if (loading()) { <div class="h-[540px] animate-pulse rounded-2xl bg-slate-100"></div> }
-  @else if (error()) { <div class="rounded-xl bg-red-50 p-4 text-sm text-red-700 ring-1 ring-red-200">{{error()}}</div> }
-  @else if (order(); as o) {
-  <header class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-    <div><a routerLink="/orders" class="text-xs font-semibold text-brand-600 hover:text-brand-700">&larr; Orders</a><div class="mt-2 flex flex-wrap items-center gap-2"><h1 class="text-2xl font-semibold tracking-tight text-slate-900">Receive goods</h1><span class="font-mono text-sm font-semibold text-slate-500">{{o.order_number}}</span></div><p class="mt-1 text-sm text-slate-500">{{o.object?.name}} · {{o.supplier_snapshot?.name || o.supplier?.name || 'Supplier'}} · count what physically arrived, then decide what enters usable stock.</p></div>
-    <div class="flex gap-2"><a routerLink="/orders" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700">Cancel</a><button (click)="submit()" [disabled]="form.invalid||svc.saving()" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-40">{{svc.saving()?'Recording…':'Record receipt'}}</button></div>
-  </header>
-  <form [formGroup]="form" class="space-y-4">
-    <section class="grid gap-3 lg:grid-cols-3">
-      <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200"><div class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Dispatch</div><div class="mt-3 grid gap-2"><select formControlName="dispatch_document_type" (change)="onDispatchType()" class="h-10 rounded-lg border border-slate-300 px-3 text-sm"><option value="">No external document</option>@for(t of compliance.dispatchTypes();track t.value){<option [value]="t.value">{{t.label}}</option>}</select>@if(form.get('dispatch_document_type')?.value){<input formControlName="dispatch_document_number" placeholder="Document number *" class="h-10 rounded-lg border border-slate-300 px-3 text-sm"><input formControlName="dispatch_external_id" placeholder="External ID (optional)" class="h-10 rounded-lg border border-slate-300 px-3 text-sm">}</div><p class="mt-2 text-[11px] text-slate-400">{{compliance.legalHint()}}</p></div>
-      <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200"><div class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Physical receipt</div><div class="mt-3 grid gap-2"><input type="datetime-local" formControlName="physical_receipt_at" class="h-10 rounded-lg border border-slate-300 px-3 text-sm"><div class="rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-slate-200"><div class="text-[10px] uppercase tracking-wide text-slate-400">Received & counted by</div><div class="mt-0.5 text-sm font-semibold text-slate-900">{{form.get('received_by')?.value || 'Signed-in user'}}</div><div class="text-[10px] font-medium uppercase tracking-wide text-brand-600">{{roleLabel()}}</div></div><input type="hidden" formControlName="received_by"><select formControlName="carrier_mode" (change)="onCarrierMode()" class="h-10 rounded-lg border border-slate-300 px-3 text-sm"><option value="SUPPLIER">Supplier transport</option><option value="OWN">Own transport</option><option value="OTHER">Other carrier</option></select>@if(form.get('carrier_mode')?.value==='OTHER'){<input formControlName="carrier" placeholder="Carrier name" class="h-10 rounded-lg border border-slate-300 px-3 text-sm">}</div></div>
-      <div class="rounded-2xl bg-white p-5 ring-1 ring-slate-200"><div class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Destination</div><div class="mt-2 text-lg font-semibold">{{o.object?.name}}</div><div class="mt-1 text-sm text-slate-500">{{o.delivery_snapshot?.address || 'Address not set'}}</div><div class="mt-4 text-xs text-slate-400">PO approved {{o.approved_at|date:'d MMM y, HH:mm'}}</div></div>
-    </section>
+<div class="mx-auto max-w-[1500px] pb-24 lg:pb-8">
+  @if (loading()) {
+    <div class="h-[540px] animate-pulse rounded-2xl bg-slate-100"></div>
+  } @else if (error()) {
+    <div class="rounded-xl bg-red-50 p-4 text-sm text-red-700 ring-1 ring-red-200">{{ error() }}</div>
+  } @else if (order(); as o) {
+    <header class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <a routerLink="/orders" class="text-xs font-semibold text-brand-600 hover:text-brand-700">← Orders</a>
+        <div class="mt-2 flex flex-wrap items-center gap-2">
+          <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Receive goods</h1>
+          <span class="rounded-md bg-slate-100 px-2 py-1 font-mono text-xs font-semibold text-slate-500">{{ o.order_number }}</span>
+        </div>
+        <p class="mt-1 text-sm text-slate-500">
+          {{ o.object?.name }} · {{ o.supplier_snapshot?.name || o.supplier?.name || 'Supplier' }} · count what arrived, then decide what enters usable stock.
+        </p>
+      </div>
+      <div class="hidden gap-2 sm:flex">
+        <a routerLink="/orders" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700">Cancel</a>
+        <button type="button" (click)="submit()" [disabled]="form.invalid || svc.saving()"
+          class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-40">
+          {{ svc.saving() ? 'Recording…' : 'Record receipt' }}
+        </button>
+      </div>
+    </header>
 
-    <section class="grid grid-cols-2 gap-2 sm:grid-cols-4"><div class="rounded-xl bg-white p-4 ring-1 ring-slate-200"><div class="text-xs text-slate-400">Ordered</div><b class="mt-1 block text-2xl tabular-nums">{{totals().ordered}}</b></div><div class="rounded-xl bg-white p-4 ring-1 ring-slate-200"><div class="text-xs text-slate-400">Physical</div><b class="mt-1 block text-2xl tabular-nums">{{totals().physical}}</b></div><div class="rounded-xl bg-green-50 p-4 ring-1 ring-green-200"><div class="text-xs text-green-600">Accepted to stock</div><b class="mt-1 block text-2xl tabular-nums text-green-700">{{totals().accepted}}</b></div><div class="rounded-xl p-4 ring-1" [class]="totals().rejected?'bg-red-50 ring-red-200':'bg-white ring-slate-200'"><div class="text-xs" [class.text-red-600]="totals().rejected" [class.text-slate-400]="!totals().rejected">Rejected</div><b class="mt-1 block text-2xl tabular-nums" [class.text-red-700]="totals().rejected">{{totals().rejected}}</b></div></section>
+    <form [formGroup]="form" class="space-y-4">
+      <section class="grid gap-3 lg:grid-cols-3">
+        <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200 sm:p-5">
+          <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Dispatch document</div>
+          <div class="mt-3 grid gap-2">
+            <select formControlName="dispatch_document_type" (change)="onDispatchType()" class="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm">
+              <option value="">No external document</option>
+              @for (t of compliance.dispatchTypes(); track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+            </select>
+            @if (form.get('dispatch_document_type')?.value) {
+              <input formControlName="dispatch_document_number" placeholder="Document number *" class="h-11 rounded-lg border border-slate-300 px-3 text-sm">
+              <input formControlName="dispatch_external_id" placeholder="External ID (optional)" class="h-11 rounded-lg border border-slate-300 px-3 text-sm">
+            }
+          </div>
+        </div>
 
-    <section class="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200"><div class="border-b border-slate-100 px-5 py-4"><h2 class="text-sm font-semibold">Count & inspect</h2><p class="mt-0.5 text-xs text-slate-400">Physical = unloaded. Accepted = usable stock. Rejected never enters inventory.</p></div><div formArrayName="lines" class="divide-y divide-slate-100">@for(row of lines.controls;track $index;let i=$index){<div [formGroupName]="i" class="px-5 py-4"><div class="grid items-center gap-3 lg:grid-cols-[minmax(180px,1fr)_100px_120px_120px_100px_120px]"><div><div class="font-semibold text-slate-900">{{row.get('product_name')?.value}}</div><div class="font-mono text-[11px] text-slate-400">{{row.get('product_sku')?.value}}</div></div><div class="text-right"><div class="text-[10px] uppercase text-slate-400">Ordered · PO</div><b class="tabular-nums">{{ordered(row)}}</b></div><label class="text-right"><span class="block text-[10px] uppercase text-brand-600">Physical · Counted</span><input type="number" min="0" formControlName="physical_qty" (input)="onQty(row)" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-right font-semibold tabular-nums"></label><label class="text-right"><span class="block text-[10px] uppercase text-green-600">Accepted · To stock</span><input type="number" min="0" formControlName="accepted_qty" (input)="onQty(row)" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-right font-semibold tabular-nums"></label><div class="text-right"><div class="text-[10px] uppercase text-red-400">Rejected · Calculated</div><b class="tabular-nums" [class.text-red-600]="rejected(row)">{{rejected(row)}}</b></div><div class="text-right"><span class="inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ring-1" [class]="state(row).tone">{{state(row).label}}</span></div></div>@if(needsReason(row)){<div class="mt-3 rounded-xl bg-slate-50 p-3"><div class="flex flex-wrap gap-1.5">@for(r of reasons;track r.code){<button type="button" (click)="setReason(row,r.code)" class="rounded-full px-3 py-1 text-xs ring-1" [class]="row.get('reason_code')?.value===r.code?'bg-slate-900 text-white ring-slate-900':'bg-white text-slate-600 ring-slate-200'">{{r.label}}</button>}</div><input formControlName="reason" placeholder="Line note (optional)" class="mt-2 h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm">@if(row.touched&&row.invalid){<div class="mt-1 text-xs text-red-600">Choose a valid quantity and reason.</div>}</div>}</div>}</div></section>
-    <section class="grid gap-4 lg:grid-cols-[1fr_340px]"><textarea formControlName="note" rows="3" placeholder="Overall receipt note (optional)" class="rounded-xl border border-slate-300 p-3 text-sm"></textarea><div class="rounded-2xl bg-slate-950 p-5 text-white"><div class="flex justify-between text-sm text-slate-300"><span>Physical</span><b>{{totals().physical}}</b></div><div class="mt-2 flex justify-between text-sm text-green-300"><span>Accepted to stock</span><b>{{totals().accepted}}</b></div><div class="mt-2 flex justify-between text-sm" [class.text-red-300]="totals().rejected" [class.text-slate-400]="!totals().rejected"><span>Rejected</span><b>{{totals().rejected}}</b></div><div class="mt-4 border-t border-white/10 pt-4 text-xs text-slate-400">{{issueCount()?issueCount()+' line(s) will require resolution':'All lines match the purchase order.'}}</div><button type="button" (click)="submit()" [disabled]="form.invalid||svc.saving()" class="mt-4 w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 disabled:opacity-40">{{svc.saving()?'Recording…':'Record goods receipt'}}</button></div></section>
-  </form>
+        <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200 sm:p-5">
+          <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Transport</div>
+          <div class="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
+            @for (m of [{v:'SUPPLIER',l:'Supplier'},{v:'OWN',l:'Own'},{v:'OTHER',l:'Other'}]; track m.v) {
+              <button type="button" (click)="setCarrier($any(m.v))" class="rounded-lg px-2 py-2 text-xs font-semibold"
+                [class]="form.get('carrier_mode')?.value===m.v ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'">{{ m.l }}</button>
+            }
+          </div>
+          @if (form.get('carrier_mode')?.value === 'OTHER') {
+            <input formControlName="carrier" placeholder="Carrier" class="mt-2 h-11 w-full rounded-lg border border-slate-300 px-3 text-sm">
+          }
+        </div>
+
+        <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200 sm:p-5">
+          <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Receipt</div>
+          <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+            <label class="text-xs text-slate-500">Received by
+              <input formControlName="received_by" class="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-sm">
+            </label>
+            <label class="text-xs text-slate-500">Physical receipt at
+              <input type="datetime-local" formControlName="physical_receipt_at" class="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-sm">
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-2xl bg-white ring-1 ring-slate-200">
+        <div class="flex flex-col gap-2 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div>
+            <h2 class="text-sm font-semibold text-slate-900">Count delivery</h2>
+            <p class="mt-0.5 hidden text-xs text-slate-500 sm:block">Exact receipts stay fast. Controls for exceptions appear only when something differs.</p>
+          </div>
+          <div class="flex gap-2 text-xs">
+            <span class="rounded-full bg-green-50 px-2.5 py-1 font-semibold text-green-700">Stock +{{ totals().accepted }}</span>
+            @if (totals().held) { <span class="rounded-full bg-red-50 px-2.5 py-1 font-semibold text-red-700">Held {{ totals().held }}</span> }
+            @if (totals().immediateReturn) { <span class="rounded-full bg-violet-50 px-2.5 py-1 font-semibold text-violet-700">Return {{ totals().immediateReturn }}</span> }
+            @if (totals().unresolved) { <span class="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">Unresolved {{ totals().unresolved }}</span> }
+          </div>
+        </div>
+
+        <div formArrayName="lines" class="divide-y divide-slate-200">
+  @for (
+    row of lines.controls;
+    track row.get('order_item_id')?.value;
+    let i = $index
+  ) {
+    <article
+      [formGroupName]="i"
+      class="relative overflow-hidden bg-white"
+    >
+      <!-- SKU boundary -->
+      <div
+        class="absolute inset-y-0 left-0 w-[3px] bg-brand-300"
+      ></div>
+
+      <!-- ================= MOBILE COMPACT ================= -->
+      @if (!isExpanded(row)) {
+        <button
+          type="button"
+          (click)="toggleLine(row)"
+          class="block w-full px-4 py-4 pl-5 text-left sm:hidden"
+        >
+          <div class="flex items-start gap-3">
+            <div
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 font-mono text-[11px] font-bold text-brand-700"
+            >
+              {{ lineNumber(i) }}
+            </div>
+
+            <div class="min-w-0 flex-1">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="truncate text-sm font-semibold text-slate-900">
+                    {{ row.get('product_name')?.value }}
+                  </div>
+
+                  <div
+                    class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500"
+                  >
+                    <span class="font-mono">
+                      {{ row.get('product_sku')?.value }}
+                    </span>
+
+                    <span>
+                      Ordered
+                      <b class="text-slate-700">
+                        {{ ordered(row) }}
+                      </b>
+                    </span>
+                  </div>
+                </div>
+
+                <span
+                  class="shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ring-1"
+                  [class]="state(row).tone"
+                >
+                  {{ state(row).label }}
+                </span>
+              </div>
+
+              <div
+                class="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-2.5 text-center"
+              >
+                <div>
+                  <div
+                    class="text-[9px] font-semibold uppercase tracking-wide text-slate-400"
+                  >
+                    Physical
+                  </div>
+                  <div
+                    class="mt-0.5 text-sm font-bold text-slate-900"
+                  >
+                    {{ physical(row) }}
+                  </div>
+                </div>
+
+                <div>
+                  <div
+                    class="text-[9px] font-semibold uppercase tracking-wide text-slate-400"
+                  >
+                    Stock
+                  </div>
+                  <div
+                    class="mt-0.5 text-sm font-bold text-green-700"
+                  >
+                    {{ accepted(row) }}
+                  </div>
+                </div>
+
+                <div>
+                  <div
+                    class="text-[9px] font-semibold uppercase tracking-wide text-slate-400"
+                  >
+                    Difference
+                  </div>
+                  <div
+                    class="mt-0.5 text-sm font-bold text-slate-700"
+                  >
+                    {{ notAccepted(row) }}
+                  </div>
+                </div>
+              </div>
+
+              <div
+                class="mt-2 flex items-center justify-between gap-3"
+              >
+                <div
+                  class="min-w-0 truncate text-xs text-slate-500"
+                >
+                  {{ compactDescription(row) }}
+                </div>
+
+                <span
+                  class="shrink-0 text-xs font-semibold text-brand-600"
+                >
+                  Edit
+                </span>
+              </div>
+            </div>
+          </div>
+        </button>
+      }
+
+      <!-- ================= FULL EDITOR =================
+           Hidden on mobile unless expanded.
+           Always visible from sm breakpoint upward.
+      -->
+      <div
+        [class.hidden]="!isExpanded(row)"
+        class="p-4 pl-5 sm:block sm:p-5 sm:pl-6"
+      >
+        <div
+          class="grid gap-4 xl:grid-cols-[minmax(220px,1fr)_190px_190px_150px] xl:items-center"
+        >
+          <!-- Product -->
+          <div class="min-w-0">
+            <div class="flex items-start gap-3">
+              <div
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 font-mono text-[11px] font-bold text-brand-700"
+              >
+                {{ lineNumber(i) }}
+              </div>
+
+              <div
+                class="flex min-w-0 flex-1 items-start justify-between gap-3"
+              >
+                <div class="min-w-0">
+                  <div
+                    class="truncate text-sm font-semibold text-slate-900"
+                  >
+                    {{ row.get('product_name')?.value }}
+                  </div>
+
+                  <div
+                    class="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500"
+                  >
+                    <span class="font-mono">
+                      {{ row.get('product_sku')?.value }}
+                    </span>
+
+                    <span>
+                      Ordered
+                      <b class="text-slate-700">
+                        {{ ordered(row) }}
+                      </b>
+                    </span>
+                  </div>
+                </div>
+
+                <span
+                  class="shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ring-1"
+                  [class]="state(row).tone"
+                >
+                  {{ state(row).label }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Physical -->
+          <div>
+            <div
+              class="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400"
+            >
+              Physical arrived
+            </div>
+
+            <div
+              class="grid grid-cols-[44px_1fr_44px] overflow-hidden rounded-xl border border-slate-300 bg-white"
+            >
+              <button
+                type="button"
+                (click)="bump(row, 'physical_qty', -1)"
+                class="h-11 text-lg text-slate-500 hover:bg-slate-50"
+              >
+                −
+              </button>
+
+              <input
+                type="number"
+                inputmode="numeric"
+                min="0"
+                formControlName="physical_qty"
+                (input)="onPhysicalQty(row)"
+                class="h-11 min-w-0 border-x border-slate-200 text-center text-base font-semibold outline-none"
+              >
+
+              <button
+                type="button"
+                (click)="bump(row, 'physical_qty', 1)"
+                class="h-11 text-lg text-slate-500 hover:bg-slate-50"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <!-- Accepted -->
+          <div>
+            <div
+              class="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400"
+            >
+              Accepted to stock
+            </div>
+
+            <div
+              class="grid grid-cols-[44px_1fr_44px] overflow-hidden rounded-xl border border-slate-300 bg-white"
+            >
+              <button
+                type="button"
+                (click)="bump(row, 'accepted_qty', -1)"
+                class="h-11 text-lg text-slate-500 hover:bg-slate-50"
+              >
+                −
+              </button>
+
+              <input
+                type="number"
+                inputmode="numeric"
+                min="0"
+                [max]="ordered(row)"
+                formControlName="accepted_qty"
+                (input)="onAcceptedQty(row)"
+                class="h-11 min-w-0 border-x border-slate-200 text-center text-base font-semibold outline-none"
+              >
+
+              <button
+                type="button"
+                (click)="bump(row, 'accepted_qty', 1)"
+                class="h-11 text-lg text-slate-500 hover:bg-slate-50"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <!-- Line summary -->
+          <div
+            class="rounded-xl bg-slate-50 px-3 py-2.5 text-xs"
+          >
+            <div class="flex justify-between text-slate-500">
+              <span>Physical</span>
+              <b class="text-slate-700">
+                {{ physical(row) }}
+              </b>
+            </div>
+
+            <div
+              class="mt-1 flex justify-between text-green-700"
+            >
+              <span>To stock</span>
+              <b>{{ accepted(row) }}</b>
+            </div>
+
+            @if (notAccepted(row)) {
+              <div
+                class="mt-1 flex justify-between text-slate-700"
+              >
+                <span>Not accepted</span>
+                <b>{{ notAccepted(row) }}</b>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Receiving differences -->
+        @if (needsAttention(row)) {
+          <div class="mt-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-3 sm:p-4">
+            <div class="grid gap-4 lg:grid-cols-2">
+              <div class="space-y-2">
+                @if (shortQty(row) > 0) {
+                  <div class="rounded-xl border border-amber-200 bg-white p-3">
+                    <div class="flex items-center justify-between gap-3">
+                      <div><div class="text-xs font-semibold text-slate-900">Supplier short</div><div class="mt-0.5 text-[11px] text-slate-500">{{ shortQty(row) }} of {{ ordered(row) }} ordered unit(s) did not arrive.</div></div>
+                      <span class="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">−{{ shortQty(row) }}</span>
+                    </div>
+                  </div>
+                }
+                @if (overQty(row) > 0) {
+                  <div class="rounded-xl border border-blue-200 bg-white p-3">
+                    <div class="flex items-center justify-between gap-3">
+                      <div><div class="text-xs font-semibold text-slate-900">Supplier over-delivery</div><div class="mt-0.5 text-[11px] text-slate-500">{{ overQty(row) }} extra unit(s) physically arrived.</div></div>
+                      <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">+{{ overQty(row) }}</span>
+                    </div>
+                  </div>
+                }
+                @if (qualityRejectedQty(row) > 0) {
+                  <div class="pt-1">
+                    <div class="text-xs font-semibold text-slate-800">Why were {{ qualityRejectedQty(row) }} of {{ physical(row) }} arrived unit(s) not accepted?</div>
+                    <div class="mt-2 flex flex-wrap gap-1.5">
+                      @for (reason of reasons; track reason.code) {
+                        <button type="button" (click)="setRejectionReason(row, $any(reason.code))" class="rounded-full px-3 py-1.5 text-xs font-medium ring-1"
+                          [class]="row.get('rejection_reason_code')?.value === reason.code ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-600 ring-slate-200'">{{ reason.label }}</button>
+                      }
+                    </div>
+                  </div>
+                }
+                <input formControlName="reason" placeholder="Line note (optional)" class="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm">
+              </div>
+              @if (notAccepted(row) > 0) {
+                <div>
+                  <div class="text-xs font-semibold text-slate-800">What happens to {{ notAccepted(row) }} not accepted?</div>
+                  <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                    <button type="button" (click)="setDisposition(row, 'HOLD')" class="min-h-14 rounded-xl border p-3 text-left"
+                      [class]="disposition(row) === 'HOLD' ? 'border-red-300 bg-white ring-2 ring-red-100' : 'border-slate-200 bg-white'">
+                      <div class="text-xs font-semibold text-slate-900">Hold for resolution</div>
+                      <div class="mt-0.5 text-[11px] leading-4 text-slate-500">Keep physically separated. Not sellable.</div>
+                    </button>
+                    <button type="button" (click)="setDisposition(row, 'RETURN_IMMEDIATE')" class="min-h-14 rounded-xl border p-3 text-left"
+                      [class]="disposition(row) === 'RETURN_IMMEDIATE' ? 'border-violet-300 bg-white ring-2 ring-violet-100' : 'border-slate-200 bg-white'">
+                      <div class="text-xs font-semibold text-slate-900">Return with driver</div>
+                      <div class="mt-0.5 text-[11px] leading-4 text-slate-500">Leaves immediately on the same vehicle.</div>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+            @if (row.touched && row.invalid) {
+              <div class="mt-2 text-xs font-medium text-red-600">Complete the quality reason and disposition for every not-accepted unit.</div>
+            }
+          </div>
+        }
+        <!-- Mobile close -->
+        <button
+          type="button"
+          (click)="closeLine(row)"
+          [disabled]="!lineResolved(row)"
+          class="mt-4 min-h-11 w-full rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white disabled:opacity-40 sm:hidden"
+        >
+          Done
+        </button>
+      </div>
+    </article>
+  }
+</div>
+      </section>
+
+      <section class="grid gap-4 lg:grid-cols-[1fr_360px]">
+        <textarea formControlName="note" rows="4" placeholder="Overall receipt note (optional)" class="rounded-2xl border border-slate-300 bg-white p-4 text-sm"></textarea>
+        <div class="rounded-2xl bg-slate-950 p-5 text-white">
+          <div class="text-sm font-semibold">Receipt summary</div>
+          <div class="mt-4 space-y-2 text-sm">
+            <div class="flex justify-between text-slate-300"><span>Physical</span><b class="text-white">{{ totals().physical }}</b></div>
+            <div class="flex justify-between text-green-300"><span>Accepted to stock</span><b>{{ totals().accepted }}</b></div>
+            <div class="flex justify-between" [class.text-red-300]="totals().held" [class.text-slate-400]="!totals().held"><span>Held</span><b>{{ totals().held }}</b></div>
+            <div class="flex justify-between" [class.text-violet-300]="totals().immediateReturn" [class.text-slate-400]="!totals().immediateReturn"><span>Return with driver</span><b>{{ totals().immediateReturn }}</b></div>
+            @if (totals().unresolved) { <div class="flex justify-between text-amber-300"><span>Unresolved disposition</span><b>{{ totals().unresolved }}</b></div> }
+          </div>
+          <div class="mt-4 border-t border-white/10 pt-4 text-xs text-slate-400">{{ issueCount() ? issueCount() + ' line(s) contain a receiving difference.' : 'All lines match the purchase order.' }}</div>
+          <button type="button" (click)="submit()" [disabled]="form.invalid || svc.saving()" class="mt-4 w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 disabled:opacity-40">{{ svc.saving() ? 'Recording…' : 'Record goods receipt' }}</button>
+        </div>
+      </section>
+    </form>
+
+    <div class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 backdrop-blur sm:hidden">
+      <div class="mx-auto flex max-w-[1500px] items-center gap-3">
+        <div class="min-w-0 flex-1 text-xs text-slate-500">
+          <div class="truncate"><b class="text-slate-900">Stock +{{ totals().accepted }}</b> · Physical {{ totals().physical }}</div>
+          @if (totals().held || totals().immediateReturn || totals().unresolved) { <div class="mt-0.5 truncate">Held {{ totals().held }} · Return now {{ totals().immediateReturn }} @if (totals().unresolved) { · Unresolved {{ totals().unresolved }} }</div> }
+        </div>
+        <button type="button" (click)="submit()" [disabled]="form.invalid || svc.saving()" class="min-h-11 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm disabled:opacity-40">{{ svc.saving() ? 'Recording…' : 'Record' }}</button>
+      </div>
+    </div>
   }
 </div>

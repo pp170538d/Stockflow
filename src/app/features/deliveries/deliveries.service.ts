@@ -1,3 +1,4 @@
+
 import { Injectable, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
 import { IdempotencyKey } from '../../core/idempotency';
@@ -87,25 +88,68 @@ export class DeliveriesService {
     return { error: null, resolved: r.resolved, backorderNumber: r.backorder_number ?? null };
   }
 
-  async record(orderId: string, meta: DeliveryMetaInput, lines: DeliveryLineInput[]): Promise<string | null> {
+  async record(
+    orderId: string,
+    meta: DeliveryMetaInput,
+    lines: DeliveryLineInput[]
+  ): Promise<string | null> {
     this.saving.set(true);
     this.error.set(null);
+
     const items = lines.map((l) => ({
-      order_item_id: l.order_item_id, physical_qty: l.physical_qty, accepted_qty: l.accepted_qty,
-      reason_code: l.reason_code, reason: l.reason,
+      order_item_id: l.order_item_id,
+      physical_qty: l.physical_qty,
+      accepted_qty: l.accepted_qty,
+
+      held_qty: l.held_qty,
+      immediate_return_qty: l.immediate_return_qty,
+
+      rejection_reason_code: l.rejection_reason_code,
+
+      // Legacy compatibility. SHORT / OVER are now calculated by the DB.
+      reason_code: l.reason_code,
+
+      reason: l.reason,
     }));
+
     const { error } = await supabase.rpc('record_delivery', {
-      p_order_id: orderId, p_carrier: meta.carrier, p_received_by: meta.receivedBy, p_note: meta.note,
-      p_dispatch_document_type: meta.dispatchDocumentType,
-      p_dispatch_document_number: meta.dispatchDocumentNumber,
-      p_dispatch_external_id: meta.dispatchExternalId,
-      p_physical_receipt_at: meta.physicalReceiptAt,
+      p_order_id: orderId,
+      p_carrier: meta.carrier,
+      p_received_by: meta.receivedBy,
+      p_note: meta.note,
+
+      p_dispatch_document_type:
+        meta.dispatchDocumentType,
+
+      p_dispatch_document_number:
+        meta.dispatchDocumentNumber,
+
+      p_dispatch_external_id:
+        meta.dispatchExternalId,
+
+      p_physical_receipt_at:
+        meta.physicalReceiptAt,
+
       p_items: items,
-      p_idempotency_key: this.recordKey.for({ orderId, meta, items }),
+
+      p_idempotency_key:
+        this.recordKey.for({
+          orderId,
+          meta,
+          items,
+        }),
     });
+
     this.saving.set(false);
-    if (error) { const m = this.friendly(error.message); this.error.set(m); return m; }
+
+    if (error) {
+      const m = this.friendly(error.message);
+      this.error.set(m);
+      return m;
+    }
+
     this.recordKey.done();
+
     return null;
   }
 
@@ -130,6 +174,8 @@ export class DeliveriesService {
   }
 
   private friendly(m: string): string {
+    if (m.includes('Accepted quantity cannot exceed ordered')) return 'Accepted stock cannot exceed the purchase order quantity. Hold or return the excess.';
+    if (m.includes('Disposition quantities are invalid')) return 'Choose what happens to every unit that is not accepted.';
     if (m.includes('Physical and accepted')) return 'Accepted quantity cannot be greater than physical quantity.';
     if (m.includes('only available with the Serbia')) return 'e-Otpremnica requires the Serbia compliance profile (Settings).';
     if (m.includes('dispatch document type')) return 'Choose the dispatch document type.';
@@ -143,3 +189,4 @@ export class DeliveriesService {
     return 'Could not complete the action. Please try again.';
   }
 }
+

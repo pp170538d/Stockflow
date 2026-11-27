@@ -113,7 +113,13 @@ export class RequestSplitService {
   /** Atomic: approve the request, creating one purchase order per supplier. */
   async approve(
     orderId: string,
-    lines: { order_item_id: string; supplier_id: string; quantity: number }[]
+    lines: {
+      order_item_id: string;
+      supplier_id: string;
+      quantity: number;
+      unit_cost: number;
+    }[]
+
   ): Promise<{ data: ApproveRequestResult | null; error: string | null }> {
     const { data, error } = await supabase.rpc('approve_request', {
       p_order_id: orderId,

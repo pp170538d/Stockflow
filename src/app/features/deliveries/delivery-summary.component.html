@@ -1,10 +1,232 @@
-@if(open()){@if(svc.loading()&&!r()){<div class="fixed inset-0 z-50 grid place-items-center bg-slate-950/45"><div class="rounded-xl bg-white px-5 py-4 text-sm shadow-xl">Loading receipt…</div></div>}@else if(r();as r){<div class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/45 p-3 backdrop-blur-sm sm:p-6" (click)="close.emit()"><div class="mx-auto max-w-5xl rounded-2xl bg-white shadow-2xl" (click)="$event.stopPropagation()">
-<header class="flex flex-col gap-3 border-b p-5 sm:flex-row sm:justify-between"><div><div class="text-xs font-semibold uppercase tracking-wider text-brand-600">Goods receipt</div><h2 class="mt-1 text-xl font-semibold">{{r.delivery.delivery_number}}</h2><p class="text-sm text-slate-500">PO {{r.order.order_number}} · {{r.object_name}}</p></div><div class="flex gap-2"><button (click)="print()" class="rounded-lg border px-3 py-2 text-sm">Print / PDF</button><button (click)="close.emit()" class="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white">Close</button></div></header>
-<div class="space-y-5 p-5"><section class="grid gap-3 sm:grid-cols-3"><div class="rounded-xl bg-slate-50 p-4"><div class="text-[10px] font-semibold uppercase text-slate-400">Dispatch</div><b>{{dispatchLabel(r.delivery.dispatch_document_type)}}</b><div class="font-mono text-xs text-slate-500">{{r.delivery.dispatch_document_number||'—'}}</div></div><div class="rounded-xl bg-slate-50 p-4"><div class="text-[10px] font-semibold uppercase text-slate-400">Physical receipt</div><b>{{(r.delivery.physical_receipt_at||r.delivery.delivered_at)|date:'d MMM y, HH:mm'}}</b><div class="text-xs text-slate-500">{{r.delivery.received_by||'—'}} · {{r.delivery.carrier||'—'}}</div></div><div class="rounded-xl bg-slate-50 p-4"><div class="flex justify-between"><div class="text-[10px] font-semibold uppercase text-slate-400">{{ackLabel()}}</div>@if(!ackEditing()){<button (click)="startAck()" class="text-[11px] font-semibold text-brand-600">{{r.receipt_ack?'Edit':'Add reference'}}</button>}</div>@if(r.receipt_ack;as a){<b class="font-mono text-sm">{{a.document_number}}</b><div><span class="rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1" [class]="ackTone(a.status)">{{statusLabels[a.status]}}</span></div><div class="mt-1 text-[11px] text-slate-400">{{providerLabels[a.provider]}}</div>}@else{<b class="text-slate-400">Not recorded</b><div class="text-xs text-slate-400">Should state: {{outcomeLabels[r.receipt_outcome]}}</div>}</div></section>
-@if(ackEditing()){<section class="rounded-2xl p-4 ring-1 ring-brand-200"><div class="flex justify-between"><div><h3 class="text-sm font-semibold">{{ackLabel()}} reference</h3><p class="text-xs text-slate-400">{{legalHint()}}</p></div><span class="h-fit rounded-full bg-slate-100 px-2 py-1 text-[10px]">{{outcomeLabels[r.receipt_outcome]}}</span></div><div class="mt-3 grid gap-2 sm:grid-cols-2"><input [(ngModel)]="ackNumber" placeholder="Document number *" class="h-10 rounded-lg border px-3 text-sm"><select [(ngModel)]="ackStatus" class="h-10 rounded-lg border px-3 text-sm">@for(s of statuses;track s){<option [value]="s">{{statusLabels[s]}}</option>}</select><select [(ngModel)]="ackProvider" class="h-10 rounded-lg border px-3 text-sm">@for(p of providers;track p){<option [value]="p">{{providerLabels[p]}}</option>}</select><input type="datetime-local" [(ngModel)]="ackSentAt" class="h-10 rounded-lg border px-3 text-sm"><input [(ngModel)]="ackExternalId" placeholder="External ID (optional)" class="h-10 rounded-lg border px-3 text-sm"><input [(ngModel)]="ackNote" placeholder="Note (optional)" class="h-10 rounded-lg border px-3 text-sm"></div><div class="mt-3 flex justify-end gap-2"><button (click)="ackEditing.set(false)" class="rounded-lg border px-3 py-2 text-sm">Cancel</button><button (click)="saveAck()" [disabled]="!ackNumber.trim()||svc.savingAck()" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">Save reference</button></div></section>}
-<section class="grid grid-cols-2 gap-2 sm:grid-cols-4"><div class="rounded-xl border p-3"><span class="text-xs text-slate-400">Ordered</span><b class="block text-xl">{{totals().ordered}}</b></div><div class="rounded-xl border p-3"><span class="text-xs text-slate-400">Physical</span><b class="block text-xl">{{totals().physical}}</b></div><div class="rounded-xl border border-green-200 bg-green-50 p-3"><span class="text-xs text-green-600">Accepted to stock</span><b class="block text-xl text-green-700">{{totals().accepted}}</b></div><div class="rounded-xl border p-3" [class]="totals().rejected?'border-red-200 bg-red-50':'border-slate-200'"><span class="text-xs text-red-600">Rejected</span><b class="block text-xl text-red-700">{{totals().rejected}}</b></div></section>
-<div class="overflow-x-auto rounded-xl ring-1 ring-slate-200"><table class="w-full min-w-[800px] text-sm"><thead class="bg-slate-50 text-[10px] uppercase text-slate-400"><tr><th class="px-4 py-3 text-left">Product</th><th>Ordered</th><th>Physical</th><th>Accepted</th><th>Rejected</th><th>Qty variance</th><th class="text-left">Reason</th></tr></thead><tbody>@for(l of r.lines;track l.order_item_id){<tr class="border-t"><td class="px-4 py-3"><b>{{l.product_name}}</b><div class="font-mono text-[11px] text-slate-400">{{l.sku}}</div></td><td class="text-center">{{l.ordered_qty}}</td><td class="text-center">{{l.physical_qty}}</td><td class="text-center text-green-700">{{l.accepted_qty}}</td><td class="text-center" [class.text-red-600]="l.rejected_qty">{{l.rejected_qty}}</td><td class="text-center">{{l.variance||'—'}}</td><td>{{l.reason_code?reason(l):'—'}}</td></tr>}</tbody></table></div>
-@if(issueLines().length){<section><div class="mb-2 flex justify-between"><div><h3 class="text-sm font-semibold">Exceptions</h3><p class="text-xs text-slate-400">Commercial resolution and physical custody are tracked separately.</p></div><span class="text-xs text-slate-400">{{openLines().length}} open</span></div><div class="space-y-2">@for(l of issueLines();track l.line_id){<div class="rounded-xl border p-3"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><b>{{l.product_name}}</b><div class="text-xs"><span class="font-semibold text-amber-700">{{issueText(l)}}</span> · {{reason(l)}}</div>@if(l.resolution_status==='resolved'){<div class="mt-1 text-xs text-green-700">Resolved: {{l.resolution}}@if(l.resolution_note){ · {{l.resolution_note}}}</div>}</div><div class="flex flex-wrap gap-1.5">@if(l.resolution_status==='open'&&l.variance<0){<button (click)="resolve(l,'BACKORDER')" class="rounded-lg border px-2.5 py-1.5 text-xs">Backorder</button><button (click)="resolve(l,'CLOSE_SHORT')" class="rounded-lg border px-2.5 py-1.5 text-xs">Close short</button>}@if(l.resolution_status==='open'&&l.variance>0&&l.rejected_qty===0){<button (click)="resolve(l,'ACCEPT')" class="rounded-lg border px-2.5 py-1.5 text-xs">Accept excess</button>}@if(l.resolution_status==='open'){<button (click)="openClaim(l)" class="rounded-lg border px-2.5 py-1.5 text-xs font-semibold">Claim</button>}</div></div>
-@if(l.rejected_qty>0){@if(held(l);as h){<div class="mt-3 flex items-center justify-between rounded-lg bg-amber-50 px-3 py-2 ring-1 ring-amber-100"><div><div class="text-[10px] font-semibold uppercase text-amber-700">Physical custody</div>@if(h.remaining_qty>0){<div class="text-sm font-semibold text-amber-900">{{h.remaining_qty}} held for supplier</div>}@else{<div class="text-sm font-semibold text-green-700">No rejected goods remain on site</div>}</div>@if(h.remaining_qty>0){<button (click)="openHeld(l)" class="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">Manage held goods</button>}</div>}@else{<div class="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">Rejected goods custody record not found.</div>}}</div>}</div></section>}
-</div></div></div>}
-@if(claimSelection();as c){<app-supplier-claim-drawer [open]="true" [lineId]="c.lineId" [product]="c.product" [issue]="c.issue" (close)="claimSelection.set(null)" (changed)="childChanged()"/>}@if(heldSelection();as h){<app-held-stock-drawer [open]="true" [lineId]="h.lineId" [product]="h.product" (close)="heldSelection.set(null)" (changed)="childChanged()"/>}}
+@if(open()){
+@if(svc.loading()&&!r()){<div class="fixed inset-0 z-50 grid place-items-center bg-slate-950/45">
+    <div class="rounded-xl bg-white px-5 py-4 text-sm shadow-xl">Loading receipt�</div>
+</div>}
+@else if(r();as r){
+<div class="fixed inset-0 z-50 flex items-start justify-center overflow-hidden bg-slate-950/45 p-2 pt-4 backdrop-blur-sm sm:p-6"
+    (click)="close.emit()">
+    <div class="mx-auto flex max-h-[calc(100dvh-1rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:max-h-[calc(100dvh-3rem)]"
+        (click)="$event.stopPropagation()">
+        <header class="flex shrink-0 items-center justify-between gap-3 border-b bg-white p-4 sm:p-5">
+            <div>
+                <div class="text-[10px] font-semibold uppercase tracking-wider text-brand-600">Goods receipt</div>
+                <h2 class="mt-0.5 text-lg font-semibold sm:text-xl">{{r.delivery.delivery_number}}</h2>
+                <p class="text-xs text-slate-500 sm:text-sm">
+                    PO {{ r.order.order_number }}
+                    <span aria-hidden="true">·</span>
+                    {{ r.object_name }}
+                </p>
+            </div>
+            <div class="flex gap-2"><button (click)="print()"
+                    class="rounded-lg border px-3 py-2 text-xs sm:text-sm">Print / PDF</button><button
+                    (click)="close.emit()"
+                    class="rounded-lg bg-slate-900 px-3 py-2 text-xs text-white sm:text-sm">Close</button></div>
+        </header>
+        <div class="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-3 sm:p-5">
+            <section class="grid gap-3 sm:grid-cols-3">
+                <div class="rounded-xl bg-slate-50 p-4">
+                    <div class="text-[10px] font-semibold uppercase text-slate-400">Dispatch</div>
+                    <b>{{dispatchLabel(r.delivery.dispatch_document_type)}}</b>
+                    <div class="font-mono text-xs text-slate-500">{{r.delivery.dispatch_document_number||'�'}}</div>
+                </div>
+                <div class="rounded-xl bg-slate-50 p-4">
+                    <div class="text-[10px] font-semibold uppercase text-slate-400">Physical receipt</div>
+                    <b>{{(r.delivery.physical_receipt_at||r.delivery.delivered_at)|date:'d MMM y, HH:mm'}}</b>
+                    <div class="text-xs text-slate-500">{{r.delivery.received_by||'�'}} � {{r.delivery.carrier||'�'}}
+                    </div>
+                </div>
+                <div class="rounded-xl bg-slate-50 p-4">
+                    <div class="flex justify-between">
+                        <div class="text-[10px] font-semibold uppercase text-slate-400">{{ackLabel()}}</div>
+                        @if (!ackEditing()) {
+                        <button type="button" (click)="startAck()"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1.5 text-[11px] font-semibold text-brand-700 transition hover:border-brand-300 hover:bg-brand-100">
+                            <span class="text-sm leading-none">
+                                {{ r.receipt_ack ? '?' : '+' }}
+                            </span>
+
+                            {{ r.receipt_ack ? 'Edit reference' : 'Add reference' }}
+                        </button>
+                        }
+                    </div>@if(r.receipt_ack;as a){<b class="font-mono text-sm">{{a.document_number}}</b>
+                    <div><span class="rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1"
+                            [class]="ackTone(a.status)">{{statusLabels[a.status]}}</span></div>
+                    <div class="mt-1 text-[11px] text-slate-400">{{providerLabels[a.provider]}}</div>}@else{<div
+                        class="mt-1 flex items-center gap-1.5">
+                        <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+                        <b class="text-amber-700">Reference not recorded</b>
+                    </div>
+                    <div class="text-xs text-slate-400">Should state: {{outcomeLabels[r.receipt_outcome]}}</div>}
+                </div>
+            </section>
+            @if(ackEditing()){<section class="rounded-2xl p-4 ring-1 ring-brand-200">
+                <div class="flex justify-between">
+                    <div>
+                        <h3 class="text-sm font-semibold">{{ackLabel()}} reference</h3>
+                        <p class="text-xs text-slate-400">{{legalHint()}}</p>
+                    </div><span
+                        class="h-fit rounded-full bg-slate-100 px-2 py-1 text-[10px]">{{outcomeLabels[r.receipt_outcome]}}</span>
+                </div>
+                <div class="mt-3 grid gap-2 sm:grid-cols-2"><input [(ngModel)]="ackNumber"
+                        placeholder="Document number *" class="h-10 rounded-lg border px-3 text-sm"><select
+                        [(ngModel)]="ackStatus" class="h-10 rounded-lg border px-3 text-sm">@for(s of statuses;track s){
+                        <option [value]="s">{{statusLabels[s]}}</option>}
+                    </select><select [(ngModel)]="ackProvider" class="h-10 rounded-lg border px-3 text-sm">@for(p of
+                        providers;track p){<option [value]="p">
+                            {{providerLabels[p]}}</option>}</select><input type="datetime-local" [(ngModel)]="ackSentAt"
+                        class="h-10 rounded-lg border px-3 text-sm"><input [(ngModel)]="ackExternalId"
+                        placeholder="External ID (optional)" class="h-10 rounded-lg border px-3 text-sm"><input
+                        [(ngModel)]="ackNote" placeholder="Note (optional)" class="h-10 rounded-lg border px-3 text-sm">
+                </div>
+                <div class="mt-3 flex justify-end gap-2"><button (click)="ackEditing.set(false)"
+                        class="rounded-lg border px-3 py-2 text-sm">Cancel</button><button (click)="saveAck()"
+                        [disabled]="!ackNumber.trim()||svc.savingAck()"
+                        class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">Save
+                        reference</button></div>
+            </section>}
+            <section class="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                <div class="rounded-xl border p-3"><span class="text-xs text-slate-400">Ordered</span><b
+                        class="block text-xl">{{totals().ordered}}</b></div>
+                <div class="rounded-xl border p-3"><span class="text-xs text-slate-400">Physical</span><b
+                        class="block text-xl">{{totals().physical}}</b></div>
+                <div class="rounded-xl border border-green-200 bg-green-50 p-3"><span class="text-xs text-green-600">To
+                        stock at receipt</span><b class="block text-xl text-green-700">{{totals().accepted}}</b></div>
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-3"><span
+                        class="text-xs text-amber-700">Held at receipt</span><b
+                        class="block text-xl text-amber-800">{{totals().held}}</b></div>
+                <div class="col-span-2 rounded-xl border border-violet-200 bg-violet-50 p-3 sm:col-span-1"><span
+                        class="text-xs text-violet-700">Returned now</span><b
+                        class="block text-xl text-violet-800">{{totals().returned}}</b></div>
+            </section>
+            @if(hasPostReceipt()) {
+            <section class="rounded-2xl bg-slate-950 p-4 text-white sm:p-5">
+                <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <div class="text-[10px] font-semibold uppercase tracking-wider text-brand-300">Post-receipt
+                            outcome</div>
+                        <h3 class="text-sm font-semibold">What happened to HELD goods afterwards</h3>
+                    </div>
+                    <div class="text-[11px] text-slate-400">Original receipt quantities above remain unchanged</div>
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div class="rounded-xl bg-white/5 p-3"><span class="text-[10px] uppercase text-slate-400">Accepted
+                            later</span><b class="mt-1 block text-xl text-green-300">+{{totals().acceptedLater}}</b>
+                    </div>
+                    <div class="rounded-xl bg-white/5 p-3"><span class="text-[10px] uppercase text-slate-400">Returned
+                            later</span><b class="mt-1 block text-xl text-violet-300">{{totals().returnedLater}}</b>
+                    </div>
+                    <div class="rounded-xl bg-white/5 p-3"><span class="text-[10px] uppercase text-slate-400">Still
+                            held</span><b class="mt-1 block text-xl text-amber-300">{{totals().stillHeld}}</b></div>
+                    <div class="rounded-xl bg-white/5 p-3"><span class="text-[10px] uppercase text-slate-400">Total to
+                            stock</span><b class="mt-1 block text-xl text-green-300">{{totals().totalStock}}</b></div>
+                </div>
+                @if(totals().disposed){<div class="mt-2 text-xs text-red-300">Disposed after receipt:
+                    {{totals().disposed}}</div>}
+            </section>
+            }
+            <section>
+                <div class="mb-2">
+                    <h3 class="text-sm font-semibold">Received items</h3>
+                    <p class="text-xs text-slate-400">Each line separates what arrived, what entered stock and what
+                        happened to the difference.</p>
+                </div>
+                <div class="space-y-2">@for(l of r.lines;track l.order_item_id;let i=$index){<article
+                        class="relative rounded-xl border bg-white p-3 pl-5 sm:p-4 sm:pl-6">
+                        <div class="absolute bottom-2 left-0 top-2 w-[3px] rounded-full bg-brand-300"></div><button
+                            type="button" (click)="toggle(l)" class="w-full text-left sm:cursor-default">
+                            <div class="flex items-start gap-3"><span
+                                    class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-brand-50 font-mono text-[10px] font-bold text-brand-700">{{lineNumber(i)}}</span>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div><b>{{l.product_name}}</b>
+                                            <div class="font-mono text-[11px] text-slate-400">{{l.sku}}</div>
+                                        </div><span class="rounded-full px-2 py-1 text-[10px] font-semibold ring-1"
+                                            [class]="l.resolution_status==='open'?'bg-amber-50 text-amber-700 ring-amber-200':l.resolution_status==='resolved'?'bg-green-50 text-green-700 ring-green-200':'bg-slate-50 text-slate-600 ring-slate-200'">{{l.resolution_status==='open'?'Open':l.resolution_status==='resolved'?'Resolved':'Exact'}}</span>
+                                    </div>
+                                    <div class="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-2 text-center">
+                                        <div>
+                                            <div class="text-[9px] uppercase text-slate-400">Ordered</div>
+                                            <b>{{l.ordered_qty}}</b>
+                                        </div>
+                                        <div>
+                                            <div class="text-[9px] uppercase text-slate-400">Physical</div>
+                                            <b>{{l.physical_qty}}</b>
+                                        </div>
+                                        <div>
+                                            <div class="text-[9px] uppercase text-slate-400">To stock</div><b
+                                                class="text-green-700">{{l.accepted_qty}}</b>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 text-xs text-slate-500">{{issueText(l)}}</div>
+                                </div>
+                            </div>
+                        </button>
+                        @if(isExpanded(l)||l.resolution_status==='open'){<div
+                            class="mt-3 space-y-2 border-t pt-3 sm:block">@if(l.short_qty){<div
+                                class="flex flex-col gap-2 rounded-lg bg-amber-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div><b class="text-sm text-amber-900">Short {{l.short_qty}}</b>
+                                    <div class="text-xs text-amber-700">Ordered units did not arrive.</div>
+                                </div>@if(l.resolution_status==='open'){<div class="flex gap-2"><button
+                                        (click)="resolve(l,'BACKORDER')"
+                                        class="rounded-lg bg-white px-3 py-2 text-xs font-semibold ring-1 ring-amber-200">Backorder</button><button
+                                        (click)="resolve(l,'CLOSE_SHORT')"
+                                        class="rounded-lg bg-white px-3 py-2 text-xs font-semibold ring-1 ring-amber-200">Close
+                                        short</button></div>}
+                            </div>}@if(l.quality_rejected_qty){<div class="rounded-lg bg-red-50 p-3"><b
+                                    class="text-sm text-red-900">{{qualityLabel(l)}} {{l.quality_rejected_qty}}</b>
+                                <div class="text-xs text-red-700">Arrived units were not accepted.</div>
+                            </div>}@if(l.immediate_return_qty){<div class="rounded-lg bg-violet-50 p-3"><b
+                                    class="text-sm text-violet-900">Returned with driver {{l.immediate_return_qty}}</b>
+                                <div class="text-xs text-violet-700">No custody remains on site.</div>
+                            </div>}@if(l.held_remaining_qty > 0){@if(held(l);as h){<div
+                                class="flex items-center justify-between rounded-lg bg-amber-50 p-3">
+                                <div><b class="text-sm text-amber-900">Held on site {{ l.held_remaining_qty }}</b>
+                                    <div class="text-xs text-amber-700">Physically separated and not sellable.</div>
+                                </div>@if(h.remaining_qty>0){<button (click)="openHeld(l)"
+                                    class="rounded-lg bg-white px-3 py-2 text-xs font-semibold ring-1 ring-amber-200">Manage
+                                    held goods</button>}
+                            </div>}@else{<div class="rounded-lg bg-red-50 p-3 text-xs text-red-700">Expected held-stock
+                                custody record is missing.</div>
+                            }}@if(hasLinePostReceipt(l)){
+                            <div class="rounded-xl bg-slate-950 p-3 text-white">
+                                <div class="text-[10px] font-semibold uppercase tracking-wide text-brand-300">
+                                    Post-receipt</div>
+                                <div class="mt-2 space-y-2">@for(d of l.held_dispositions;track d.id){<div
+                                        class="flex items-start justify-between gap-3 text-xs">
+                                        <div><b>{{dispositionLabel(d.type)}}</b>@if(d.dispatch_document_number){<div
+                                                class="font-mono text-[11px] text-slate-400">
+                                                {{d.dispatch_document_number}}</div>}@if(d.note){<div
+                                                class="text-[11px] text-slate-400">{{d.note}}</div>}</div><span
+                                            class="font-semibold tabular-nums">{{d.type==='ACCEPT'?'+':''}}{{d.quantity}}</span>
+                                    </div>}</div>
+                                <div class="mt-3 border-t border-white/10 pt-2 text-xs"
+                                    [class.text-green-300]="l.held_remaining_qty === 0"
+                                    [class.text-amber-300]="l.held_remaining_qty > 0">
+                                    {{
+                                    l.held_remaining_qty === 0
+                                    ? 'No goods remain held'
+                                    : l.held_remaining_qty + ' still held'
+                                    }}
+
+                                    <span aria-hidden="true">·</span>
+
+                                    Total to stock {{ l.total_stock_qty }}
+                                </div>
+                            </div>
+                            }@if(l.resolution_status==='open'&&l.quality_rejected_qty>0){<button (click)="openClaim(l)"
+                                class="rounded-lg border px-3 py-2 text-xs font-semibold">Supplier
+                                claim</button>}@if(l.resolution_status==='resolved'&&l.resolution_note){<div
+                                class="text-xs text-green-700">
+                                @if(l.resolution){Resolved: {{l.resolution}} · }@else{Resolved · }{{l.resolution_note}}
+                            </div>}
+                        </div>}
+                    </article>}</div>
+            </section>
+        </div>
+    </div>
+</div>}
+@if(claimSelection();as c){<app-supplier-claim-drawer [open]="true" [lineId]="c.lineId" [product]="c.product"
+    [issue]="c.issue" (close)="claimSelection.set(null)" (changed)="childChanged()" />}
+@if(heldSelection();as h){<app-held-stock-drawer [open]="true" [lineId]="h.lineId" [product]="h.product"
+    (close)="heldSelection.set(null)" (changed)="childChanged()" />}
+}

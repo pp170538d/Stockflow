@@ -98,11 +98,32 @@ export class RequestSplitComponent {
   }
 
   /** Every allocation has a supplier, a positive quantity and fits the pack rule. */
+  /** Every allocation has a supplier, cost, positive quantity and fits the pack rule. */
   lineReady(line: PlanLine): boolean {
-    if (!line.included) return true;
+    if (!line.included) {
+      return true;
+    }
+
+    if (
+      line.s.current_cost === null ||
+      line.s.current_cost === undefined ||
+      line.s.current_cost < 0
+    ) {
+      return false;
+    }
+
     const ids = line.allocations.map((a) => a.supplierId);
-    if (new Set(ids).size !== ids.length) return false;
-    return line.allocations.every((a) => !!a.supplierId && a.quantity > 0 && !this.packIssue(line, a));
+
+    if (new Set(ids).size !== ids.length) {
+      return false;
+    }
+
+    return line.allocations.every(
+      (a) =>
+        !!a.supplierId &&
+        a.quantity > 0 &&
+        !this.packIssue(line, a)
+    );
   }
 
   readonly readyCount = computed(() => this.lines().filter((l) => l.included && this.lineReady(l)).length);
@@ -247,14 +268,55 @@ export class RequestSplitComponent {
 
   readonly blockers = computed(() => {
     const msgs: string[] = [];
-    if (!this.included().length) msgs.push('Keep at least one line.');
-    for (const l of this.included()) {
-      if (l.allocations.some((a) => !a.supplierId)) msgs.push(`${l.s.product_name}: choose a supplier.`);
-      if (l.allocations.some((a) => !a.quantity || a.quantity <= 0)) msgs.push(`${l.s.product_name}: quantity must be above 0.`);
-      const ids = l.allocations.map((a) => a.supplierId).filter(Boolean);
-      if (new Set(ids).size !== ids.length) msgs.push(`${l.s.product_name}: the same supplier is used twice.`);
-      if (l.allocations.some((a) => this.packIssue(l, a))) msgs.push(`${l.s.product_name}: quantity does not fit the supplier's pack rule.`);
+
+    if (!this.included().length) {
+      msgs.push('Keep at least one line.');
     }
+
+    for (const l of this.included()) {
+      if (
+        l.s.current_cost === null ||
+        l.s.current_cost === undefined ||
+        l.s.current_cost < 0
+      ) {
+        msgs.push(`${l.s.product_name}: enter a unit cost.`);
+      }
+
+      if (l.allocations.some((a) => !a.supplierId)) {
+        msgs.push(`${l.s.product_name}: choose a supplier.`);
+      }
+
+      if (
+        l.allocations.some(
+          (a) => !a.quantity || a.quantity <= 0
+        )
+      ) {
+        msgs.push(
+          `${l.s.product_name}: quantity must be above 0.`
+        );
+      }
+
+      const ids = l.allocations
+        .map((a) => a.supplierId)
+        .filter(Boolean);
+
+      if (new Set(ids).size !== ids.length) {
+        msgs.push(
+          `${l.s.product_name}: the same supplier is used twice.`
+        );
+      }
+
+      if (
+        l.allocations.some((a) =>
+          this.packIssue(l, a)
+        )
+      ) {
+        msgs.push(
+          `${l.s.product_name}: quantity does not fit the supplier's pack rule.`
+        );
+      }
+    }
+
     return msgs;
   });
 
@@ -320,6 +382,7 @@ export class RequestSplitComponent {
         order_item_id: l.s.order_item_id,
         supplier_id: a.supplierId as string,
         quantity: a.quantity,
+        unit_cost: Number(l.s.current_cost),
       }))
     );
 

@@ -42,8 +42,21 @@ export interface OrderFulfillment {
 }
 
 export interface DeliveryLineInput {
-  order_item_id: string; physical_qty: number; accepted_qty: number;
-  reason_code: string | null; reason: string | null;
+  order_item_id: string;
+  physical_qty: number;
+  accepted_qty: number;
+
+  held_qty: number;
+  immediate_return_qty: number;
+
+  rejection_reason_code:
+  | 'DAMAGED'
+  | 'WRONG_ITEM'
+  | 'OTHER'
+  | null;
+
+  reason_code: string | null;
+  reason: string | null;
 }
 
 export interface DeliveryMetaInput {
@@ -54,7 +67,7 @@ export interface DeliveryMetaInput {
 }
 
 export type ResolutionStatus = 'open' | 'resolved';
-export type Resolution = 'BACKORDER' | 'CLOSE_SHORT' | 'CLAIM' | 'ACCEPT' | 'RETURN_TO_SUPPLIER';
+export type Resolution = 'BACKORDER' | 'CLOSE_SHORT' | 'CLAIM' | 'ACCEPT' | 'RETURN_TO_SUPPLIER' | 'RETURN_IMMEDIATE';
 
 export interface ReceiptParty {
   name?: string | null; address?: string | null; city?: string | null; postal_code?: string | null;
@@ -62,9 +75,21 @@ export interface ReceiptParty {
   email?: string | null; order_email?: string | null; phone?: string | null;
 }
 
+export interface HeldDispositionHistory {
+  id: string; type: 'ACCEPT' | 'RETURN_IMMEDIATE' | 'RETURN_LATER' | 'DISPOSED'; quantity: number;
+  dispatch_provider?: string | null; dispatch_document_number?: string | null; dispatch_external_id?: string | null;
+  note?: string | null; disposed_at: string;
+}
 export interface ReceiptLine {
   line_id: string | null; order_item_id: string; product_id: string; sku: string; product_name: string;
   ordered_qty: number; physical_qty: number; accepted_qty: number; rejected_qty: number;
+  held_qty: number; held_accepted_qty: number; immediate_return_qty: number; short_qty: number; over_qty: number; quality_rejected_qty: number;
+  accepted_later_qty: number; total_stock_qty: number;
+  held_original_qty: number; held_remaining_qty: number; held_status: 'HELD' | 'PARTIALLY_DISPOSED' | 'CLOSED' | null;
+  disposition_accepted_qty: number; returned_later_qty: number; disposed_qty: number;
+  held_dispositions: HeldDispositionHistory[];
+  variance_reason_code: 'SUPPLIER_SHORT' | 'SUPPLIER_OVER' | null;
+  rejection_reason_code: 'DAMAGED' | 'WRONG_ITEM' | 'OTHER' | null;
   received_qty: number; variance: number; shortage_qty: number;
   unit_cost: number | null; ordered_value: number | null; received_value: number | null; variance_value: number | null;
   reason_code: string | null; reason: string | null;

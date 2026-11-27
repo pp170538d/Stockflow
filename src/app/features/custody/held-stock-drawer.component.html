@@ -1,1 +1,60 @@
-@if(open()){<div class="fixed inset-0 z-[80] bg-slate-950/20" (click)="close.emit()"></div><aside class="fixed inset-y-0 right-0 z-[90] flex w-full max-w-[420px] flex-col bg-white shadow-2xl ring-1 ring-slate-200"><header class="flex h-14 items-center justify-between border-b px-5"><h2 class="text-sm font-semibold">Held goods</h2><button (click)="close.emit()" class="text-2xl text-slate-400">×</button></header><div class="flex-1 overflow-y-auto p-4">@if(loading()){<div class="h-28 animate-pulse rounded-xl bg-slate-100"></div>}@else if(held();as h){<div class="space-y-4"><section class="rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200"><div class="text-[10px] font-semibold uppercase text-amber-700">Non-usable stock</div><div class="mt-1 font-semibold">{{product()}}</div><div class="mt-2 text-2xl font-semibold tabular-nums">{{h.remaining_qty}} <span class="text-sm font-normal">held</span></div><p class="mt-1 text-xs text-amber-700">Physically on site, excluded from saleable inventory.</p></section>@if(h.remaining_qty>0){<label class="block text-xs font-medium text-slate-600">What happened to the goods?<select [(ngModel)]="type" class="mt-1 h-10 w-full rounded-lg border px-3 text-sm"><option value="RETURN_IMMEDIATE">Returned immediately with delivery vehicle</option><option value="RETURN_LATER">Returned later / separate shipment</option><option value="DISPOSED">Authorized disposal</option></select></label><label class="block text-xs font-medium text-slate-600">Quantity<input type="number" min="1" [max]="h.remaining_qty" [(ngModel)]="qty" class="mt-1 h-10 w-full rounded-lg border px-3 text-sm"></label>@if(type==='RETURN_LATER'){<select [(ngModel)]="provider" class="h-10 w-full rounded-lg border px-3 text-sm"><option value="MANUAL">Manual / external system</option><option value="SEO_SERBIA">SEO Serbia</option><option value="TERON">Teron</option><option value="SAP">SAP</option><option value="BUSINESS_CENTRAL">Business Central</option><option value="OTHER">Other</option></select><input [(ngModel)]="documentNo" placeholder="Outbound / dispatch document number *" class="h-10 w-full rounded-lg border px-3 text-sm"><input [(ngModel)]="externalId" placeholder="External ID (optional)" class="h-10 w-full rounded-lg border px-3 text-sm">}@if(type==='DISPOSED'){<div class="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">Disposal requires an explicit reason. No saleable-stock movement is created because rejected goods never entered saleable stock.</div>}<textarea [(ngModel)]="note" rows="3" [placeholder]="type==='DISPOSED'?'Required disposal reason':'Note (optional)'" class="w-full rounded-lg border p-3 text-sm"></textarea><button (click)="submit()" [disabled]="saving()||qty<1||qty>h.remaining_qty||(type==='RETURN_LATER'&&!documentNo.trim())||(type==='DISPOSED'&&!note.trim())" class="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40">{{saving()?'Saving…':'Confirm disposition'}}</button>}@else{<div class="rounded-xl bg-green-50 p-4 text-sm text-green-800 ring-1 ring-green-200">No goods remain physically held.</div>}</div>}@else{<div class="text-sm text-slate-500">No held quantity exists for this receipt line.</div>}</div></aside>}
+@if (open()) {
+<div class="fixed inset-0 z-[80] bg-slate-950/25 backdrop-blur-[1px]" (click)="close.emit()"></div>
+<aside class="fixed inset-y-0 right-0 z-[90] flex w-full max-w-[440px] flex-col bg-white shadow-2xl ring-1 ring-slate-200">
+  <header class="flex h-16 shrink-0 items-center justify-between border-b px-5">
+    <div><h2 class="text-sm font-semibold text-slate-900">Held goods</h2><p class="text-[11px] text-slate-400">Resolve physically separated stock</p></div>
+    <button type="button" (click)="close.emit()" aria-label="Close" class="grid h-9 w-9 place-items-center rounded-lg text-2xl text-slate-400 hover:bg-slate-100">×</button>
+  </header>
+  <div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+    @if (loading()) { <div class="h-32 animate-pulse rounded-2xl bg-slate-100"></div> }
+    @else if (held(); as h) {
+    <div class="space-y-5">
+      <section class="rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200">
+        <div class="text-[10px] font-semibold uppercase tracking-wide text-amber-700">Non-usable stock</div>
+        <div class="mt-1 font-semibold text-slate-900">{{ product() }}</div>
+        <div class="mt-3 flex items-end justify-between"><div class="text-3xl font-semibold tabular-nums text-slate-900">{{ h.remaining_qty }} <span class="text-sm font-normal text-slate-600">held</span></div><div class="text-xs text-amber-700">of {{ h.quantity }} originally held</div></div>
+        <p class="mt-1 text-xs text-amber-700">Physically on site, excluded from saleable inventory.</p>
+      </section>
+
+      @if (h.remaining_qty > 0) {
+      <section>
+        <div class="mb-2 text-xs font-semibold text-slate-700">What happens to these goods?</div>
+        <div class="grid gap-2">
+          <button type="button" (click)="setType('ACCEPT')" class="rounded-xl p-3 text-left ring-1 transition" [class]="type==='ACCEPT'?'bg-green-50 ring-green-300':'bg-white ring-slate-200 hover:bg-slate-50'">
+            <div class="text-sm font-semibold" [class.text-green-800]="type==='ACCEPT'">Accept into usable stock</div><div class="mt-0.5 text-xs text-slate-500">Goods become saleable and create a positive stock movement.</div>
+          </button>
+          <button type="button" (click)="setType('RETURN_LATER')" class="rounded-xl p-3 text-left ring-1 transition" [class]="type==='RETURN_LATER'?'bg-blue-50 ring-blue-300':'bg-white ring-slate-200 hover:bg-slate-50'">
+            <div class="text-sm font-semibold" [class.text-blue-800]="type==='RETURN_LATER'">Return later / separate shipment</div><div class="mt-0.5 text-xs text-slate-500">Creates an outbound supplier-return document reference.</div>
+          </button>
+          <button type="button" (click)="setType('DISPOSED')" class="rounded-xl p-3 text-left ring-1 transition" [class]="type==='DISPOSED'?'bg-red-50 ring-red-300':'bg-white ring-slate-200 hover:bg-slate-50'">
+            <div class="text-sm font-semibold" [class.text-red-800]="type==='DISPOSED'">Authorized disposal</div><div class="mt-0.5 text-xs text-slate-500">Goods are removed from custody and never enter saleable stock.</div>
+          </button>
+        </div>
+      </section>
+
+      <section class="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+        <div class="flex items-center justify-between"><label class="text-xs font-semibold text-slate-700">Quantity</label><span class="text-[11px] text-slate-400">{{ qty }} of {{ h.remaining_qty }}</span></div>
+        <div class="mt-2 grid grid-cols-[44px_1fr_44px] items-center gap-2">
+          <button type="button" (click)="setQty(qty-1)" [disabled]="qty<=1" class="h-11 rounded-xl bg-white text-lg ring-1 ring-slate-200 disabled:opacity-30">−</button>
+          <input type="number" min="1" [max]="h.remaining_qty" [ngModel]="qty" (ngModelChange)="setQty($event)" class="h-11 rounded-xl border border-slate-300 bg-white px-3 text-center text-base font-semibold tabular-nums outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10">
+          <button type="button" (click)="setQty(qty+1)" [disabled]="qty>=h.remaining_qty" class="h-11 rounded-xl bg-white text-lg ring-1 ring-slate-200 disabled:opacity-30">+</button>
+        </div>
+      </section>
+
+      @if (type === 'RETURN_LATER') {
+      <section class="space-y-3 rounded-2xl bg-blue-50/60 p-4 ring-1 ring-blue-200">
+        <label class="block text-xs font-medium text-slate-600">Dispatch provider<select [(ngModel)]="provider" class="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"><option value="MANUAL">Manual / external system</option><option value="SEO_SERBIA">SEO Serbia</option><option value="TERON">Teron</option><option value="SAP">SAP</option><option value="BUSINESS_CENTRAL">Business Central</option><option value="OTHER">Other</option></select></label>
+        <label class="block text-xs font-medium text-slate-600">Dispatch document number *<input [(ngModel)]="documentNo" placeholder="e.g. RET-2026-001" class="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"></label>
+        <label class="block text-xs font-medium text-slate-600">External ID<input [(ngModel)]="externalId" placeholder="Optional connector reference" class="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"></label>
+      </section>
+      }
+
+      @if (type === 'DISPOSED') { <div class="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-red-200">A disposal reason is required. No saleable-stock movement is created.</div> }
+      <label class="block text-xs font-medium text-slate-600">{{ type === 'DISPOSED' ? 'Disposal reason *' : 'Note' }}<textarea [(ngModel)]="note" rows="3" [placeholder]="type==='DISPOSED'?'Explain why disposal is authorized':'Optional operational note'" class="mt-1 w-full resize-none rounded-xl border border-slate-300 p-3 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10"></textarea></label>
+      <button type="button" (click)="submit()" [disabled]="saving() || qty<1 || qty>h.remaining_qty || (type==='RETURN_LATER'&&!documentNo.trim()) || (type==='DISPOSED'&&!note.trim())" class="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40">{{ saving() ? 'Saving…' : actionLabel() }}</button>
+      } @else { <div class="rounded-xl bg-green-50 p-4 text-sm text-green-800 ring-1 ring-green-200">No goods remain physically held.</div> }
+    </div>
+    } @else { <div class="text-sm text-slate-500">No held quantity exists for this receipt line.</div> }
+  </div>
+</aside>
+}
