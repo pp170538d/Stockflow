@@ -1,8 +1,8 @@
+
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
-import { BadgeComponent } from '../../shared/ui/badge.component';
 import { ToastService } from '../../shared/ui/toast.service';
 import { ConfirmService } from '../../shared/ui/confirm.service';
 import {
@@ -26,7 +26,7 @@ const QUIET_MIN = 5;
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DatePipe, RouterLink, BadgeComponent, InventoryPerformanceComponent],
+  imports: [DatePipe, DecimalPipe, RouterLink, InventoryPerformanceComponent],
   templateUrl: './dashboard.component.html',
   styles: [`
     @keyframes rowIn { from { opacity: 0; transform: translateY(-6px); background: #eef2ff; }
@@ -359,3 +359,5 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   abs(n: number): number { return Math.abs(n); }
 }
+
+

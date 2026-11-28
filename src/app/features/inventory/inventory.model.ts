@@ -1,3 +1,5 @@
+
+
 // =====================================================================
 // Inventory domain types — semantic ledger edition
 // =====================================================================
@@ -47,6 +49,10 @@ export interface InventoryItem extends InventoryRow {
   urgency: Urgency;
   /** Too few sales to trust the forecast. */
   lowData: boolean;
+  incomingQty: number; projectedDays: number | null; rawGapQty: number;
+  orderablePacks: number; orderableQty: number;
+  coverageState: 'urgent'|'needs_order'|'top_up'|'covered'|'no_pace';
+  workflowState: 'none'|'requested'|'on_the_way';
   last: { event: MovementEvent; quantity: number; created_at: string } | null;
 }
 

@@ -1,3 +1,4 @@
+
 @if (loading() && !data()) {
   <section class="grid grid-cols-2 gap-3 lg:grid-cols-4">
     @for (i of [1,2,3,4]; track i) {
@@ -83,8 +84,6 @@
       <div class="bg-emerald-500" [style.width.%]="classPct('normal')"></div>
       <div class="bg-amber-400" [style.width.%]="classPct('slow')"></div>
       <div class="bg-violet-500" [style.width.%]="classPct('dead')"></div>
-      <div class="bg-red-500" [style.width.%]="classPct('stockout')"></div>
-      <div class="bg-slate-300" [style.width.%]="classPct('idle')"></div>
     </div>
 
     <div class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs">
@@ -92,9 +91,7 @@
         {k:'fast',l:'Fast',dot:'bg-sky-500'},
         {k:'normal',l:'Normal',dot:'bg-emerald-500'},
         {k:'slow',l:'Slow',dot:'bg-amber-400'},
-        {k:'dead',l:'Dead',dot:'bg-violet-500'},
-        {k:'stockout',l:'Stockout',dot:'bg-red-500'},
-        {k:'idle',l:'Idle',dot:'bg-slate-300'}
+        {k:'dead',l:'Dead',dot:'bg-violet-500'}
       ]; track c.k) {
         <span class="flex items-center gap-1.5 text-slate-500">
           <span class="h-2 w-2 rounded-full" [class]="c.dot"></span>
@@ -109,12 +106,12 @@
     <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
       <div>
         <div class="flex items-center gap-2">
-          <h2 class="text-sm font-semibold text-slate-900">Needs attention</h2>
+          <h2 class="text-sm font-semibold text-slate-900">Inventory decisions</h2>
           @if (attentionCount()) {
-            <span class="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">{{ attentionCount() }} open</span>
+            <span class="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">{{ attentionCount() }} insights</span>
           }
         </div>
-        <p class="mt-0.5 text-xs text-slate-400">Only items that still need a decision or action</p>
+        <p class="mt-0.5 text-xs text-slate-400">Optional replenishment and slow-moving stock worth reviewing</p>
       </div>
       <a routerLink="/reports" [queryParams]="{ tab: 'performance', days: p.days }"
         class="text-xs font-semibold text-brand-600 hover:text-brand-700">Performance report →</a>
@@ -122,8 +119,8 @@
 
     @if (!attentionCount()) {
       <div class="px-5 py-8 text-center">
-        <div class="text-sm font-semibold text-slate-900">No open actions</div>
-        <div class="mt-1 text-xs text-slate-500">Replenishment is covered and no additional inventory action is required.</div>
+        <div class="text-sm font-semibold text-slate-900">No inventory decisions</div>
+        <div class="mt-1 text-xs text-slate-500">Incoming stock covers current needs and no slow-moving stock requires review.</div>
       </div>
     } @else {
       <div class="divide-y divide-slate-100">
@@ -138,15 +135,15 @@
               <div class="text-right"><div class="text-xs text-slate-400">On hand</div><div class="text-sm font-semibold tabular-nums text-slate-900">{{ r.on_hand }}</div></div>
               <a routerLink="/orders/new" [queryParams]="orderParams(r)"
                 class="min-w-[112px] rounded-lg bg-slate-900 px-3 py-2 text-center text-xs font-semibold text-white hover:bg-slate-800">
-                {{ isAdmin() ? (r.status === 'top_up' ? 'Order more' : 'Create order') : (r.status === 'top_up' ? 'Request more' : 'Request stock') }}@if (r.suggested_qty) { · {{ r.suggested_qty }} }
+                @if(r.status === 'top_up') { Add {{ r.orderable_packs }} pack{{ r.orderable_packs === 1 ? '' : 's' }} · {{ r.orderable_qty }} } @else { {{ isAdmin() ? 'Create order' : 'Request stock' }}@if (r.suggested_qty) { · {{ r.suggested_qty }} } }
               </a>
             </div>
           </div>
         }
 
-        @for (a of visiblePerformanceActions(); track a.object_id + ':' + a.product_id + ':' + a.class) {
+        @for (a of visiblePerformanceActions(); track a.object_id + ':' + a.product_id + ':' + a.action_reason) {
           <div class="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center">
-            <span class="w-fit shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1" [class]="tone(a.class)">{{ label(a.class) }}</span>
+            <span class="w-fit shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1" [class]="a.currently_out ? 'bg-red-50 text-red-700 ring-red-200' : tone(a.movement_class)">{{ a.currently_out ? 'Currently out' : label(a.movement_class) }}</span>
             <div class="min-w-0 flex-1">
               <div class="truncate text-sm font-semibold text-slate-900">{{ a.product_name }}</div>
               <div class="mt-0.5 text-xs text-slate-400">{{ a.object_name }} · {{ a.sku }} · {{ actionText(a) }}</div>
@@ -166,11 +163,11 @@
     <div class="flex items-center justify-between">
       <div>
         <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Replenishment in progress
+          Relevant replenishment in progress
         </div>
 
         <div class="mt-0.5 text-[11px] text-slate-400">
-          Requests wait for procurement; approved stock is on the way. Requests do not count as incoming stock.
+          Only incoming stock relevant to a low or watched shelf is shown here.
         </div>
       </div>
 
@@ -208,3 +205,5 @@
     }
   </section>
 }
+
+

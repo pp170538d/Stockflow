@@ -1,3 +1,5 @@
+
+
 import { Injectable, computed, signal } from '@angular/core';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../../core/supabase/supabase.client';
@@ -21,6 +23,18 @@ export interface VarianceLine {
   ordered_qty: number; delivered_qty: number; variance: number;
   reason: string | null; delivered_at: string;
 }
+
+export interface ReceiptAccuracySummary {
+  deliveries:number; lines:number; exact_lines:number; short_lines:number; over_lines:number; quality_lines:number;
+  short_units:number; over_units:number; quality_rejected_units:number; accuracy_pct:number|null;
+}
+export interface ReceiptIssueLine {
+  delivery_id:string; order_id:string; object_name:string; product_name:string; ordered_qty:number; physical_qty:number; accepted_qty:number;
+  short_qty:number; over_qty:number; quality_rejected_qty:number; held_qty:number; immediate_return_qty:number;
+  variance_reason_code:string|null; rejection_reason_code:string|null; delivered_at:string;
+}
+export interface AccuracyV2 { deliveries:ReceiptAccuracySummary; recent_delivery_issues:ReceiptIssueLine[]; counts:{variance:number;accuracy_pct:number|null}; }
+
 export interface FlowEvents { delivery: number; sale: number; count: number; other: number; }
 export interface FlowDay {
   day: string; in: number; out: number; closing: number;
@@ -57,6 +71,7 @@ export interface DashboardSummary {
  * in_transit   approved purchase orders cover the need
  */
 export type ReplenishmentStatus = 'needs_order' | 'top_up' | 'requested' | 'in_transit';
+export type CoverageState = 'urgent' | 'needs_order' | 'top_up' | 'covered' | 'no_pace';
 
 export interface ReplenishmentRow {
   object_id: string;
@@ -77,6 +92,12 @@ export interface ReplenishmentRow {
   open_order_status: 'PENDING' | 'APPROVED' | null;
   status: ReplenishmentStatus;
   suggested_qty: number | null;
+  shelf_days: number | null; shelf_state: 'out'|'low'|'watch'|'healthy'|'no_pace';
+  workflow_state: 'none'|'requested'|'on_the_way';
+  projected_qty: number; projected_days: number | null; target_days: number; raw_gap_qty: number;
+  supplier_id: string | null; supplier_name: string | null; lead_time_days: number | null;
+  pack_size: number; minimum_packs: number; pack_rule_source: string;
+  orderable_packs: number; orderable_qty: number; coverage_state: CoverageState;
 }
 
 export interface BriefingPart {
@@ -100,6 +121,7 @@ export class DashboardService {
   readonly loading = signal(false);
   readonly refreshing = signal(false);
   readonly error = signal<string | null>(null);
+  readonly accuracyV2 = signal<AccuracyV2 | null>(null);
   readonly freshIds = signal<Set<string>>(new Set());
   readonly live = signal(false);
   readonly days = signal<RangeDays>(30);
@@ -160,18 +182,20 @@ export class DashboardService {
     if (!d) return [];
 
     const parts: BriefingPart[] = [];
-    const toOrder = this.needsOrder().length;
+    const toOrder = this.replenishment().filter(r => r.coverage_state === 'urgent' || r.coverage_state === 'needs_order').length;
+    const topUps = this.replenishment().filter(r => r.coverage_state === 'top_up').length;
     const requests = this.pendingCount();
     const onTheWay = d.totals.approved;
     const deliveryIssues = this.deliveryExceptionCount();
 
     if (toOrder > 0) {
       parts.push({
-        text: `${toOrder} ${toOrder === 1 ? 'product needs' : 'products need'} an order`,
+        text: `${toOrder} ${toOrder === 1 ? 'product is' : 'products are'} at urgent stock risk`,
         anchor: 'needs-attention',
         tone: 'danger',
       });
     }
+
 
     if (requests > 0) {
       const pending = this.pendingOrders();
@@ -197,7 +221,7 @@ export class DashboardService {
 
     if (deliveryIssues > 0) {
       parts.push({
-        text: `${deliveryIssues} ${deliveryIssues === 1 ? 'delivery difference needs' : 'delivery differences need'} resolution`,
+        text: `${deliveryIssues} ${deliveryIssues === 1 ? 'delivery line needs' : 'delivery lines need'} resolution`,
         link: '/orders',
         queryParams: { exceptions: '1' },
         tone: 'warning',
@@ -222,14 +246,13 @@ export class DashboardService {
     if (!this.data()) this.loading.set(true);
     this.error.set(null);
 
-    const [summary, queue, deliveryExceptions] = await Promise.all([
+    const [summary, queue, deliveryExceptions, accuracy] = await Promise.all([
       supabase.rpc('dashboard_summary', { p_object_id: objectId, p_days: days }),
-      supabase.rpc('replenishment_queue', { p_object_id: objectId }),
+      supabase.rpc('replenishment_queue_v2', { p_object_id: objectId }),
       supabase.rpc('delivery_exceptions', {
-        p_status: 'open',
-        p_object_id: objectId,
-        p_delivery_id: null,
+        p_status: 'open', p_object_id: objectId, p_delivery_id: null,
       }),
+      supabase.rpc('stock_accuracy_report_v2', { p_days: 7, p_object_id: objectId }),
     ]);
 
     if (summary.error) this.error.set(summary.error.message);
@@ -237,11 +260,22 @@ export class DashboardService {
 
     // The queue is an enhancement: if it fails the dashboard still works.
     if (queue.error) {
-      console.error('replenishment_queue', queue.error);
+      console.error('replenishment_queue_v2', queue.error);
       this.replenishment.set([]);
     } else {
-      this.replenishment.set((queue.data ?? []) as ReplenishmentRow[]);
+      this.replenishment.set(((queue.data ?? []) as any[]).map((r) => ({
+        ...r,
+        days_left: r.shelf_days,
+        urgency: r.shelf_state === 'out' ? 'out' : r.shelf_state === 'low' ? 'critical' : 'warning',
+        status: r.workflow_state === 'requested' ? 'requested'
+          : r.workflow_state === 'on_the_way' && r.coverage_state === 'covered' ? 'in_transit'
+          : r.coverage_state === 'top_up' ? 'top_up' : 'needs_order',
+        suggested_qty: r.orderable_qty,
+      })) as ReplenishmentRow[]);
     }
+
+    if (accuracy.error) console.error('stock_accuracy_report_v2', accuracy.error);
+    else this.accuracyV2.set(accuracy.data as AccuracyV2);
 
     if (deliveryExceptions.error) {
       console.error('delivery_exceptions', deliveryExceptions.error);
@@ -316,3 +350,8 @@ export class DashboardService {
     }, 400);
   }
 }
+
+
+
+
+

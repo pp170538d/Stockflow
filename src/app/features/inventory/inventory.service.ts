@@ -1,3 +1,5 @@
+
+
 import { Injectable, computed, signal } from '@angular/core';
 import { supabase } from '../../core/supabase/supabase.client';
 import { runway } from '../../core/stock/runway';
@@ -74,7 +76,7 @@ export class InventoryService {
 
     const since = windowStart();
 
-    const [inv, mov] = await Promise.all([
+    const [inv, mov, plans] = await Promise.all([
       supabase
         .from('inventory')
         .select('*, product:products ( name, sku, barcode, category )')
@@ -87,6 +89,7 @@ export class InventoryService {
         .order('occurred_at', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(5000),
+      supabase.rpc('replenishment_queue_v2', { p_object_id: objectId }),
     ]);
 
     if (inv.error) {
@@ -99,7 +102,20 @@ export class InventoryService {
     const movs = mov.error ? [] : ((mov.data ?? []) as WindowMovement[]);
 
     this.rows.set(rows);
-    this.items.set(buildItems(rows, movs, since));
+    const planMap = new Map<string, any>();
+    for (const plan of (plans.data ?? []) as any[]) planMap.set(plan.product_id, plan);
+    this.items.set(buildItems(rows, movs, since).map((item) => {
+      const p = planMap.get(item.product_id);
+      return { ...item,
+        incomingQty: Number(p?.incoming_qty ?? 0),
+        projectedDays: p?.projected_days == null ? null : Number(p.projected_days),
+        rawGapQty: Number(p?.raw_gap_qty ?? 0),
+        orderablePacks: Number(p?.orderable_packs ?? 0),
+        orderableQty: Number(p?.orderable_qty ?? 0),
+        coverageState: p?.coverage_state ?? 'covered',
+        workflowState: p?.workflow_state ?? 'none',
+      };
+    }));
     this.loading.set(false);
   }
 
@@ -320,6 +336,9 @@ function buildItems(rows: InventoryRow[], movs: WindowMovement[], since: Date): 
       daysLeft: rw.daysLeft,
       urgency: rw.urgency,
       lowData: rw.lowData,
+      incomingQty: 0, projectedDays: null, rawGapQty: 0,
+      orderablePacks: 0, orderableQty: 0,
+      coverageState: 'covered', workflowState: 'none',
       last: top ? { event: top.event, quantity: top.quantity, created_at: top.occurred_at } : null,
     };
   });

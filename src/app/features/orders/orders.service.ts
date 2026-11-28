@@ -15,10 +15,10 @@ export interface OrdersQuery {
 }
 export interface CreatedOrder { id: string; orderNumber: string; }
 const BLOCKED = 'This action is disabled in the demo account.';
-const SELECT = `id,order_number,object_id,supplier_id,status,comment,created_by,created_at,approved_at,approved_by,company_snapshot,supplier_snapshot,delivery_snapshot,prepared_by_snapshot,object:objects(name),supplier:suppliers(id,name,order_email,active),order_items(id,order_id,product_id,quantity,unit_cost,product:products(name,sku))`;
+const SELECT = `id,order_number,object_id,supplier_id,status,comment,created_by,created_at,approved_at,approved_by,cancel_reason_code,cancel_note,cancelled_at,cancelled_by,company_snapshot,supplier_snapshot,delivery_snapshot,prepared_by_snapshot,object:objects(name),supplier:suppliers(id,name,order_email,active),order_items(id,order_id,product_id,quantity,unit_cost,product:products(name,sku))`;
 @Injectable({ providedIn: 'root' })
 export class OrdersService {
-    private readonly createKey = new IdempotencyKey(); readonly orders = signal<Order[]>([]); readonly loading = signal(false); readonly error = signal<string | null>(null); readonly page = signal(1); readonly pageSize = signal(10); readonly total = signal(0); readonly totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize())));
+    private readonly createKey = new IdempotencyKey(); private readonly cancelKey = new IdempotencyKey(); readonly orders = signal<Order[]>([]); readonly loading = signal(false); readonly error = signal<string | null>(null); readonly page = signal(1); readonly pageSize = signal(10); readonly total = signal(0); readonly totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize())));
     async load(params: Partial<OrdersQuery> = {}): Promise<void> {
         const page = params.page ?? this.page(), pageSize = params.pageSize ?? this.pageSize(), status = params.status ?? '', objectId = params.objectId ?? '', search = (params.search ?? '').trim(), exceptionsOnly = params.exceptionsOnly ?? false, workQueue = params.workQueue ?? false;
         const receivedThisMonth =
@@ -184,6 +184,12 @@ export class OrdersService {
     }
     private fail(m: string) { this.error.set(m); this.orders.set([]); this.total.set(0); this.loading.set(false); }
     async create(objectId: string, supplierId: string | null, comment: string | null, lines: NewOrderLine[]): Promise<{ order: CreatedOrder | null; error: string | null }> { const items = lines.map(l => ({ product_id: l.product_id, quantity: l.quantity })); const { data: orderId, error } = await supabase.rpc('create_order_with_items', { p_object_id: objectId, p_comment: comment, p_items: items, p_supplier_id: supplierId, p_idempotency_key: this.createKey.for({ objectId, supplierId, comment, items }) }); if (error) return { order: null, error: friendly(error.message) }; this.createKey.done(); if (!orderId) return { order: null, error: 'The order was created but its ID was not returned.' }; const { data: created, error: readError } = await supabase.from('orders').select('id,order_number').eq('id', orderId).single(); if (readError) return { order: null, error: friendly(readError.message) }; return { order: { id: created.id, orderNumber: created.order_number }, error: null }; }
+    async cancelOrder(orderId:string,reasonCode:string,note:string):Promise<{error:unknown|null}>{
+      const payload={orderId,reasonCode,note};
+      const {error}=await supabase.rpc('cancel_order',{p_order_id:orderId,p_reason_code:reasonCode,p_note:note||null,p_idempotency_key:this.cancelKey.for(payload)});
+      if(!error)this.cancelKey.done();
+      return {error};
+    }
     async setStatus(orderId: string, status: OrderStatus): Promise<string | null> { const { data, error } = await supabase.from('orders').update({ status }).eq('id', orderId).select('id'); if (error) return friendly(error.message); if (!data || !data.length) return BLOCKED; return null; }
     async next(params: Omit<Partial<OrdersQuery>, 'page'> = {}): Promise<void> { if (this.page() >= this.totalPages()) return; await this.load({ ...params, page: this.page() + 1 }); }
     async previous(params: Omit<Partial<OrdersQuery>, 'page'> = {}): Promise<void> { if (this.page() <= 1) return; await this.load({ ...params, page: this.page() - 1 }); }

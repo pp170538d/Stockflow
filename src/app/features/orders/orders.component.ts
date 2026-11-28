@@ -24,6 +24,8 @@ import { DeliverySummaryComponent } from '../deliveries/delivery-summary.compone
 
 import { ToastService } from '../../shared/ui/toast.service';
 import { ConfirmService } from '../../shared/ui/confirm.service';
+import { OrderCancelDialogComponent, CancelReason } from './order-cancel-dialog.component';
+import { AppError, mapAppError } from '../../core/errors/app-error';
 
 type StepState = 'done' | 'current' | 'todo' | 'rejected';
 
@@ -45,6 +47,7 @@ interface StatusMeta {
     EmptyStateComponent,
     DeliverySummaryComponent,
     LocationPickerComponent,
+    OrderCancelDialogComponent,
   ],
   templateUrl: './orders.component.html',
   styles: [`
@@ -140,11 +143,7 @@ export class OrdersComponent implements OnInit {
   private confirm = inject(ConfirmService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-
-  // =========================================================
   // Filters
-  // =========================================================
-
   readonly objects = signal<BusinessObject[]>([]);
 
   readonly selectedObjectId = signal<string>('');
@@ -171,6 +170,7 @@ export class OrdersComponent implements OnInit {
     'APPROVED',
     'DELIVERED',
     'REJECTED',
+    'CANCELLED',
   ];
 
   /**
@@ -189,6 +189,7 @@ export class OrdersComponent implements OnInit {
     APPROVED: 0,
     DELIVERED: 0,
     REJECTED: 0,
+    CANCELLED: 0,
   });
 
   readonly countsTotal = computed(() =>
@@ -225,27 +226,18 @@ export class OrdersComponent implements OnInit {
   >({});
 
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
-
-  // =========================================================
   // Confirm delivery drawer
-  // =========================================================
-
   readonly deliveringOrder = signal<Order | null>(null);
   readonly deliverDrawerOpen = signal(false);
 
   private lastDeliveringId: string | null = null;
-
-  // =========================================================
+  readonly cancellingOrder=signal<Order|null>(null);
+  readonly cancelSaving=signal(false);
+  readonly cancelError=signal<AppError|null>(null);
   // Delivery summary drawer
-  // =========================================================
-
   readonly summaryOrder = signal<Order | null>(null);
   readonly summaryDrawerOpen = signal(false);
-
-  // =========================================================
   // Status presentation
-  // =========================================================
-
   readonly meta: Record<OrderStatus, StatusMeta> = {
     PENDING: {
       label: 'Requests',
@@ -274,6 +266,9 @@ export class OrdersComponent implements OnInit {
       card: 'bg-green-50 ring-green-300',
     },
 
+    CANCELLED: {
+      label:'Cancelled', hint:'Cancelled · no longer expected', chip:'bg-slate-100 text-slate-600 ring-slate-200', text:'text-slate-500', dot:'bg-slate-400', card:'bg-slate-50 ring-slate-200',
+    },
     REJECTED: {
       label: 'Rejected',
       hint: 'Closed without delivery',
@@ -299,11 +294,7 @@ export class OrdersComponent implements OnInit {
       void this.loadOperationalRefs(this.svc.orders().map((o) => o.id));
     });
   }
-
-  // =========================================================
   // Init
-  // =========================================================
-
   async ngOnInit(): Promise<void> {
     if (this.auth.isAdmin()) {
       await this.loadObjects();
@@ -433,11 +424,7 @@ export class OrdersComponent implements OnInit {
       (data ?? []) as BusinessObject[]
     );
   }
-
-  // =========================================================
   // Counts
-  // =========================================================
-
   /**
    * RLS still controls which orders the current user
    * is allowed to count.
@@ -478,6 +465,7 @@ export class OrdersComponent implements OnInit {
       APPROVED: 0,
       DELIVERED: 0,
       REJECTED: 0,
+      CANCELLED: 0,
     };
 
     results.forEach((result, index) => {
@@ -527,11 +515,7 @@ export class OrdersComponent implements OnInit {
     }
     this.exceptionCount.set(actionOrderIds.size);
   }
-
-  // =========================================================
   // Loading / filters
-  // =========================================================
-
   reload(page = 1): void {
     void this.svc.load({
       receivedThisMonth:
@@ -967,11 +951,7 @@ export class OrdersComponent implements OnInit {
     if (/^CLM-/i.test(q)) { const { data } = await supabase.from('supplier_claims').select('order_id').ilike('claim_number', q).maybeSingle(); if (data?.order_id) { await this.focusOrder(data.order_id); return true; } }
     return false;
   }
-
-  // =========================================================
   // Presentation helpers
-  // =========================================================
-
   itemCount(order: Order): number {
     return (
       order.order_items?.reduce(
@@ -991,7 +971,7 @@ export class OrdersComponent implements OnInit {
     order: Order,
     step: number
   ): StepState {
-    if (order.status === 'REJECTED') {
+    if (order.status === 'REJECTED' || order.status === 'CANCELLED') {
       if (step === 0) {
         return 'done';
       }
@@ -1089,9 +1069,8 @@ export class OrdersComponent implements OnInit {
         : 'Waiting for procurement';
     }
 
-    if (order.status === 'APPROVED') {
-      return 'Ready to receive';
-    }
+    if (order.status === 'APPROVED') return 'Ready to receive';
+    if (order.status === 'CANCELLED') return 'Cancelled · no longer expected';
 
     return this.meta[
       order.status
@@ -1199,10 +1178,7 @@ export class OrdersComponent implements OnInit {
       2300
     );
   }
-
-  // =========================================================
   // Actions
-  // =========================================================
   printOrder(order: Order): void {
     const error = printPurchaseOrder(order);
 
@@ -1260,11 +1236,18 @@ export class OrdersComponent implements OnInit {
       `${order.order_number} rejected.`
     );
   }
+  openCancel(order:Order):void{this.cancellingOrder.set(order);this.cancelError.set(null);}
+  closeCancel():void{if(!this.cancelSaving()){this.cancellingOrder.set(null);this.cancelError.set(null);}}
+  async confirmCancel(value:{reason:CancelReason;note:string}):Promise<void>{
+    const order=this.cancellingOrder();if(!order)return;
+    this.cancelSaving.set(true);this.cancelError.set(null);
+    const result=await this.svc.cancelOrder(order.id,value.reason,value.note);
+    this.cancelSaving.set(false);
+    if(result.error){this.cancelError.set(mapAppError(result.error,'Could not cancel order'));return;}
+    this.cancellingOrder.set(null);this.reload(this.svc.page());this.toast.success(`${order.order_number} cancelled.`);
+  }
 
-  // =========================================================
   // Delivery
-  // =========================================================
-
   openDeliver(
     order: Order
   ): void {
@@ -1310,11 +1293,7 @@ export class OrdersComponent implements OnInit {
       'Delivery recorded — stock updated.'
     );
   }
-
-  // =========================================================
   // Delivery summary
-  // =========================================================
-
   openSummary(
     order: Order
   ): void {

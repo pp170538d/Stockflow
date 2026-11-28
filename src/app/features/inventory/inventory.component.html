@@ -1,4 +1,3 @@
-<!-- ======================= HEADER ======================= -->
 <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
   <div class="min-w-0">
     <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Inventory</h1>
@@ -69,8 +68,6 @@
 @if (!selectedObjectId()) {
 <app-empty-state title="No store yet" subtitle="Create a store under Objects to start tracking stock." />
 } @else if (svc.loading()) {
-
-<!-- ======================= SKELETON ======================= -->
 <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
   @for (i of [1,2,3,4,5]; track i) {
   <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
@@ -105,8 +102,6 @@
   </button>
 </app-empty-state>
 } @else {
-
-<!-- ======================= KPI STRIP ======================= -->
 @let k = kpis();
 <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
   <div class="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
@@ -120,7 +115,7 @@
     [class]="filter() === 'reorder' ? 'bg-red-50 ring-red-300' : 'bg-white ring-slate-200'">
     <div class="flex items-center gap-1.5 text-xs font-medium text-slate-500">
       @if (k.reorder > 0) { <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500"></span> }
-      Reorder now
+      Low shelf
     </div>
     <div class="mt-1.5 text-2xl font-semibold tabular-nums" [class]="k.reorder ? 'text-red-600' : 'text-slate-300'">{{
       k.reorder }}</div>
@@ -130,7 +125,7 @@
   <button type="button" (click)="setFilter(filter() === 'soon' ? 'all' : 'soon')"
     class="rounded-2xl p-4 text-left ring-1 transition hover:-translate-y-0.5 hover:shadow-md"
     [class]="filter() === 'soon' ? 'bg-amber-50 ring-amber-300' : 'bg-white ring-slate-200'">
-    <div class="text-xs font-medium text-slate-500">Reorder soon</div>
+    <div class="text-xs font-medium text-slate-500">Watch</div>
     <div class="mt-1.5 text-2xl font-semibold tabular-nums" [class]="k.soon ? 'text-amber-600' : 'text-slate-300'">{{
       k.soon }}</div>
     <div class="mt-0.5 text-xs text-slate-400">8–14 days left</div>
@@ -153,8 +148,6 @@
     </div>
   </div>
 </div>
-
-<!-- ======================= TOOLBAR ======================= -->
 <div class="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
   <div class="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:pb-0">
     @for (f of filters; track f.key) {
@@ -180,8 +173,6 @@
     filters</button>
 </div>
 } @else {
-
-<!-- ======================= INVENTORY LOOKUP ======================= -->
 <div class="mt-4 rounded-2xl bg-slate-950 p-4 text-white shadow-lg shadow-slate-900/10">
   <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div class="flex min-w-0 items-center gap-3">
@@ -210,8 +201,6 @@
   </div>
   }
 </div>
-
-<!-- ======================= MOBILE: cards ======================= -->
 <div class="mt-4 space-y-3 lg:hidden">
   @for (r of filtered(); track r.product_id; let i = $index) {
   @let t = tone(r.urgency);
@@ -286,8 +275,6 @@
   </article>
   }
 </div>
-
-<!-- ======================= DESKTOP: table ======================= -->
 <div class="mt-4 hidden overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200 lg:block">
   <table class="w-full text-left text-sm">
     <thead class="border-b border-slate-200 bg-slate-50/60 text-[11px] uppercase tracking-wide text-slate-400">
@@ -360,6 +347,26 @@
             <span class="absolute inset-y-0 w-px bg-white" style="left: 23.33%"></span>
             <span class="absolute inset-y-0 w-px bg-white" style="left: 46.67%"></span>
           </div>
+
+          @if (r.incomingQty > 0) {
+          <div class="mt-1.5 text-[11px] leading-4 text-slate-500">
+            {{ r.incomingQty }} on the way
+            @if (r.projectedDays !== null) {
+            · {{ r.projectedDays | number: '1.0-1' }}d projected
+            }
+          </div>
+          }
+
+          @if (r.coverageState === 'top_up') {
+          <div class="text-[11px] font-medium leading-4 text-slate-600">
+            Optional top-up · {{ r.orderablePacks }} pack{{ r.orderablePacks === 1 ? '' : 's' }} · {{ r.orderableQty }} units
+          </div>
+          } @else if (r.coverageState === 'covered' && r.incomingQty > 0) {
+          <div class="text-[11px] font-medium leading-4 text-slate-600">
+            Covered by incoming
+          </div>
+          }
+
           <span class="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ring-1" [class]="t.chip">{{
             t.label }}</span>
         </td>
@@ -408,8 +415,6 @@
 </div>
 }
 }
-
-<!-- ======================= RECORD MOVEMENT DRAWER ======================= -->
 <app-drawer [open]="drawerOpen()" title="Record stock movement" (close)="closeDrawer()">
   <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4">
     <div>
@@ -568,12 +573,8 @@
     </button>
   </div>
 </app-drawer>
-
-<!-- ======================= FULL TREND DIALOG ======================= -->
 <app-stock-history-dialog [open]="chartOpen()" [objectId]="selectedObjectId()" [objectName]="objectName()"
   [productId]="chartProductId()" [productName]="chartProductName()" [sku]="chartSku()" (closed)="closeChart()" />
-
-<!-- ======================= HISTORY DRAWER ======================= -->
 <app-drawer [open]="historyOpen()" [title]="historyItem()?.product?.name || 'History'" (close)="closeHistory()">
 
   @if (historyItem(); as h) {
@@ -699,3 +700,6 @@
     }
   </div>
 </app-drawer>
+
+
+

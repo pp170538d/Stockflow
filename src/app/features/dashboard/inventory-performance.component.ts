@@ -1,3 +1,4 @@
+
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { DecimalPipe, PercentPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -5,7 +6,7 @@ import { supabase } from '../../core/supabase/supabase.client';
 import { AuthService } from '../../core/auth/auth.service';
 import { DashboardService, ReplenishmentRow, ReplenishmentStatus } from './dashboard.service';
 
-export type PerformanceClass = 'fast' | 'normal' | 'slow' | 'dead' | 'stockout' | 'idle';
+export type PerformanceClass = 'fast' | 'normal' | 'slow' | 'dead';
 
 export interface PerformanceAction {
   object_id: string;
@@ -19,7 +20,14 @@ export interface PerformanceAction {
   days_of_stock: number | null;
   days_out: number;
   stock_value: number | null;
-  class: PerformanceClass;
+  movement_class: PerformanceClass;
+  availability_state: 'in_stock' | 'currently_out';
+  currently_out: boolean;
+  had_stockout: boolean;
+  confidence: 'none' | 'low' | 'partial' | 'complete';
+  history_days: number;
+  history_coverage: number;
+  action_reason: 'CURRENTLY_OUT' | 'DEAD_STOCK' | 'SLOW_MOVING' | 'REVIEW_HISTORY';
   rank: number;
 }
 
@@ -41,6 +49,9 @@ export interface PerformanceSummary {
   slow_dead_value: number;
   slow_dead_share: number | null;
   classes: Record<PerformanceClass, number>;
+  current_stockouts: number;
+  products_with_stockout_days: number;
+  inactive: number;
   actions: PerformanceAction[];
   history_days_min: number;
   history_days_max: number;
@@ -78,7 +89,7 @@ export class InventoryPerformanceComponent {
   /** Replenishment rows that are already covered by the order workflow. */
   /** Already moving: requested (waiting for procurement) or on the way. */
   readonly handledReplenishment = computed(() =>
-    this.replenishment().filter((r) => r.status === 'requested' || r.status === 'in_transit')
+    this.replenishment().filter((r) => (r.status === 'requested' || r.status === 'in_transit') && ['out','low','watch'].includes(r.shelf_state))
   );
 
   readonly performanceActions = computed(() => this.data()?.actions ?? []);
@@ -89,7 +100,7 @@ export class InventoryPerformanceComponent {
    * Keep stockout in Inventory Health and Reports, not in Needs attention.
    */
   readonly visiblePerformanceActions = computed(() =>
-    this.performanceActions().filter((a) => a.class !== 'stockout')
+    this.performanceActions()
   );
 
   /** Badge deliberately counts only unresolved work, not already-handled rows. */
@@ -110,7 +121,7 @@ export class InventoryPerformanceComponent {
     this.error.set(null);
 
     const objectId = this.isAdmin() ? null : this.auth.profile()?.object_id ?? null;
-    const { data, error } = await supabase.rpc('inventory_performance_summary', {
+    const { data, error } = await supabase.rpc('inventory_performance_v2', {
       p_days: days,
       p_object_id: objectId,
     });
@@ -137,29 +148,25 @@ export class InventoryPerformanceComponent {
 
   tone(kind: PerformanceClass): string {
     return {
-      stockout: 'bg-red-50 text-red-700 ring-red-200',
-      dead: 'bg-violet-50 text-violet-700 ring-violet-200',
+            dead: 'bg-violet-50 text-violet-700 ring-violet-200',
       slow: 'bg-amber-50 text-amber-700 ring-amber-200',
       normal: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
       fast: 'bg-sky-50 text-sky-700 ring-sky-200',
-      idle: 'bg-slate-100 text-slate-600 ring-slate-200',
-    }[kind];
+          }[kind];
   }
 
   label(kind: PerformanceClass): string {
     return {
-      stockout: 'Stockout risk',
-      dead: 'Dead stock',
+            dead: 'Dead stock',
       slow: 'Slow mover',
       normal: 'Normal',
       fast: 'Fast mover',
-      idle: 'Idle',
-    }[kind];
+          }[kind];
   }
 
   actionText(a: PerformanceAction): string {
-    if (a.class === 'dead') return 'No sales in this period';
-    if (a.class === 'stockout') {
+    if (a.movement_class === 'dead') return 'No sales in this period';
+    if (a.currently_out) {
       return `${a.days_out} day${a.days_out === 1 ? '' : 's'} at zero stock`;
     }
     if (a.days_of_stock !== null) return `${a.days_of_stock.toFixed(1)} days of stock`;
@@ -178,7 +185,7 @@ export class InventoryPerformanceComponent {
   replLabel(s: ReplenishmentStatus): string {
     return {
       needs_order: 'Needs order',
-      top_up: 'Order more',
+      top_up: 'Optional top-up',
       requested: 'Requested',
       in_transit: 'On the way',
     }[s];
@@ -195,7 +202,7 @@ export class InventoryPerformanceComponent {
       case 'needs_order':
         return shelf;
       case 'top_up':
-        return `${shelf} · ${r.incoming_qty} ordered, not enough`;
+        return `${r.incoming_qty} on the way · ${r.projected_days ?? '—'}d projected · ${r.raw_gap_qty}-unit gap`;
       case 'requested':
         return `${shelf} · ${r.pending_qty} requested on ${r.open_order_number ?? 'a request'} · ${
           this.isAdmin() ? 'needs your review' : 'waiting for procurement'
@@ -221,3 +228,5 @@ export class InventoryPerformanceComponent {
     return params;
   }
 }
+
+

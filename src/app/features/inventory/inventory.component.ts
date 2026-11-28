@@ -1,3 +1,5 @@
+
+
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -145,8 +147,8 @@ export class InventoryComponent implements OnInit {
 
   readonly filters: { key: Filter; label: string }[] = [
     { key: 'all', label: 'All' },
-    { key: 'reorder', label: 'Reorder now' },
-    { key: 'soon', label: 'Reorder soon' },
+    { key: 'reorder', label: 'Low shelf' },
+    { key: 'soon', label: 'Watch' },
     { key: 'healthy', label: 'Healthy' },
     { key: 'idle', label: 'No sales' },
   ];
@@ -484,8 +486,8 @@ export class InventoryComponent implements OnInit {
   tone(u: Urgency): { hex: string; spark: string; text: string; chip: string; label: string } {
     return {
       out: { hex: '#ef4444', spark: '#ef4444', text: 'text-red-600', chip: 'bg-red-50 text-red-700 ring-red-200', label: 'Out of stock' },
-      critical: { hex: '#ef4444', spark: '#ef4444', text: 'text-red-600', chip: 'bg-red-50 text-red-700 ring-red-200', label: 'Reorder now' },
-      warning: { hex: '#f59e0b', spark: '#f59e0b', text: 'text-amber-600', chip: 'bg-amber-50 text-amber-700 ring-amber-200', label: 'Reorder soon' },
+      critical: { hex: '#ef4444', spark: '#ef4444', text: 'text-red-600', chip: 'bg-red-50 text-red-700 ring-red-200', label: 'Low shelf' },
+      warning: { hex: '#f59e0b', spark: '#f59e0b', text: 'text-amber-600', chip: 'bg-amber-50 text-amber-700 ring-amber-200', label: 'Watch' },
       healthy: { hex: '#22c55e', spark: '#4f46e5', text: 'text-slate-900', chip: 'bg-green-50 text-green-700 ring-green-200', label: 'Healthy' },
       idle: { hex: '#cbd5e1', spark: '#94a3b8', text: 'text-slate-900', chip: 'bg-slate-100 text-slate-600 ring-slate-200', label: 'No sales' },
     }[u];

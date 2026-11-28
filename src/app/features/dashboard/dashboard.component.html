@@ -1,3 +1,4 @@
+
 <!-- ======================= HEADER + GLOBAL PERIOD ======================= -->
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 
@@ -181,44 +182,13 @@
     }
   </section>
 
-  <section class="flex flex-col rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-    <div class="flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-slate-900">Stock accuracy · 7 days</h2><a routerLink="/stock-count/history"
-        class="text-xs font-medium text-brand-600 hover:text-brand-700">Counts →</a>
-    </div>
-    @if (svc.loading()) { <div class="skeleton mt-4 h-16"></div> } @else {
-    @let v = svc.variances();
-    <div class="mt-4 grid grid-cols-2 gap-3">
-      <div>
-        <div class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Deliveries</div>
-        <div class="mt-0.5 text-2xl font-semibold tabular-nums" [class.text-red-600]="(v?.net_week ?? 0) < 0"
-          [class.text-blue-600]="(v?.net_week ?? 0) > 0" [class.text-slate-300]="(v?.net_week ?? 0) === 0">{{
-          (v?.net_week ?? 0) > 0 ? '+' : '' }}{{ v?.net_week ?? 0 }}</div>
-      </div>
-      <div>
-        <div class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Shelf counts</div>
-        <div class="mt-0.5 text-2xl font-semibold tabular-nums" [class.text-red-600]="(v?.count_net_week ?? 0) < 0"
-          [class.text-blue-600]="(v?.count_net_week ?? 0) > 0" [class.text-slate-300]="(v?.count_net_week ?? 0) === 0">
-          {{ (v?.count_net_week ?? 0) > 0 ? '+' : '' }}{{ v?.count_net_week ?? 0 }}</div>
-      </div>
-    </div>
-    @if (v?.lines?.length) {
-    <ul class="mt-4 divide-y divide-slate-100 border-t border-slate-100">
-      @for (l of v!.lines.slice(0, 3); track $index) {
-      <li class="flex items-center justify-between gap-2 py-2 text-xs">
-        <div class="min-w-0">
-          <div class="truncate font-medium text-slate-800">{{ l.name }} · {{ l.delivered_qty }}/{{ l.ordered_qty }}
-          </div>
-          <div class="truncate text-slate-400">{{ l.reason || 'no reason given' }}</div>
-        </div><app-badge [tone]="l.variance < 0 ? 'warning' : 'info'">{{ l.variance < 0 ? 'Short' : 'Over' }} {{
-            abs(l.variance) }}</app-badge>
-      </li>
-      }
-    </ul>
-    } @else { <p class="mt-4 text-xs text-slate-500">Every unit delivered and counted this week matches the system.</p>
-    }
-    }
-  </section>
+  <section class="rounded-2xl bg-white ring-1 ring-slate-200">
+  <div class="flex items-center justify-between border-b px-5 py-4"><div><h2 class="text-sm font-semibold text-slate-900">Receipt line accuracy · 7 days</h2><p class="mt-0.5 text-xs text-slate-400">Physical receipt, stock acceptance and exception buckets.</p></div><a routerLink="/reports" [queryParams]="{tab:'accuracy',days:7}" class="text-xs font-semibold text-brand-600">Report →</a></div>
+  @if(svc.accuracyV2();as a){
+  <div class="grid grid-cols-2 gap-3 p-5 sm:grid-cols-4"><div><div class="text-[10px] uppercase text-slate-400">Accuracy</div><b class="text-xl">{{a.deliveries.accuracy_pct===null?'—':(a.deliveries.accuracy_pct|number:'1.0-1')+'%'}}</b></div><div><div class="text-[10px] uppercase text-slate-400">Short</div><b class="text-xl text-amber-700">{{a.deliveries.short_units}}</b></div><div><div class="text-[10px] uppercase text-slate-400">Over</div><b class="text-xl text-blue-700">{{a.deliveries.over_units}}</b></div><div><div class="text-[10px] uppercase text-slate-400">Quality rejected</div><b class="text-xl text-red-700">{{a.deliveries.quality_rejected_units}}</b></div></div>
+  @if(a.recent_delivery_issues.length){<div class="space-y-2 border-t px-5 py-4">@for(i of a.recent_delivery_issues.slice(0,3);track i.delivery_id+':'+i.product_name){<div class="rounded-lg bg-slate-50 p-2.5"><div class="flex justify-between gap-2"><div class="truncate text-xs font-medium">{{i.product_name}} · {{i.object_name}}</div><a routerLink="/orders" [queryParams]="{focus:i.order_id}" class="text-[11px] font-semibold text-brand-600">View</a></div><div class="mt-1 flex flex-wrap gap-2 text-[11px] text-slate-500"><span>{{i.ordered_qty}} ordered</span><span>{{i.physical_qty}} physical</span><span>{{i.accepted_qty}} to stock</span>@if(i.short_qty){<span class="text-amber-700">Short {{i.short_qty}}</span>}@if(i.over_qty){<span class="text-blue-700">Over {{i.over_qty}}</span>}@if(i.quality_rejected_qty){<span class="text-red-700">Quality {{i.quality_rejected_qty}}</span>}</div></div>}</div>}
+  } @else {<div class="p-6 text-center text-sm text-slate-400">No receipt data in the last 7 days.</div>}
+</section>
 </div>
 
 <!-- ======================= STOCK FLOW ======================= -->
@@ -340,3 +310,4 @@
   }
   }
 </section>
+

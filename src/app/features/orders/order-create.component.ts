@@ -1,3 +1,4 @@
+
 import {
   Component,
   HostListener,
@@ -39,6 +40,8 @@ interface Orderable {
   urgency: Urgency;
   lowData: boolean;
   suggest: number;
+  rawGap: number; orderablePacks: number; packSize: number; minimumPacks: number;
+  projectedDays: number | null; coverageState: 'urgent'|'needs_order'|'top_up'|'covered'|'no_pace';
 }
 
 interface ScanFeedback {
@@ -254,7 +257,7 @@ export class OrderCreateComponent implements OnInit {
     since.setHours(0, 0, 0, 0);
     since.setDate(since.getDate() - (WINDOW_DAYS - 1));
 
-    const [assigned, inventory, sales, openOrders] = await Promise.all([
+    const [assigned, inventory, sales, openOrders, replenishment] = await Promise.all([
       supabase
         .from('object_products')
         .select('product:products ( id, sku, barcode, name, category, active )')
@@ -272,9 +275,10 @@ export class OrderCreateComponent implements OnInit {
         .select('status, order_items ( product_id, quantity )')
         .eq('object_id', objectId)
         .in('status', ['PENDING', 'APPROVED']),
+      supabase.rpc('replenishment_queue_v2', { p_object_id: objectId }),
     ]);
 
-    const failed = assigned.error ?? inventory.error ?? sales.error ?? openOrders.error;
+    const failed = assigned.error ?? inventory.error ?? sales.error ?? openOrders.error ?? replenishment.error;
     if (failed) {
       this.error.set(failed.message);
       this.products.set([]);
@@ -302,6 +306,9 @@ export class OrderCreateComponent implements OnInit {
       }
     }
 
+    const plans = new Map<string, any>();
+    for (const plan of (replenishment.data ?? []) as any[]) plans.set(plan.product_id, plan);
+
     const list: Orderable[] = ((assigned.data ?? []) as any[])
       .map((row) => row.product)
       .filter((product: any) => product && product.active)
@@ -310,6 +317,7 @@ export class OrderCreateComponent implements OnInit {
         const inc = incoming.get(product.id) ?? 0;
         const sold30 = sold.get(product.id) ?? 0;
         const result = runway(have, sold30, WINDOW_DAYS, inc);
+        const plan = plans.get(product.id);
         return {
           id: product.id,
           name: product.name,
@@ -323,7 +331,13 @@ export class OrderCreateComponent implements OnInit {
           daysLeft: result.daysLeft,
           urgency: result.urgency,
           lowData: result.lowData,
-          suggest: result.suggest,
+          suggest: Number(plan?.orderable_qty ?? result.suggest),
+          rawGap: Number(plan?.raw_gap_qty ?? result.suggest),
+          orderablePacks: Number(plan?.orderable_packs ?? 0),
+          packSize: Number(plan?.pack_size ?? 1),
+          minimumPacks: Number(plan?.minimum_packs ?? 1),
+          projectedDays: plan?.projected_days == null ? null : Number(plan.projected_days),
+          coverageState: (plan?.coverage_state ?? (result.suggest > 0 ? 'needs_order' : 'covered')),
         };
       })
       .sort(
