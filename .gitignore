@@ -49,3 +49,5 @@ Thumbs.db
 # Local AI context
 /AI_CONTEXT.txt
 /context.ps1
+
+database-backup/
